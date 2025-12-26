@@ -1,9 +1,26 @@
 # frozen_string_literal: true
 
 require_relative "solid_observer/version"
+require_relative "solid_observer/configuration"
 
 module SolidObserver
-  VERSION = "0.1.0"
-  RUBY_MINIMUM_VERSION = "3.2.0"
-  RAILS_MINIMUM_VERSION = "8.0.0"
+  class Error < StandardError; end
+
+  class << self
+    def configuration
+      @configuration ||= Configuration.new
+    end
+
+    def configure
+      yield(configuration)
+    end
+
+    def config
+      configuration
+    end
+
+    def reset_configuration!
+      @configuration = Configuration.new
+    end
+  end
 end
