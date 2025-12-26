@@ -378,10 +378,10 @@ GEM
 
 PLATFORMS
   x86_64-darwin-24
+  x86_64-linux
 
 DEPENDENCIES
   appraisal (~> 2.5)
-  bundler (>= 2.0)
   bundler-audit (~> 0.9.3)
   capybara (~> 3.40)
   capybara-screenshot (~> 1.0.26)
