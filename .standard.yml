@@ -1,0 +1,22 @@
+# StandardRB configuration
+# https://github.com/standardrb/standard
+
+# Ruby version to target
+ruby_version: 4.0
+
+# File patterns to inspect
+# By default, StandardRB only checks changed files
+# This forces it to check all Ruby files
+fix: false
+
+# Format output
+format: progress
+
+# Paths to inspect
+parallel: true
+
+# Ignore patterns (in addition to .gitignore)
+ignore:
+  - 'tmp/**/*'
+  - 'bin/**/*'
+  - 'db/schema.rb'

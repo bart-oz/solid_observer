@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Ruby ${{ matrix.ruby-version }} / Rails ${{ matrix.rails-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.2', '3.3', '3.4', '4.0']
+        rails-version: ['8.0', '8.1']
+
+    env:
+      RAILS_VERSION: ${{ matrix.rails-version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+
+      - name: Generate appraisal gemfiles
+        run: bundle exec appraisal generate
+
+      - name: Install Rails ${{ matrix.rails-version }} dependencies
+        run: bundle exec appraisal rails-${{ matrix.rails-version }} bundle install
+
+      - name: Run tests with Rails ${{ matrix.rails-version }}
+        run: bundle exec appraisal rails-${{ matrix.rails-version }} rake spec
+
+      - name: Upload coverage reports
+        if: matrix.ruby-version == '4.0' && matrix.rails-version == '8.1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+  # e2e:
+  #   name: E2E Tests (Capybara)
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Set up Ruby
+  #       uses: ruby/setup-ruby@v1
+  #       with:
+  #         ruby-version: '4.0'
+  #         bundler-cache: true
+
+  #     - name: Install Chrome for Selenium
+  #       uses: browser-actions/setup-chrome@v1
+
+  #     - name: Run E2E tests
+  #       run: bundle exec rspec spec/features
+
+  #     - name: Upload screenshots on failure
+  #       if: failure()
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: capybara-screenshots
+  #         path: tmp/capybara/
+  #         if-no-files-found: ignore
+
+  standardrb:
+    name: Lint (StandardRB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+
+      - name: Run StandardRB
+        run: bundle exec standardrb
+
+  reek:
+    name: Code Smells (Reek)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+
+      - name: Run Reek
+        run: bundle exec reek
+
+  coverage:
+    name: Coverage Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+
+      - name: Run tests with coverage
+        run: bundle exec rspec
+
+      - name: Enforce coverage threshold
+        run: |
+          # SimpleCov will exit with status 1 if coverage is below minimum (80%)
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+
+      - name: Update vulnerability database
+        run: bundle exec bundle-audit update
+
+      - name: Check for vulnerabilities
+        run: bundle exec bundle-audit check
