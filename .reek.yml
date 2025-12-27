@@ -1,0 +1,20 @@
+# Reek configuration for SolidObserver
+
+detectors:
+  # Configuration classes legitimately have many writable attributes
+  Attribute:
+    exclude:
+      - SolidObserver::Configuration
+
+  # Configuration classes legitimately have many instance variables
+  TooManyInstanceVariables:
+    exclude:
+      - SolidObserver::Configuration
+
+  # Utility function is acceptable for private helper methods
+  UtilityFunction:
+    enabled: false
+
+  # Module comments are optional for small gems
+  IrresponsibleModule:
+    enabled: false
