@@ -9,6 +9,8 @@ RSpec.describe SolidObserver::Configuration do
     expect(config.sampling_rate).to eq(1.0)
     expect(config.buffer_size).to eq(1000)
     expect(config.observe_queue).to be true
+    expect(config.max_db_size).to eq(1.gigabyte)
+    expect(config.warning_threshold).to eq(0.8)
   end
 
   it "disables UI in production" do
