@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "active_support/core_ext/numeric/time"
+require "active_support/core_ext/numeric/bytes"
 
 module SolidObserver
   class Configuration
@@ -14,6 +15,8 @@ module SolidObserver
       :observe_cable,
       :event_retention,
       :metrics_retention,
+      :max_db_size,
+      :warning_threshold,
       :sampling_rate,
       :cache_sampling_rate,
       :buffer_size,
@@ -30,6 +33,8 @@ module SolidObserver
       @observe_cable = true
       @event_retention = 30.days
       @metrics_retention = 90.days
+      @max_db_size = 1.gigabyte
+      @warning_threshold = 0.8
       @sampling_rate = 1.0
       @cache_sampling_rate = 0.1
       @buffer_size = 1000
