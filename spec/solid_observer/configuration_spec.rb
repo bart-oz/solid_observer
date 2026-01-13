@@ -3,6 +3,8 @@
 require "spec_helper"
 
 RSpec.describe SolidObserver::Configuration do
+  after { SolidObserver.reset_configuration! }
+
   it "sets sensible defaults" do
     config = described_class.new
 
@@ -21,6 +23,21 @@ RSpec.describe SolidObserver::Configuration do
   it "enables UI outside production" do
     allow_any_instance_of(described_class).to receive(:production?).and_return(false)
     expect(described_class.new.ui_enabled).to be true
+  end
+
+  it "allows custom correlation_id_generator" do
+    generator = -> { "custom-id-123" }
+
+    SolidObserver.configure do |config|
+      config.correlation_id_generator = generator
+    end
+
+    expect(SolidObserver.config.correlation_id_generator).to eq(generator)
+    expect(SolidObserver.config.correlation_id_generator.call).to eq("custom-id-123")
+  end
+
+  it "defaults correlation_id_generator to nil" do
+    expect(SolidObserver.config.correlation_id_generator).to be_nil
   end
 end
 

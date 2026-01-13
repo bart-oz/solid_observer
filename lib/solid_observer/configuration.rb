@@ -20,7 +20,8 @@ module SolidObserver
       :sampling_rate,
       :cache_sampling_rate,
       :buffer_size,
-      :flush_interval
+      :flush_interval,
+      :correlation_id_generator
 
     def initialize
       @ui_enabled = !production?
@@ -39,6 +40,7 @@ module SolidObserver
       @cache_sampling_rate = 0.1
       @buffer_size = 1000
       @flush_interval = 10.seconds
+      @correlation_id_generator = nil
     end
 
     private

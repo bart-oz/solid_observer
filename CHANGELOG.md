@@ -1,17 +1,15 @@
 ## [Unreleased]
 
-## [0.1.0]
+## [0.1.0] - 2026-01-13
 
-### Added - 2025-12-27
-- Configuration DSL with 14 configurable attributes
+### Added
+- Configuration DSL with 17 configurable attributes
 - Module-level `configure`, `config`, and `reset_configuration!` methods
+- `correlation_id_generator` option for custom correlation ID generation (integrates with Datadog, Sentry, OpenTelemetry)
 - Production-aware defaults (UI disabled in production by default)
-- Rails idiomatic time helpers for retention periods
-
-### Setup project infrastructure - 2025-12-26
-- Configure Gemfile with development/test dependencies
-- Add comprehensive CI pipeline (tests, linting, security, e2e)
-- Setup appraisal for testing Rails 8.0 and 8.1
-- Add StandardRB, Reek, SimpleCov, Capybara
-- Configure bundler-audit for security scanning
-- Update version constants (Ruby 3.2+, Rails 8.0+)
+- Rails idiomatic time helpers for retention periods (30.days, 10.seconds)
+- Comprehensive CI pipeline (tests, linting, security, coverage)
+- Multi-version testing with Appraisal (Rails 8.0 and 8.1)
+- Code quality tools: StandardRB, Reek, SimpleCov, bundler-audit
+- Support for Ruby 3.2, 3.3, 3.4, 4.0
+- Support for Rails 8.0, 8.1

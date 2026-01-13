@@ -10,6 +10,7 @@ group :development do
   gem "standard", "~> 1.52.0"
   gem "standard-performance", "~> 1.9.0"
   gem "guard-rspec", "~> 4.7.3"
+  gem "benchmark", "~> 0.5.0" # in Ruby v4.0.0 it's removed from stdlib
 end
 
 group :test do
