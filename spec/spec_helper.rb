@@ -12,8 +12,9 @@ end
 
 require "bundler/setup"
 require "rspec"
-
-# Load solid_observer
+require "rails"
+require "action_controller/railtie"
+require "active_record/railtie"
 require_relative "../lib/solid_observer"
 
 RSpec.configure do |config|
