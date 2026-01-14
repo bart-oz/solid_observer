@@ -11,6 +11,12 @@ detectors:
     exclude:
       - SolidObserver::Configuration
 
+  # Configuration initialization legitimately sets many default values
+  TooManyStatements:
+    exclude:
+      - SolidObserver::Configuration#initialize
+      - SolidObserver::Generators::InstallGenerator#show_instructions
+
   # Utility function is acceptable for private helper methods
   UtilityFunction:
     enabled: false
@@ -18,3 +24,8 @@ detectors:
   # Module comments are optional for small gems
   IrresponsibleModule:
     enabled: false
+
+  # Rails generators legitimately have repetitive say calls and multiple statements
+  DuplicateMethodCall:
+    exclude:
+      - SolidObserver::Generators::InstallGenerator#show_instructions
