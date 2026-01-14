@@ -1,0 +1,57 @@
+# frozen_string_literal: true
+
+# SolidObserver Configuration
+# See https://github.com/bart-oz/solid_observer for more details
+
+SolidObserver.configure do |config|
+  # UI Settings
+  # Enable the web UI for viewing events and metrics
+  # Recommended: false in production, true in development/staging
+  config.ui_enabled = !Rails.env.production?
+
+  # Authentication for UI (when ui_enabled = true)
+  # config.http_basic_auth_enabled = true
+  # config.http_basic_auth_user = "admin"
+  # config.http_basic_auth_password = "secret"
+
+  # Base controller for UI (customize authorization)
+  # config.ui_base_controller = "ApplicationController"
+
+  # === Queue Observability (v0.1.0) ===
+  config.observe_queue = true
+
+  # === Cache Observability (Coming in v0.2.0+) ===
+  # config.observe_cache = true
+  # config.cache_sampling_rate = 0.1  # Sample 10% of cache operations
+
+  # === Cable Observability (Coming in v0.2.0+) ===
+  # config.observe_cable = true
+
+  # Data Retention
+  config.event_retention = 30.days    # How long to keep event records
+  config.metrics_retention = 90.days  # How long to keep aggregated metrics
+
+  # Database Limits (prevent unlimited growth)
+  config.max_db_size = 1.gigabyte
+  config.warning_threshold = 0.8  # Warn when DB reaches 80% of max_db_size
+
+  # Performance Settings
+  config.buffer_size = 1000        # Events to buffer before flushing
+  config.flush_interval = 10.seconds
+
+  # Sampling (reduce overhead in high-traffic apps)
+  config.sampling_rate = 1.0  # 1.0 = 100% (capture all events)
+
+  # Correlation ID (for distributed tracing)
+  # Integrate with your APM tool (Datadog, Sentry, OpenTelemetry, etc.)
+  # config.correlation_id_generator = -> {
+  #   # Example for Datadog APM
+  #   Datadog::Tracing.active_trace&.id
+  #
+  #   # Example for Sentry
+  #   Sentry.get_current_scope&.transaction&.trace_id
+  #
+  #   # Example for OpenTelemetry
+  #   OpenTelemetry::Trace.current_span&.context&.trace_id
+  # }
+end

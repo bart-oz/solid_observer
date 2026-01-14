@@ -2,6 +2,7 @@
 
 require_relative "solid_observer/version"
 require_relative "solid_observer/configuration"
+require_relative "solid_observer/base_event" if defined?(ActiveRecord)
 require_relative "solid_observer/engine" if defined?(Rails::Engine)
 
 module SolidObserver
