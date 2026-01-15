@@ -41,7 +41,8 @@ RSpec.describe "CreateSolidObserverMetrics migration" do
       end
 
       expect(column_info["metric_name"]).to include(type: :string, null: false, limit: 50)
-      expect(column_info["value"]).to include(type: :integer, null: false, default: 0)
+      expect(column_info["value"]).to include(type: :integer, null: false)
+      expect(column_info["value"][:default].to_i).to eq(0) # Rails 8.0 returns "0" as string
       expect(column_info["period_start"]).to include(type: :datetime, null: false)
       expect(column_info["period_type"]).to include(type: :string, null: false, limit: 10)
     end
