@@ -13,6 +13,8 @@ detectors:
     exclude:
       - SolidObserver::Configuration#initialize
       - SolidObserver::Generators::InstallGenerator#show_instructions
+      - SolidObserver::CorrelationIdResolver#resolve
+      - SolidObserver::CorrelationIdResolver#call_custom_generator
 
   UtilityFunction:
     enabled: false
@@ -23,3 +25,13 @@ detectors:
   DuplicateMethodCall:
     exclude:
       - SolidObserver::Generators::InstallGenerator#show_instructions
+      - SolidObserver::CorrelationIdResolver#resolve
+      - SolidObserver::CorrelationIdResolver#log_generator_error
+
+  RepeatedConditional:
+    exclude:
+      - SolidObserver::CorrelationIdResolver#resolve
+
+  UncommunicativeVariableName:
+    accept:
+      - e # Standard exception variable in rescue blocks
