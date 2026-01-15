@@ -16,6 +16,7 @@ detectors:
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CorrelationIdResolver#call_custom_generator
       - CreateSolidObserverQueueEvents#change
+      - CreateSolidObserverMetrics#change
 
   UtilityFunction:
     enabled: false
@@ -26,6 +27,7 @@ detectors:
   FeatureEnvy:
     exclude:
       - CreateSolidObserverQueueEvents#change
+      - CreateSolidObserverMetrics#change
 
   DuplicateMethodCall:
     exclude:
