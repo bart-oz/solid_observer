@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.description = "SolidObserver is a production-grade observability solution for Rails 8's Solid Stack (Solid Queue, Solid Cache, Solid Cable). It provides unified monitoring, health metrics, and debugging tools across all three Solid technologies."
   spec.homepage = "https://solid.observer"
   spec.license = "MIT"
-  spec.files = Dir["lib/**/*", "README.md", "LICENSE.txt", "CHANGELOG.md", "bin/*"]
+  spec.files = Dir["lib/**/*", "app/**/*", "db/**/*", "README.md", "LICENSE.txt", "CHANGELOG.md", "bin/*"]
   spec.require_paths = ["lib"]
   spec.bindir = "bin"
 

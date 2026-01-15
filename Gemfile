@@ -24,4 +24,5 @@ group :test do
   gem "selenium-webdriver", "~> 4.39.0"
   gem "rspec", "~> 3.13.2"
   gem "simplecov", "~> 0.22.0", require: false
+  gem "sqlite3", "~> 2.5"
 end

@@ -15,12 +15,17 @@ detectors:
       - SolidObserver::Generators::InstallGenerator#show_instructions
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CorrelationIdResolver#call_custom_generator
+      - CreateSolidObserverQueueEvents#change
 
   UtilityFunction:
     enabled: false
 
   IrresponsibleModule:
     enabled: false
+
+  FeatureEnvy:
+    exclude:
+      - CreateSolidObserverQueueEvents#change
 
   DuplicateMethodCall:
     exclude:
@@ -34,4 +39,5 @@ detectors:
 
   UncommunicativeVariableName:
     accept:
-      - e # Standard exception variable in rescue blocks
+      - e # Commonly used for exceptions
+      - t # Commonly used for time variables
