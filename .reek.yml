@@ -17,6 +17,7 @@ detectors:
       - SolidObserver::CorrelationIdResolver#call_custom_generator
       - CreateSolidObserverQueueEvents#change
       - CreateSolidObserverMetrics#change
+      - CreateSolidObserverStorageInfo#change
 
   UtilityFunction:
     enabled: false
@@ -28,6 +29,7 @@ detectors:
     exclude:
       - CreateSolidObserverQueueEvents#change
       - CreateSolidObserverMetrics#change
+      - CreateSolidObserverStorageInfo#change
 
   DuplicateMethodCall:
     exclude:
