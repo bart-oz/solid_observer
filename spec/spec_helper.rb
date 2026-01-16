@@ -15,7 +15,23 @@ require "rspec"
 require "rails"
 require "action_controller/railtie"
 require "active_record/railtie"
+
+ENV["RAILS_ENV"] = "test"
+Rails.env = ActiveSupport::StringInquirer.new("test")
+
 require_relative "../lib/solid_observer"
+
+ActiveRecord::Base.configurations = {
+  "test" => {
+    "solid_observer_queue" => {
+      "adapter" => "sqlite3",
+      "database" => ":memory:"
+    }
+  }
+}
+ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
+
+Dir[File.join(__dir__, "../app/models/**/*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

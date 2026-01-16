@@ -19,6 +19,11 @@ detectors:
       - CreateSolidObserverMetrics#change
       - CreateSolidObserverStorageInfo#change
 
+  LongParameterList:
+    exclude:
+      - SolidObserver::BaseMetric#self.increment
+      - SolidObserver::BaseMetric#self.record
+
   UtilityFunction:
     enabled: false
 
