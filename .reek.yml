@@ -18,11 +18,17 @@ detectors:
       - CreateSolidObserverQueueEvents#change
       - CreateSolidObserverMetrics#change
       - CreateSolidObserverStorageInfo#change
+      - SolidObserver::QueueEventBuffer#flush!
+      - SolidObserver::QueueEventBuffer#push
+      - SolidObserver::QueueEventBuffer#schedule_flush
+      - SolidObserver::Services::FlushEventBuffer#call
+      - SolidObserver::Services::RecordEvent#extract_metadata
 
   LongParameterList:
     exclude:
       - SolidObserver::BaseMetric#self.increment
       - SolidObserver::BaseMetric#self.record
+      - SolidObserver::Services::RecordEvent#self.call
 
   UtilityFunction:
     enabled: false
@@ -35,12 +41,21 @@ detectors:
       - CreateSolidObserverQueueEvents#change
       - CreateSolidObserverMetrics#change
       - CreateSolidObserverStorageInfo#change
+      - SolidObserver::Services::RecordEvent#extract_metadata
 
   DuplicateMethodCall:
     exclude:
       - SolidObserver::Generators::InstallGenerator#show_instructions
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CorrelationIdResolver#log_generator_error
+      - SolidObserver::QueueEventBuffer#flush!
+      - SolidObserver::Services::RecordEvent#extract_metadata
+      - SolidObserver::Services::RecordEvent#handle_error
+
+  MissingSafeMethod:
+    exclude:
+      - SolidObserver::Subscriber
+      - SolidObserver::QueueEventBuffer
 
   RepeatedConditional:
     exclude:
