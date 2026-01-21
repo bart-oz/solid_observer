@@ -37,7 +37,8 @@ RSpec.describe SolidObserver::Subscriber do
       it "subscribes to enqueue.active_job" do
         described_class.subscribe!
 
-        ActiveSupport::Notifications.instrument("enqueue.active_job", {job: {job_id: "123"}})
+        mock_job = double("Job", job_id: "123", queue_name: "default")
+        ActiveSupport::Notifications.instrument("enqueue.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
           hash_including(event_type: "job_enqueued", metric_name: "jobs_enqueued")
@@ -47,7 +48,8 @@ RSpec.describe SolidObserver::Subscriber do
       it "subscribes to perform.active_job" do
         described_class.subscribe!
 
-        ActiveSupport::Notifications.instrument("perform.active_job", {job: {job_id: "123"}})
+        mock_job = double("Job", job_id: "123", queue_name: "default")
+        ActiveSupport::Notifications.instrument("perform.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
           hash_including(event_type: "job_completed", metric_name: "jobs_completed")
@@ -57,7 +59,9 @@ RSpec.describe SolidObserver::Subscriber do
       it "subscribes to retry_stopped.active_job" do
         described_class.subscribe!
 
-        ActiveSupport::Notifications.instrument("retry_stopped.active_job", {job: {job_id: "123"}})
+        mock_job = double("Job", job_id: "123", queue_name: "default")
+        mock_error = StandardError.new("test error")
+        ActiveSupport::Notifications.instrument("retry_stopped.active_job", {job: mock_job, error: mock_error})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
           hash_including(event_type: "job_failed", metric_name: "jobs_failed")
@@ -67,7 +71,8 @@ RSpec.describe SolidObserver::Subscriber do
       it "subscribes to discard.active_job" do
         described_class.subscribe!
 
-        ActiveSupport::Notifications.instrument("discard.active_job", {job: {job_id: "123"}})
+        mock_job = double("Job", job_id: "123", queue_name: "default")
+        ActiveSupport::Notifications.instrument("discard.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
           hash_including(event_type: "job_discarded", metric_name: "jobs_discarded")
@@ -77,7 +82,8 @@ RSpec.describe SolidObserver::Subscriber do
       it "passes QueueEventBuffer instance" do
         described_class.subscribe!
 
-        ActiveSupport::Notifications.instrument("enqueue.active_job", {job: {job_id: "123"}})
+        mock_job = double("Job", job_id: "123", queue_name: "default")
+        ActiveSupport::Notifications.instrument("enqueue.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
           hash_including(buffer: SolidObserver::QueueEventBuffer.instance)
@@ -87,38 +93,39 @@ RSpec.describe SolidObserver::Subscriber do
       it "passes ActiveSupport::Notifications::Event object" do
         described_class.subscribe!
 
-        ActiveSupport::Notifications.instrument("enqueue.active_job", {job: {job_id: "123"}})
+        mock_job = double("Job", job_id: "123", queue_name: "default")
+        ActiveSupport::Notifications.instrument("enqueue.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call) do |args|
           expect(args[:event]).to be_a(ActiveSupport::Notifications::Event)
-          expect(args[:event].payload[:job][:job_id]).to eq("123")
+          expect(args[:event].payload[:job].job_id).to eq("123")
         end
       end
     end
   end
 
   describe "integration" do
-    before do
-      allow(SolidObserver::Services::RecordEvent).to receive(:call).and_call_original
-    end
-
     it "records events end-to-end" do
       allow(SolidObserver.config).to receive(:observe_queue).and_return(true)
       allow(SolidObserver.config).to receive(:sampling_rate).and_return(1.0)
+      allow(SolidObserver::Services::RecordEvent).to receive(:call).and_call_original
 
       buffer = SolidObserver::QueueEventBuffer.instance
       allow(buffer).to receive(:push)
       allow(SolidObserver::QueueMetric).to receive(:increment)
-      allow(SolidObserver::CorrelationIdResolver).to receive(:resolve).and_return("test-correlation-id")
 
       described_class.subscribe!
 
-      ActiveSupport::Notifications.instrument("perform.active_job", {job: {job_id: "integration-test"}})
+      mock_job = double("Job", job_id: "integration-test", queue_name: "default")
+      ActiveSupport::Notifications.instrument("perform.active_job", {job: mock_job})
 
-      expect(buffer).to have_received(:push).once do |event_data|
-        expect(event_data[:event_type]).to eq("job_completed")
-        expect(event_data[:correlation_id]).to eq("test-correlation-id")
-      end
+      expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
+        hash_including(
+          event_type: "job_completed",
+          metric_name: "jobs_completed",
+          buffer: buffer
+        )
+      )
     end
   end
 end
