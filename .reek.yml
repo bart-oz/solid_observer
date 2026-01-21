@@ -71,6 +71,7 @@ detectors:
     accept:
       - e # Commonly used for exceptions
       - i # Standard index variable
+      - t # Commonly used for time variables
 
   BooleanParameter:
     exclude:
@@ -79,4 +80,3 @@ detectors:
   NilCheck:
     exclude:
       - SolidObserver::CLI::Base#confirm # Necessary for stdin handling
-      - t # Commonly used for time variables
