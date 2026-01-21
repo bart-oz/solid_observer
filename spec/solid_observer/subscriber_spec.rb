@@ -37,7 +37,7 @@ RSpec.describe SolidObserver::Subscriber do
       it "subscribes to enqueue.active_job" do
         described_class.subscribe!
 
-        mock_job = double("Job", job_id: "123", queue_name: "default")
+        mock_job = double("Job", job_id: "123", queue_name: "default").as_null_object
         ActiveSupport::Notifications.instrument("enqueue.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
@@ -48,7 +48,7 @@ RSpec.describe SolidObserver::Subscriber do
       it "subscribes to perform.active_job" do
         described_class.subscribe!
 
-        mock_job = double("Job", job_id: "123", queue_name: "default")
+        mock_job = double("Job", job_id: "123", queue_name: "default").as_null_object
         ActiveSupport::Notifications.instrument("perform.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
@@ -59,7 +59,7 @@ RSpec.describe SolidObserver::Subscriber do
       it "subscribes to retry_stopped.active_job" do
         described_class.subscribe!
 
-        mock_job = double("Job", job_id: "123", queue_name: "default")
+        mock_job = double("Job", job_id: "123", queue_name: "default").as_null_object
         mock_error = StandardError.new("test error")
         ActiveSupport::Notifications.instrument("retry_stopped.active_job", {job: mock_job, error: mock_error})
 
@@ -71,7 +71,7 @@ RSpec.describe SolidObserver::Subscriber do
       it "subscribes to discard.active_job" do
         described_class.subscribe!
 
-        mock_job = double("Job", job_id: "123", queue_name: "default")
+        mock_job = double("Job", job_id: "123", queue_name: "default").as_null_object
         ActiveSupport::Notifications.instrument("discard.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
@@ -82,7 +82,7 @@ RSpec.describe SolidObserver::Subscriber do
       it "passes QueueEventBuffer instance" do
         described_class.subscribe!
 
-        mock_job = double("Job", job_id: "123", queue_name: "default")
+        mock_job = double("Job", job_id: "123", queue_name: "default").as_null_object
         ActiveSupport::Notifications.instrument("enqueue.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
@@ -93,7 +93,7 @@ RSpec.describe SolidObserver::Subscriber do
       it "passes ActiveSupport::Notifications::Event object" do
         described_class.subscribe!
 
-        mock_job = double("Job", job_id: "123", queue_name: "default")
+        mock_job = double("Job", job_id: "123", queue_name: "default").as_null_object
         ActiveSupport::Notifications.instrument("enqueue.active_job", {job: mock_job})
 
         expect(SolidObserver::Services::RecordEvent).to have_received(:call) do |args|
@@ -116,7 +116,7 @@ RSpec.describe SolidObserver::Subscriber do
 
       described_class.subscribe!
 
-      mock_job = double("Job", job_id: "integration-test", queue_name: "default")
+      mock_job = double("Job", job_id: "integration-test", queue_name: "default").as_null_object
       ActiveSupport::Notifications.instrument("perform.active_job", {job: mock_job})
 
       expect(SolidObserver::Services::RecordEvent).to have_received(:call).with(
