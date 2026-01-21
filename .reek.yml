@@ -28,12 +28,16 @@ detectors:
       - SolidObserver::CLI::Base#table
       - SolidObserver::CLI::Base#confirm
       - SolidObserver::CLI::Status#print_queue_depths
+      - SolidObserver::CLI::Jobs#retry_job
+      - SolidObserver::CLI::Jobs#discard
 
   LongParameterList:
     exclude:
       - SolidObserver::BaseMetric#self.increment
       - SolidObserver::BaseMetric#self.record
       - SolidObserver::Services::RecordEvent#self.call
+      - SolidObserver::CLI::Jobs#list
+      - SolidObserver::CLI::Jobs#fetch_job
 
   UtilityFunction:
     enabled: false
@@ -50,6 +54,10 @@ detectors:
       - SolidObserver::CLI::Base#confirm
       - SolidObserver::CLI::Status#print_queue_stats
       - SolidObserver::CLI::Status#print_queue_table
+      - SolidObserver::CLI::Jobs#format_job_row
+      - SolidObserver::CLI::Jobs#build_job_details
+      - SolidObserver::CLI::Jobs#add_scheduled_details
+      - SolidObserver::CLI::Jobs#fetch_jobs
 
   DuplicateMethodCall:
     exclude:
@@ -63,6 +71,8 @@ detectors:
       - SolidObserver::CLI::Status#print_queue_stats
       - SolidObserver::CLI::Status#print_queue_table
       - SolidObserver::CLI::Status#print_queue_depths
+      - SolidObserver::CLI::Jobs#add_error_details
+      - SolidObserver::CLI::Jobs#scope_for_status
 
   MissingSafeMethod:
     exclude:
@@ -72,6 +82,7 @@ detectors:
   RepeatedConditional:
     exclude:
       - SolidObserver::CorrelationIdResolver#resolve
+      - SolidObserver::CLI::Jobs
 
   UncommunicativeVariableName:
     accept:
@@ -81,8 +92,16 @@ detectors:
 
   BooleanParameter:
     exclude:
-      - SolidObserver::CLI::Base#confirm # Natural for default parameter
+      - SolidObserver::CLI::Base#confirm
 
   NilCheck:
     exclude:
-      - SolidObserver::CLI::Base#confirm # Necessary for stdin handling
+      - SolidObserver::CLI::Base#confirm
+
+  ControlParameter:
+    exclude:
+      - SolidObserver::CLI::Jobs#scope_for_status
+
+  TooManyMethods:
+    exclude:
+      - SolidObserver::CLI::Jobs

@@ -12,6 +12,7 @@ require_relative "solid_observer/queue_event_buffer" if defined?(ActiveRecord)
 require_relative "solid_observer/subscriber" if defined?(ActiveSupport)
 require_relative "solid_observer/cli/base"
 require_relative "solid_observer/cli/status"
+require_relative "solid_observer/cli/jobs"
 require_relative "solid_observer/queue_stats"
 require_relative "solid_observer/engine" if defined?(Rails::Engine)
 
