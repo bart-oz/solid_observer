@@ -30,6 +30,9 @@ detectors:
       - SolidObserver::CLI::Status#print_queue_depths
       - SolidObserver::CLI::Jobs#retry_job
       - SolidObserver::CLI::Jobs#discard
+      - SolidObserver::CLI::Storage#call
+      - SolidObserver::CLI::Storage#calculate_database_size
+      - SolidObserver::CLI::Storage#print_configuration
 
   LongParameterList:
     exclude:
@@ -73,6 +76,10 @@ detectors:
       - SolidObserver::CLI::Status#print_queue_depths
       - SolidObserver::CLI::Jobs#add_error_details
       - SolidObserver::CLI::Jobs#scope_for_status
+      - SolidObserver::CLI::Storage#call
+      - SolidObserver::CLI::Storage#print_configuration
+      - SolidObserver::CLI::Storage#print_section_header
+      - SolidObserver::CLI::Storage#print_storage_table
 
   MissingSafeMethod:
     exclude:

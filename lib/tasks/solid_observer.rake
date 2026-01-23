@@ -6,6 +6,11 @@ namespace :solid_observer do
     SolidObserver::CLI::Status.call
   end
 
+  desc "Display storage information and database statistics"
+  task storage: :environment do
+    SolidObserver::CLI::Storage.call
+  end
+
   desc "List jobs with optional filters (status, queue, class, limit)"
   task :jobs, [:status, :queue, :job_class, :limit] => :environment do |_t, args|
     SolidObserver::CLI::Jobs.new.list(
