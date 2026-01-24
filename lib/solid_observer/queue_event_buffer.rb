@@ -36,7 +36,7 @@ module SolidObserver
       Services::FlushEventBuffer.call(events_to_flush)
     rescue => e
       @mutex.synchronize { @buffer.unshift(*events_to_flush) }
-      Rails.logger.error "[SolidObserver] Buffer flush failed: #{e.message}" if defined?(Rails)
+      Rails.logger&.error "[SolidObserver] Buffer flush failed: #{e.message}" if defined?(Rails)
     end
 
     def size
