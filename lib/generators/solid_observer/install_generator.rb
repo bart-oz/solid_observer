@@ -31,7 +31,7 @@ module SolidObserver
 
       def show_instructions
         say "\n"
-        say "✓ SolidObserver installed successfully!", :green
+        print_banner
         say "\n"
         say "Next steps:", :yellow
         say "  1. Review configuration in config/initializers/solid_observer.rb"
@@ -40,6 +40,37 @@ module SolidObserver
         say "  4. Run migrations: rails db:migrate"
         say "  5. Restart your Rails server"
         say "\n"
+        say "Documentation: https://solid.observer", :cyan
+        say "GitHub: https://github.com/bart-oz/solid_observer", :cyan
+        say "\n"
+      end
+
+      private
+
+      def print_banner
+        banner = <<~BANNER
+
+          ███████╗ ██████╗ ██╗     ██╗██████╗
+          ██╔════╝██╔═══██╗██║     ██║██╔══██╗
+          ███████╗██║   ██║██║     ██║██║  ██║
+          ╚════██║██║   ██║██║     ██║██║  ██║
+          ███████║╚██████╔╝███████╗██║██████╔╝
+          ╚══════╝ ╚═════╝ ╚══════╝╚═╝╚═════╝
+
+           ██████╗ ██████╗ ███████╗███████╗██████╗ ██╗   ██╗███████╗██████╗
+          ██╔═══██╗██╔══██╗██╔════╝██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗
+          ██║   ██║██████╔╝███████╗█████╗  ██████╔╝██║   ██║█████╗  ██████╔╝
+          ██║   ██║██╔══██╗╚════██║██╔══╝  ██╔══██╗╚██╗ ██╔╝██╔══╝  ██╔══██╗
+          ╚██████╔╝██████╔╝███████║███████╗██║  ██║ ╚████╔╝ ███████╗██║  ██║
+           ╚═════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝
+
+                 Observe your Solid Stack like a pro! 🔭
+                                v#{SolidObserver::VERSION}
+
+        BANNER
+
+        banner.each_line { |line| say line.chomp, :cyan }
+        say "  ✓ SolidObserver installed successfully!", :green
       end
     end
   end
