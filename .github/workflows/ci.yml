@@ -28,6 +28,8 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
+        env:
+          BUNDLE_PATH: vendor/bundle
 
       - name: Generate appraisal gemfiles
         run: bundle exec appraisal generate
@@ -116,6 +118,8 @@ jobs:
         with:
           ruby-version: '4.0'
           bundler-cache: true
+        env:
+          BUNDLE_PATH: vendor/bundle
 
       - name: Run tests with coverage
         run: bundle exec rspec
@@ -136,6 +140,8 @@ jobs:
         with:
           ruby-version: '4.0'
           bundler-cache: true
+        env:
+          BUNDLE_PATH: vendor/bundle
 
       - name: Update vulnerability database
         run: bundle exec bundle-audit update
