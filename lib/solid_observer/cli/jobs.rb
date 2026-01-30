@@ -54,9 +54,25 @@ module SolidObserver
 
       def fetch_jobs(status:, queue:, job_class:, limit:)
         scope = scope_for_status(status)
-        scope = scope.where(queue_name: queue) if queue
-        scope = scope.where("job_class = ?", job_class) if job_class
-        scope.order(created_at: :desc).limit(limit.to_i).to_a
+        scope = scope.joins(:job) if job_class || needs_job_join?(status, queue)
+        scope = apply_queue_filter(scope, status, queue)
+        scope = scope.where("solid_queue_jobs.class_name = ?", job_class) if job_class
+        scope.order(created_at: :desc).limit(limit.to_i).includes(:job).to_a
+      end
+
+      def needs_job_join?(status, queue)
+        queue && %w[failed claimed].include?(status&.to_s&.downcase)
+      end
+
+      def apply_queue_filter(scope, status, queue)
+        return scope unless queue
+
+        case status&.to_s&.downcase
+        when "failed", "claimed"
+          scope.where("solid_queue_jobs.queue_name = ?", queue)
+        else
+          scope.where(queue_name: queue)
+        end
       end
 
       def scope_for_status(status)
@@ -101,21 +117,22 @@ module SolidObserver
         output("")
       end
 
-      def format_job_row(job)
+      def format_job_row(execution)
+        job = execution.job
         [
-          job.id.to_s,
-          job.queue_name,
-          job.job_class,
-          job_status(job),
-          format_time(job.created_at)
+          execution.id.to_s,
+          job&.queue_name || execution.try(:queue_name) || "N/A",
+          job&.class_name || "N/A",
+          job_status(execution),
+          format_time(execution.created_at)
         ]
       end
 
-      def job_status(job)
-        return "Ready" if job.is_a?(SolidQueue::ReadyExecution)
-        return "Scheduled" if job.is_a?(SolidQueue::ScheduledExecution)
-        return "Claimed" if job.is_a?(SolidQueue::ClaimedExecution)
-        return "Failed" if job.is_a?(SolidQueue::FailedExecution)
+      def job_status(execution)
+        return "Ready" if execution.is_a?(SolidQueue::ReadyExecution)
+        return "Scheduled" if execution.is_a?(SolidQueue::ScheduledExecution)
+        return "Claimed" if execution.is_a?(SolidQueue::ClaimedExecution)
+        return "Failed" if execution.is_a?(SolidQueue::FailedExecution)
 
         "Unknown"
       end
@@ -124,10 +141,10 @@ module SolidObserver
         time.strftime("%Y-%m-%d %H:%M:%S")
       end
 
-      def print_job_details(job)
+      def print_job_details(execution)
         print_section_header("📄 Job Details")
 
-        details = build_job_details(job)
+        details = build_job_details(execution)
 
         table(
           headers: ["Attribute", "Value"],
@@ -136,34 +153,36 @@ module SolidObserver
         output("")
       end
 
-      def build_job_details(job)
+      def build_job_details(execution)
+        job = execution.job
         details = [
-          ["ID", job.id],
-          ["Queue", job.queue_name],
-          ["Class", job.job_class],
-          ["Status", job_status(job)],
-          ["Created At", format_time(job.created_at)],
-          ["Priority", job.priority]
+          ["ID", execution.id],
+          ["Job ID", job&.id || "N/A"],
+          ["Queue", job&.queue_name || execution.try(:queue_name) || "N/A"],
+          ["Class", job&.class_name || "N/A"],
+          ["Status", job_status(execution)],
+          ["Created At", format_time(execution.created_at)],
+          ["Priority", execution.try(:priority) || job&.priority || "N/A"]
         ]
 
-        add_scheduled_details(details, job)
-        add_error_details(details, job)
+        add_scheduled_details(details, execution)
+        add_error_details(details, execution)
 
         details
       end
 
-      def add_scheduled_details(details, job)
-        return unless job.is_a?(SolidQueue::ScheduledExecution)
+      def add_scheduled_details(details, execution)
+        return unless execution.is_a?(SolidQueue::ScheduledExecution)
 
-        details << ["Scheduled At", format_time(job.scheduled_at)]
+        details << ["Scheduled At", format_time(execution.scheduled_at)]
       end
 
-      def add_error_details(details, job)
-        return unless job.is_a?(SolidQueue::FailedExecution)
-        return unless job.error
+      def add_error_details(details, execution)
+        return unless execution.is_a?(SolidQueue::FailedExecution)
+        return unless execution.error
 
-        details << ["Error", job.error.exception_class]
-        details << ["Error Message", job.error.message]
+        details << ["Error", execution.error.exception_class]
+        details << ["Error Message", execution.error.message]
       end
 
       def print_section_header(title)

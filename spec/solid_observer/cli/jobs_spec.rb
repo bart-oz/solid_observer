@@ -16,6 +16,32 @@ RSpec.describe SolidObserver::CLI::Jobs do
     allow(SolidObserver::QueueStats).to receive(:solid_queue_available?).and_return(true)
   end
 
+  # Helper to create execution doubles with associated job
+  def create_execution_double(id:, queue_name:, class_name:, created_at:, execution_class:)
+    job = double("SolidQueueJob", queue_name: queue_name, class_name: class_name)
+    execution = double("Execution",
+      id: id,
+      job: job,
+      created_at: created_at,
+      queue_name: queue_name) # Some executions have queue_name directly
+    allow(execution).to receive(:try).with(:queue_name).and_return(queue_name)
+    allow(execution).to receive(:is_a?) { |klass| klass == execution_class }
+    execution
+  end
+
+  # Helper to setup scope chain
+  def setup_scope_chain(execution_class, executions)
+    scope = double("scope")
+    allow(execution_class).to receive(:all).and_return(scope)
+    allow(scope).to receive(:joins).and_return(scope)
+    allow(scope).to receive(:where).and_return(scope)
+    allow(scope).to receive(:order).and_return(scope)
+    allow(scope).to receive(:limit).and_return(scope)
+    allow(scope).to receive(:includes).and_return(scope)
+    allow(scope).to receive(:to_a).and_return(executions)
+    scope
+  end
+
   describe "#list" do
     context "when SolidQueue is not available" do
       before do
@@ -30,39 +56,29 @@ RSpec.describe SolidObserver::CLI::Jobs do
     end
 
     context "when SolidQueue is available" do
-      let(:job1) do
-        double("Job",
+      let(:execution1) do
+        create_execution_double(
           id: 1,
           queue_name: "default",
-          job_class: "TestJob",
+          class_name: "TestJob",
           created_at: Time.new(2026, 1, 21, 10, 0, 0),
-          priority: 0)
+          execution_class: SolidQueue::ReadyExecution
+        )
       end
 
-      let(:job2) do
-        double("Job",
+      let(:execution2) do
+        create_execution_double(
           id: 2,
           queue_name: "mailers",
-          job_class: "MailerJob",
+          class_name: "MailerJob",
           created_at: Time.new(2026, 1, 21, 11, 0, 0),
-          priority: 5)
+          execution_class: SolidQueue::ReadyExecution
+        )
       end
 
       context "with no filters" do
         before do
-          scope = double("scope")
-          allow(SolidQueue::ReadyExecution).to receive(:all).and_return(scope)
-          allow(scope).to receive(:order).and_return(scope)
-          allow(scope).to receive(:limit).and_return(scope)
-          allow(scope).to receive(:to_a).and_return([job1, job2])
-          allow(job1).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(true)
-          allow(job1).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
-          allow(job2).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(true)
-          allow(job2).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
-          allow(job2).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-          allow(job2).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
+          setup_scope_chain(SolidQueue::ReadyExecution, [execution1, execution2])
         end
 
         it "displays jobs table" do
@@ -80,38 +96,31 @@ RSpec.describe SolidObserver::CLI::Jobs do
       end
 
       context "with status filter" do
+        let(:failed_execution) do
+          create_execution_double(
+            id: 3,
+            queue_name: "default",
+            class_name: "FailingJob",
+            created_at: Time.new(2026, 1, 21, 12, 0, 0),
+            execution_class: SolidQueue::FailedExecution
+          )
+        end
+
         before do
-          scope = double("scope")
-          allow(SolidQueue::FailedExecution).to receive(:all).and_return(scope)
-          allow(scope).to receive(:order).and_return(scope)
-          allow(scope).to receive(:limit).and_return(scope)
-          allow(scope).to receive(:to_a).and_return([job1])
-          allow(job1).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(true)
+          setup_scope_chain(SolidQueue::FailedExecution, [failed_execution])
         end
 
         it "fetches jobs with specified status" do
           output = capture_stdout { jobs_cli.list(status: "failed") }
 
           expect(output).to include("Failed")
+          expect(output).to include("FailingJob")
         end
       end
 
       context "with queue filter" do
         before do
-          scope = double("scope")
-          filtered_scope = double("filtered_scope")
-          allow(SolidQueue::ReadyExecution).to receive(:all).and_return(scope)
-          allow(scope).to receive(:where).with(queue_name: "mailers").and_return(filtered_scope)
-          allow(filtered_scope).to receive(:order).and_return(filtered_scope)
-          allow(filtered_scope).to receive(:limit).and_return(filtered_scope)
-          allow(filtered_scope).to receive(:to_a).and_return([job2])
-          allow(job2).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(true)
-          allow(job2).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
-          allow(job2).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-          allow(job2).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
+          setup_scope_chain(SolidQueue::ReadyExecution, [execution2])
         end
 
         it "fetches jobs from specified queue" do
@@ -124,17 +133,7 @@ RSpec.describe SolidObserver::CLI::Jobs do
 
       context "with job_class filter" do
         before do
-          scope = double("scope")
-          filtered_scope = double("filtered_scope")
-          allow(SolidQueue::ReadyExecution).to receive(:all).and_return(scope)
-          allow(scope).to receive(:where).with("job_class = ?", "TestJob").and_return(filtered_scope)
-          allow(filtered_scope).to receive(:order).and_return(filtered_scope)
-          allow(filtered_scope).to receive(:limit).and_return(filtered_scope)
-          allow(filtered_scope).to receive(:to_a).and_return([job1])
-          allow(job1).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(true)
-          allow(job1).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
+          setup_scope_chain(SolidQueue::ReadyExecution, [execution1])
         end
 
         it "fetches jobs of specified class" do
@@ -146,16 +145,7 @@ RSpec.describe SolidObserver::CLI::Jobs do
 
       context "with limit" do
         before do
-          scope = double("scope")
-          limited_scope = double("limited_scope")
-          allow(SolidQueue::ReadyExecution).to receive(:all).and_return(scope)
-          allow(scope).to receive(:order).and_return(scope)
-          allow(scope).to receive(:limit).with(5).and_return(limited_scope)
-          allow(limited_scope).to receive(:to_a).and_return([job1])
-          allow(job1).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(true)
-          allow(job1).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-          allow(job1).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
+          setup_scope_chain(SolidQueue::ReadyExecution, [execution1])
         end
 
         it "limits number of jobs returned" do
@@ -167,11 +157,7 @@ RSpec.describe SolidObserver::CLI::Jobs do
 
       context "when no jobs found" do
         before do
-          scope = double("scope")
-          allow(SolidQueue::ReadyExecution).to receive(:all).and_return(scope)
-          allow(scope).to receive(:order).and_return(scope)
-          allow(scope).to receive(:limit).and_return(scope)
-          allow(scope).to receive(:to_a).and_return([])
+          setup_scope_chain(SolidQueue::ReadyExecution, [])
         end
 
         it "displays warning message" do
@@ -197,21 +183,30 @@ RSpec.describe SolidObserver::CLI::Jobs do
     end
 
     context "when job exists" do
-      let(:job) do
-        double("Job",
-          id: 1,
+      let(:job_record) do
+        double("SolidQueue::Job",
+          id: 100,
           queue_name: "default",
-          job_class: "TestJob",
-          created_at: Time.new(2026, 1, 21, 10, 0, 0),
+          class_name: "TestJob",
           priority: 0)
+      end
+      let(:execution) do
+        double("Execution",
+          id: 1,
+          job: job_record,
+          created_at: Time.new(2026, 1, 21, 10, 0, 0))
       end
 
       before do
-        allow(SolidQueue::ReadyExecution).to receive(:find_by).with(id: 1).and_return(job)
-        allow(job).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(true)
-        allow(job).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
-        allow(job).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-        allow(job).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
+        allow(execution).to receive(:try).with(:queue_name).and_return(nil)
+        allow(execution).to receive(:try).with(:scheduled_at).and_return(nil)
+        allow(execution).to receive(:try).with(:process_id).and_return(nil)
+        allow(execution).to receive(:try).with(:priority).and_return(nil)
+        allow(SolidQueue::ReadyExecution).to receive(:find_by).with(id: 1).and_return(execution)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(true)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
+        allow(execution).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
       end
 
       it "displays job details" do
@@ -230,25 +225,34 @@ RSpec.describe SolidObserver::CLI::Jobs do
     end
 
     context "when job is scheduled" do
-      let(:job) do
-        double("Job",
-          id: 1,
+      let(:job_record) do
+        double("SolidQueue::Job",
+          id: 100,
           queue_name: "default",
-          job_class: "TestJob",
+          class_name: "TestJob",
+          priority: 0)
+      end
+      let(:execution) do
+        double("Execution",
+          id: 1,
+          job: job_record,
           created_at: Time.new(2026, 1, 21, 10, 0, 0),
-          priority: 0,
           scheduled_at: Time.new(2026, 1, 21, 12, 0, 0))
       end
 
       before do
+        allow(execution).to receive(:try).with(:queue_name).and_return(nil)
+        allow(execution).to receive(:try).with(:scheduled_at).and_return(Time.new(2026, 1, 21, 12, 0, 0))
+        allow(execution).to receive(:try).with(:process_id).and_return(nil)
+        allow(execution).to receive(:try).with(:priority).and_return(nil)
         allow(SolidQueue::ReadyExecution).to receive(:find_by).with(id: 1).and_return(nil)
-        allow(SolidQueue::ScheduledExecution).to receive(:find_by).with(id: 1).and_return(job)
+        allow(SolidQueue::ScheduledExecution).to receive(:find_by).with(id: 1).and_return(execution)
         allow(SolidQueue::ClaimedExecution).to receive(:find_by).with(id: 1).and_return(nil)
         allow(SolidQueue::FailedExecution).to receive(:find_by).with(id: 1).and_return(nil)
-        allow(job).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(false)
-        allow(job).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(true)
-        allow(job).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-        allow(job).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(false)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(true)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
+        allow(execution).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(false)
       end
 
       it "displays scheduled_at field" do
@@ -261,25 +265,34 @@ RSpec.describe SolidObserver::CLI::Jobs do
 
     context "when job is failed" do
       let(:error) { double("Error", exception_class: "StandardError", message: "Test error") }
-      let(:job) do
-        double("Job",
-          id: 1,
+      let(:job_record) do
+        double("SolidQueue::Job",
+          id: 100,
           queue_name: "default",
-          job_class: "TestJob",
+          class_name: "TestJob",
+          priority: 0)
+      end
+      let(:execution) do
+        double("Execution",
+          id: 1,
+          job: job_record,
           created_at: Time.new(2026, 1, 21, 10, 0, 0),
-          priority: 0,
           error: error)
       end
 
       before do
+        allow(execution).to receive(:try).with(:queue_name).and_return(nil)
+        allow(execution).to receive(:try).with(:scheduled_at).and_return(nil)
+        allow(execution).to receive(:try).with(:process_id).and_return(nil)
+        allow(execution).to receive(:try).with(:priority).and_return(nil)
         allow(SolidQueue::ReadyExecution).to receive(:find_by).with(id: 1).and_return(nil)
         allow(SolidQueue::ScheduledExecution).to receive(:find_by).with(id: 1).and_return(nil)
         allow(SolidQueue::ClaimedExecution).to receive(:find_by).with(id: 1).and_return(nil)
-        allow(SolidQueue::FailedExecution).to receive(:find_by).with(id: 1).and_return(job)
-        allow(job).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(false)
-        allow(job).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
-        allow(job).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
-        allow(job).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(true)
+        allow(SolidQueue::FailedExecution).to receive(:find_by).with(id: 1).and_return(execution)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ReadyExecution).and_return(false)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ScheduledExecution).and_return(false)
+        allow(execution).to receive(:is_a?).with(SolidQueue::ClaimedExecution).and_return(false)
+        allow(execution).to receive(:is_a?).with(SolidQueue::FailedExecution).and_return(true)
       end
 
       it "displays error information" do

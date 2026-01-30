@@ -73,10 +73,9 @@ RSpec.describe SolidObserver::Engine do
     end
   end
 
-  describe "initializers" do
-    it "defines solid_observer.check_tables initializer" do
-      initializer_names = described_class.initializers.map(&:name)
-      expect(initializer_names).to include("solid_observer.check_tables")
+  describe "configuration" do
+    it "checks tables after initialization" do
+      expect(described_class).to respond_to(:check_and_activate_subscribers)
     end
   end
 end

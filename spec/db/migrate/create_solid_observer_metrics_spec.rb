@@ -5,7 +5,7 @@ require "active_record"
 
 RSpec.describe "CreateSolidObserverMetrics migration" do
   let(:migration_file) do
-    File.join(__dir__, "../../../db/solid_observer_migrate/20260115000002_create_solid_observer_metrics.rb")
+    File.join(__dir__, "../../../db/migrate/20260115000002_create_solid_observer_metrics.rb")
   end
 
   let(:migration_class) { CreateSolidObserverMetrics }
@@ -42,7 +42,7 @@ RSpec.describe "CreateSolidObserverMetrics migration" do
 
       expect(column_info["metric_name"]).to include(type: :string, null: false, limit: 50)
       expect(column_info["value"]).to include(type: :integer, null: false)
-      expect(column_info["value"][:default].to_i).to eq(0) # Rails 8.0 returns "0" as string
+      expect(column_info["value"][:default].to_i).to eq(0)
       expect(column_info["period_start"]).to include(type: :datetime, null: false)
       expect(column_info["period_type"]).to include(type: :string, null: false, limit: 10)
     end

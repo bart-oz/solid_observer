@@ -5,7 +5,7 @@ require "active_record"
 
 RSpec.describe "CreateSolidObserverQueueEvents migration" do
   let(:migration_file) do
-    File.join(__dir__, "../../../db/solid_observer_migrate/20260115000001_create_solid_observer_queue_events.rb")
+    File.join(__dir__, "../../../db/migrate/20260115000001_create_solid_observer_queue_events.rb")
   end
 
   let(:migration_class) { CreateSolidObserverQueueEvents }

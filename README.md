@@ -14,7 +14,7 @@
   <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-94.87%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
@@ -34,7 +34,9 @@ SolidObserver is a production-grade observability solution for Rails 8's Solid S
 
 - Ruby 3.2+
 - Rails 8.0+
-- Solid Queue
+- Solid Queue (properly configured for all environments)
+
+> **Note:** Ensure Solid Queue is configured with `connects_to` in all environments, not just production. See [Troubleshooting](#troubleshooting) if you encounter database connection issues.
 
 ## Installation
 
@@ -54,9 +56,9 @@ rails generate solid_observer:install
 Install and run migrations:
 
 ```bash
-rails solid_observer:install:migrations
-rails db:create:solid_observer_queue
-rails db:migrate
+bin/rails solid_observer:install:migrations
+bin/rails db:create
+bin/rails db:migrate
 ```
 
 ## Quick Start
@@ -98,20 +100,20 @@ Output:
 bin/rails solid_observer:jobs:list
 
 # List failed jobs
-bin/rails solid_observer:jobs:list --status=failed
+bin/rails "solid_observer:jobs:list[failed]"
 
-# Filter by queue or job class
-bin/rails solid_observer:jobs:list --queue=mailers --limit=50
-bin/rails solid_observer:jobs:list --job-class=UserNotificationJob
+# Filter by status, queue, job class, and limit
+bin/rails "solid_observer:jobs:list[failed,mailers]"
+bin/rails "solid_observer:jobs:list[ready,default,UserNotificationJob,50]"
 
 # Inspect a specific job
-bin/rails solid_observer:jobs:show JOB_ID
+bin/rails "solid_observer:jobs:show[JOB_ID]"
 
 # Retry a failed job
-bin/rails solid_observer:jobs:retry JOB_ID
+bin/rails "solid_observer:jobs:retry[JOB_ID]"
 
 # Discard a failed job
-bin/rails solid_observer:jobs:discard JOB_ID
+bin/rails "solid_observer:jobs:discard[JOB_ID]"
 ```
 
 ### Check Storage
@@ -193,20 +195,54 @@ When configured, all job events will include your correlation ID, allowing you t
 | Command | Description |
 |---------|-------------|
 | `solid_observer:status` | Show queue status overview |
-| `solid_observer:jobs:list` | List jobs with optional filters |
-| `solid_observer:jobs:show ID` | Show job details |
-| `solid_observer:jobs:retry ID` | Retry a failed job |
-| `solid_observer:jobs:discard ID` | Discard a failed job |
+| `solid_observer:jobs:list[status,queue,class,limit]` | List jobs with optional filters |
+| `solid_observer:jobs:show[ID]` | Show job details |
+| `solid_observer:jobs:retry[ID]` | Retry a failed job |
+| `solid_observer:jobs:discard[ID]` | Discard a failed job |
 | `solid_observer:storage` | Show storage statistics |
+| `solid_observer:buffer:flush` | Force flush event buffer to database |
+| `solid_observer:buffer:clear` | Clear buffer without saving |
+| `solid_observer:storage:cleanup` | Run retention-based cleanup |
+| `solid_observer:storage:purge` | Delete ALL SolidObserver data |
 
-### Jobs List Options
+> **Note:** These commands manage **SolidObserver's storage** (event logs, metrics, snapshots) - not Solid Queue's jobs. To manage jobs, use `jobs:discard` or `jobs:retry`.
 
-| Option | Description | Example |
-|--------|-------------|---------|
-| `--status` | Filter by status | `--status=failed` |
-| `--queue` | Filter by queue name | `--queue=mailers` |
-| `--job-class` | Filter by job class | `--job-class=UserJob` |
-| `--limit` | Max results (default: 20) | `--limit=50` |
+### Jobs List Arguments
+
+Arguments are positional: `[status, queue, job_class, limit]`
+
+| Position | Description | Example |
+|----------|-------------|---------|
+| 1st | Filter by status | `failed`, `ready`, `scheduled` |
+| 2nd | Filter by queue name | `default`, `mailers` |
+| 3rd | Filter by job class | `UserNotificationJob` |
+| 4th | Max results (default: 20) | `50` |
+
+```bash
+# Examples
+bin/rails solid_observer:jobs:list                           # All ready jobs
+bin/rails "solid_observer:jobs:list[failed]"                 # Failed jobs
+bin/rails "solid_observer:jobs:list[ready,mailers]"          # Ready jobs in mailers queue
+bin/rails "solid_observer:jobs:list[failed,,,50]"            # 50 failed jobs (skip queue/class)
+```
+
+### Buffer & Storage Management
+
+```bash
+# Flush in-memory buffer to database
+bin/rails solid_observer:buffer:flush
+
+# Clear buffer without saving (loses pending events!)
+bin/rails solid_observer:buffer:clear
+
+# Run cleanup based on retention policy (default: 30 days)
+bin/rails solid_observer:storage:cleanup
+
+# Delete ALL SolidObserver data (events + snapshots, interactive confirmation)
+bin/rails solid_observer:storage:purge
+```
+
+> **Important:** `storage:purge` deletes SolidObserver's monitoring data, NOT your Solid Queue jobs. Your queued jobs remain safe.
 
 ## Database Setup
 
@@ -217,10 +253,7 @@ SolidObserver uses a separate SQLite database to avoid impacting your main appli
 solid_observer_queue:
   <<: *default
   database: storage/<%= Rails.env %>_solid_observer_queue.sqlite3
-  migrations_paths: db/solid_observer_migrate
 ```
-
-Migrations are stored in `db/solid_observer_migrate/` and can be run independently.
 
 ## Roadmap
 
@@ -256,6 +289,40 @@ bundle exec standardrb
 
 # Run code smell detector
 bundle exec reek
+```
+
+## Troubleshooting
+
+### "no such table: solid_queue_ready_executions"
+
+This error means Solid Queue isn't configured to use the correct database in your environment.
+
+**Solution:** Ensure `connects_to` is configured for all environments, not just production:
+
+```ruby
+# config/environments/development.rb
+config.solid_queue.connects_to = { database: { writing: :queue } }
+
+# config/environments/test.rb
+config.solid_queue.connects_to = { database: { writing: :queue } }
+```
+
+### Multi-database setup
+
+SolidObserver works with Rails multi-database configurations. Ensure your `database.yml` has proper structure:
+
+```yaml
+development:
+  primary:
+    <<: *default
+    database: storage/development.sqlite3
+  queue:
+    <<: *default
+    database: storage/development_queue.sqlite3
+    migrations_paths: db/queue_migrate
+  solid_observer_queue:
+    <<: *default
+    database: storage/development_solid_observer_queue.sqlite3
 ```
 
 ## Contributing

@@ -108,7 +108,17 @@ detectors:
   ControlParameter:
     exclude:
       - SolidObserver::CLI::Jobs#scope_for_status
+      - SolidObserver::CLI::Jobs#apply_queue_filter
+      - SolidObserver::CLI::Jobs#needs_job_join?
+      - SolidObserver::StorageInfo#self.record_snapshot
+
+  DataClump:
+    exclude:
+      - SolidObserver::CLI::Jobs
 
   TooManyMethods:
     exclude:
       - SolidObserver::CLI::Jobs
+
+exclude_paths:
+  - spec/
