@@ -3,22 +3,21 @@
 require "spec_helper"
 
 RSpec.describe SolidObserver::StorageInfo do
-  it "is an abstract class" do
-    expect(described_class.abstract_class?).to be true
+  it "inherits from BaseEvent" do
+    expect(described_class.superclass).to eq(SolidObserver::BaseEvent)
   end
 
-  it "cannot be instantiated directly" do
-    expect { described_class.new }.to raise_error(NotImplementedError)
+  it "is not abstract (can be instantiated)" do
+    expect(described_class.abstract_class?).to be false
   end
 
   it "uses solid_observer_storage_info table" do
     expect(described_class.table_name).to eq("solid_observer_storage_info")
   end
 
-  it "uses connects_to for database configuration" do
-    model_content = File.read(File.join(__dir__, "../../../app/models/solid_observer/storage_info.rb"))
-    expect(model_content).to include("connects_to")
-    expect(model_content).to include("solid_observer_queue")
+  it "inherits database connection from BaseEvent" do
+    expect(described_class.superclass).to eq(SolidObserver::BaseEvent)
+    expect(SolidObserver::BaseEvent.abstract_class?).to be true
   end
 
   it "has validations defined" do

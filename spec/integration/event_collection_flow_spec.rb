@@ -4,8 +4,8 @@ require "spec_helper"
 
 RSpec.describe "Integration: Event Collection and Database Persistence", type: :integration do
   before(:all) do
-    require_relative "../../db/solid_observer_migrate/20260115000001_create_solid_observer_queue_events"
-    require_relative "../../db/solid_observer_migrate/20260115000002_create_solid_observer_metrics"
+    require_relative "../../db/migrate/20260115000001_create_solid_observer_queue_events"
+    require_relative "../../db/migrate/20260115000002_create_solid_observer_metrics"
 
     queue_connection = SolidObserver::QueueEvent.connection
 

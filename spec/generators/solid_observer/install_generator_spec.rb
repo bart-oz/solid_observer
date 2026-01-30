@@ -23,6 +23,14 @@ RSpec.describe SolidObserver::Generators::InstallGenerator do
         development:
           <<: *default
           database: storage/development.sqlite3
+
+        test:
+          <<: *default
+          database: storage/test.sqlite3
+
+        production:
+          <<: *default
+          database: storage/production.sqlite3
       YAML
     )
 
@@ -60,24 +68,12 @@ RSpec.describe SolidObserver::Generators::InstallGenerator do
   describe "database configuration" do
     before { run_generator }
 
-    it "injects queue database config into database.yml" do
+    it "injects queue database config into database.yml for each environment" do
       database_yml = File.read(File.join(destination, "config/database.yml"))
       expect(database_yml).to include("solid_observer_queue:")
-      expect(database_yml).to include("storage/<%= Rails.env %>_solid_observer_queue.sqlite3")
-      expect(database_yml).to include("migrations_paths: db/solid_observer_migrate")
-    end
-  end
-
-  describe "migration directory" do
-    before { run_generator }
-
-    it "creates migration directory" do
-      expect(File).to exist(File.join(destination, "db/solid_observer_migrate"))
-    end
-
-    it "creates an empty directory" do
-      dir_path = File.join(destination, "db/solid_observer_migrate")
-      expect(Dir.empty?(dir_path)).to be true
+      expect(database_yml).to include("storage/development_solid_observer_queue.sqlite3")
+      expect(database_yml).to include("storage/test_solid_observer_queue.sqlite3")
+      expect(database_yml).to include("storage/production_solid_observer_queue.sqlite3")
     end
   end
 end

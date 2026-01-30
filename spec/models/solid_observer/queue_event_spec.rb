@@ -13,9 +13,11 @@ RSpec.describe "SolidObserver::QueueEvent" do
     expect(model_content).to include("< BaseEvent")
   end
 
-  it "uses connects_to for database configuration" do
-    model_content = File.read(File.join(__dir__, "../../../app/models/solid_observer/queue_event.rb"))
-    expect(model_content).to include("connects_to")
-    expect(model_content).to include("solid_observer_queue")
+  it "inherits database connection from BaseEvent" do
+    expect(SolidObserver::QueueEvent.superclass).to eq(SolidObserver::BaseEvent)
+  end
+
+  it "uses solid_observer_queue_events table" do
+    expect(SolidObserver::QueueEvent.table_name).to eq("solid_observer_queue_events")
   end
 end

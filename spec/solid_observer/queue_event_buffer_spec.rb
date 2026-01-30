@@ -30,9 +30,6 @@ RSpec.describe SolidObserver::QueueEventBuffer do
         expect(buffer.size).to eq(0)
       end
     end
-
-    # Note: Background flush scheduling is tested in integration -
-    # unit testing threading behavior is flaky and tests implementation not behavior
   end
 
   describe "#flush!" do

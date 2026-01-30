@@ -5,7 +5,7 @@ require "active_record"
 
 RSpec.describe "CreateSolidObserverStorageInfo migration" do
   let(:migration_file) do
-    File.join(__dir__, "../../../db/solid_observer_migrate/20260115000003_create_solid_observer_storage_info.rb")
+    File.join(__dir__, "../../../db/migrate/20260115000003_create_solid_observer_storage_info.rb")
   end
 
   let(:migration_class) { CreateSolidObserverStorageInfo }
