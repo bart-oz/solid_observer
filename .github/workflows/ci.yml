@@ -23,13 +23,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fix Ruby 4.0 gem permissions
+        if: matrix.ruby-version == '4.0'
+        run: |
+          sudo chmod +t /opt/hostedtoolcache/Ruby/4.0.1/x64/lib/ruby/gems/4.0.0/gems 2>/dev/null || true
+          sudo chmod 755 /opt/hostedtoolcache/Ruby/4.0.1/x64/lib/ruby/gems/4.0.0/gems 2>/dev/null || true
+
       - name: Set up Ruby ${{ matrix.ruby-version }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
-        env:
-          BUNDLE_PATH: vendor/bundle
 
       - name: Generate appraisal gemfiles
         run: bundle exec appraisal generate
@@ -113,13 +117,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fix Ruby 4.0 gem permissions
+        run: |
+          sudo chmod +t /opt/hostedtoolcache/Ruby/4.0.1/x64/lib/ruby/gems/4.0.0/gems 2>/dev/null || true
+          sudo chmod 755 /opt/hostedtoolcache/Ruby/4.0.1/x64/lib/ruby/gems/4.0.0/gems 2>/dev/null || true
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '4.0'
           bundler-cache: true
-        env:
-          BUNDLE_PATH: vendor/bundle
 
       - name: Run tests with coverage
         run: bundle exec rspec
@@ -135,13 +142,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fix Ruby 4.0 gem permissions
+        run: |
+          sudo chmod +t /opt/hostedtoolcache/Ruby/4.0.1/x64/lib/ruby/gems/4.0.0/gems 2>/dev/null || true
+          sudo chmod 755 /opt/hostedtoolcache/Ruby/4.0.1/x64/lib/ruby/gems/4.0.0/gems 2>/dev/null || true
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '4.0'
           bundler-cache: true
-        env:
-          BUNDLE_PATH: vendor/bundle
 
       - name: Update vulnerability database
         run: bundle exec bundle-audit update
