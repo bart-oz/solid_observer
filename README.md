@@ -14,7 +14,7 @@
   <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-94.87%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-94.73%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
@@ -246,14 +246,19 @@ bin/rails solid_observer:storage:purge
 
 ## Database Setup
 
-SolidObserver uses a separate SQLite database to avoid impacting your main application:
+**SolidObserver works with any main application database** — PostgreSQL, MySQL, or SQLite.
+
+For its own monitoring data, SolidObserver uses a **separate SQLite database**. This keeps monitoring isolated from your main app and provides simple file-based storage that requires no additional infrastructure.
 
 ```yaml
 # config/database.yml
 solid_observer_queue:
   <<: *default
+  adapter: sqlite3  # Always SQLite for SolidObserver storage
   database: storage/<%= Rails.env %>_solid_observer_queue.sqlite3
 ```
+
+> **Note:** Your main app's `primary` database can be PostgreSQL, MySQL, or any Rails-supported adapter. Only the `solid_observer_queue` database needs to be SQLite.
 
 ## Roadmap
 
@@ -309,19 +314,21 @@ config.solid_queue.connects_to = { database: { writing: :queue } }
 
 ### Multi-database setup
 
-SolidObserver works with Rails multi-database configurations. Ensure your `database.yml` has proper structure:
+SolidObserver works with Rails multi-database configurations. Here's an example with PostgreSQL as your primary database:
 
 ```yaml
 development:
   primary:
-    <<: *default
-    database: storage/development.sqlite3
+    adapter: postgresql
+    database: myapp_development
+    # ... PostgreSQL settings
   queue:
     <<: *default
+    adapter: sqlite3
     database: storage/development_queue.sqlite3
     migrations_paths: db/queue_migrate
   solid_observer_queue:
-    <<: *default
+    adapter: sqlite3
     database: storage/development_solid_observer_queue.sqlite3
 ```
 

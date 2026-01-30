@@ -75,10 +75,19 @@ namespace :solid_observer do
 
         SolidObserver::QueueEvent.delete_all
         SolidObserver::StorageInfo.delete_all
-        SolidObserver::QueueEvent.connection.execute("VACUUM")
+
+        connection = SolidObserver::QueueEvent.connection
+        case connection.adapter_name.downcase
+        when "sqlite"
+          connection.execute("VACUUM")
+          puts "✓ Database vacuumed to reclaim disk space"
+        when "postgresql"
+          connection.execute("ANALYZE solid_observer_queue_events")
+          connection.execute("ANALYZE solid_observer_storage_info")
+          puts "✓ Database tables analyzed"
+        end
 
         puts "✓ Purged #{event_count} events and #{snapshot_count} storage snapshots"
-        puts "✓ Database vacuumed to reclaim disk space"
       else
         puts "Aborted"
       end

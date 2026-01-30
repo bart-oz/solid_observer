@@ -19,22 +19,32 @@ module SolidObserver
 
         return unless db_config
 
-        SolidObserver::BaseEvent.connects_to database: {
-          writing: :solid_observer_queue,
-          reading: :solid_observer_queue
+        connection_config = {
+          database: {writing: :solid_observer_queue, reading: :solid_observer_queue}
         }
+
+        SolidObserver::BaseEvent.connects_to(**connection_config)
+        SolidObserver::BaseMetric.connects_to(**connection_config)
       end
 
-      def check_and_activate_subscribers
+      def activate_subscribers
         logger = Rails.logger
 
-        if ActiveRecord::Base.connection.table_exists?("solid_observer_queue_events")
-          logger.info "[SolidObserver] Tables detected, activating event subscribers"
-        else
-          logger.info "[SolidObserver] Tables not found. Run migrations: rails solid_observer:install:migrations && rails db:migrate"
+        unless table_exists?("solid_observer_queue_events")
+          logger.info "[SolidObserver] Tables not found. Run: rails solid_observer:install:migrations && rails db:migrate"
+          return
         end
+
+        logger.info "[SolidObserver] Activating event subscribers"
+        Subscriber.subscribe!
       rescue ActiveRecord::NoDatabaseError
         logger.info "[SolidObserver] Database not ready yet. Skipping subscriber activation."
+      end
+
+      private
+
+      def table_exists?(table_name)
+        ActiveRecord::Base.connection.table_exists?(table_name)
       end
     end
 
@@ -44,7 +54,7 @@ module SolidObserver
 
     config.after_initialize do
       Engine.configure_database_connection
-      Engine.check_and_activate_subscribers
+      Engine.activate_subscribers
     end
   end
 end

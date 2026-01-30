@@ -7,14 +7,13 @@ RSpec.describe SolidObserver::QueueMetric do
     expect(described_class.ancestors).to include(SolidObserver::BaseMetric)
   end
 
-  it "uses connects_to for database configuration" do
+  it "is documented as planned for v0.2.0" do
     model_content = File.read(File.join(__dir__, "../../../app/models/solid_observer/queue_metric.rb"))
-    expect(model_content).to include("connects_to")
-    expect(model_content).to include("solid_observer_queue")
+    expect(model_content).to include("v0.2.0")
   end
 
-  it "is an abstract class" do
-    expect(described_class.abstract_class?).to be true
+  it "is not an abstract class" do
+    expect(described_class.abstract_class?).to be false
   end
 
   it "uses solid_observer_metrics table" do
