@@ -128,4 +128,50 @@ RSpec.describe SolidObserver::Subscriber do
       )
     end
   end
+
+  describe ".unsubscribe!" do
+    before do
+      allow(SolidObserver.config).to receive(:observe_queue).and_return(true)
+    end
+
+    it "removes all subscriptions" do
+      described_class.subscribe!
+      expect(described_class.subscribed?).to be true
+
+      described_class.unsubscribe!
+      expect(described_class.subscribed?).to be false
+    end
+
+    it "does nothing when not subscribed" do
+      described_class.instance_variable_set(:@subscriptions, nil)
+      expect { described_class.unsubscribe! }.not_to raise_error
+    end
+  end
+
+  describe ".subscribed?" do
+    before do
+      allow(SolidObserver.config).to receive(:observe_queue).and_return(true)
+    end
+
+    it "returns true when subscribed" do
+      described_class.subscribe!
+      expect(described_class.subscribed?).to be true
+    end
+
+    it "returns false when not subscribed" do
+      described_class.unsubscribe!
+      expect(described_class.subscribed?).to be false
+    end
+  end
+
+  describe "EVENTS constant" do
+    it "lists all subscribed event names" do
+      expect(described_class::EVENTS).to contain_exactly(
+        "enqueue.active_job",
+        "perform.active_job",
+        "retry_stopped.active_job",
+        "discard.active_job"
+      )
+    end
+  end
 end

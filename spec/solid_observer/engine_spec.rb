@@ -35,27 +35,30 @@ RSpec.describe SolidObserver::Engine do
     end
   end
 
-  describe ".check_and_activate_subscribers" do
+  describe ".activate_subscribers" do
     let(:connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
 
     before do
       allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
+      allow(SolidObserver::Subscriber).to receive(:subscribe!)
     end
 
-    it "logs activation message when tables exist" do
+    it "activates subscribers when tables exist" do
       allow(connection).to receive(:table_exists?).with("solid_observer_queue_events").and_return(true)
 
-      expect(logger).to receive(:info).with(/Tables detected/)
+      expect(logger).to receive(:info).with(/Activating event subscribers/)
+      expect(SolidObserver::Subscriber).to receive(:subscribe!)
 
-      described_class.check_and_activate_subscribers
+      described_class.activate_subscribers
     end
 
     it "logs migration instruction when tables do not exist" do
       allow(connection).to receive(:table_exists?).with("solid_observer_queue_events").and_return(false)
 
       expect(logger).to receive(:info).with(/Tables not found/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
 
-      described_class.check_and_activate_subscribers
+      described_class.activate_subscribers
     end
 
     it "rescues gracefully when database is not ready" do
@@ -63,7 +66,7 @@ RSpec.describe SolidObserver::Engine do
 
       expect(logger).to receive(:info).with(/Database not ready/)
 
-      described_class.check_and_activate_subscribers
+      described_class.activate_subscribers
     end
   end
 
@@ -74,8 +77,8 @@ RSpec.describe SolidObserver::Engine do
   end
 
   describe "configuration" do
-    it "checks tables after initialization" do
-      expect(described_class).to respond_to(:check_and_activate_subscribers)
+    it "activates subscribers after initialization" do
+      expect(described_class).to respond_to(:activate_subscribers)
     end
   end
 end

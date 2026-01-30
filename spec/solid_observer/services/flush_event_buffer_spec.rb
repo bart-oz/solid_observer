@@ -53,9 +53,10 @@ RSpec.describe SolidObserver::Services::FlushEventBuffer do
       end
 
       it "does not attempt insert" do
-        service.call
+        result = service.call
 
         expect(SolidObserver::QueueEvent).not_to have_received(:insert_all!)
+        expect(result).to eq(0)
       end
     end
 
@@ -64,7 +65,7 @@ RSpec.describe SolidObserver::Services::FlushEventBuffer do
         allow(SolidObserver::QueueEvent).to receive(:transaction).and_yield
         allow(SolidObserver::QueueEvent).to receive(:insert_all!).and_raise(ActiveRecord::RecordInvalid)
         allow(SolidObserver::QueueEvent).to receive(:insert_all).and_return(true)
-        allow(Rails).to receive(:logger).and_return(double(warn: nil))
+        allow(Rails).to receive(:logger).and_return(double(warn: nil, error: nil))
       end
 
       it "retries with smaller batches" do
@@ -91,12 +92,12 @@ RSpec.describe SolidObserver::Services::FlushEventBuffer do
       before do
         allow(SolidObserver::QueueEvent).to receive(:transaction).and_yield
         allow(SolidObserver::QueueEvent).to receive(:insert_all!).and_raise(ActiveRecord::RecordInvalid)
-        allow(Rails).to receive(:logger).and_return(double(warn: nil))
+        allow(Rails).to receive(:logger).and_return(double(warn: nil, error: nil))
 
         call_count = 0
         allow(SolidObserver::QueueEvent).to receive(:insert_all) do
           call_count += 1
-          raise StandardError, "DB error" if call_count == 2
+          raise ActiveRecord::StatementInvalid, "DB error" if call_count == 2
           true
         end
       end
@@ -105,7 +106,7 @@ RSpec.describe SolidObserver::Services::FlushEventBuffer do
         service.call
 
         expect(Rails.logger).to have_received(:warn).with(
-          "[SolidObserver] Failed to insert batch: DB error"
+          /Failed to insert batch of \d+ events/
         )
       end
 
@@ -114,22 +115,17 @@ RSpec.describe SolidObserver::Services::FlushEventBuffer do
       end
     end
 
-    context "when transaction fails" do
+    context "when transaction fails with unexpected error" do
       before do
-        allow(SolidObserver::QueueEvent).to receive(:transaction).and_raise(StandardError, "Transaction error")
-        allow(Rails).to receive(:logger).and_return(double(error: nil))
+        allow(SolidObserver::QueueEvent).to receive(:transaction).and_raise(ActiveRecord::StatementInvalid, "Connection error")
+        allow(SolidObserver::QueueEvent).to receive(:insert_all).and_return(true)
+        allow(Rails).to receive(:logger).and_return(double(error: nil, warn: nil))
       end
 
-      it "logs the error" do
-        expect { service.call }.to raise_error(StandardError, "Transaction error")
+      it "falls back to batch retry" do
+        service.call
 
-        expect(Rails.logger).to have_received(:error).with(
-          "[SolidObserver] Event buffer flush failed: Transaction error"
-        )
-      end
-
-      it "re-raises the error" do
-        expect { service.call }.to raise_error(StandardError, "Transaction error")
+        expect(SolidObserver::QueueEvent).to have_received(:insert_all).at_least(:once)
       end
     end
   end
@@ -158,14 +154,15 @@ RSpec.describe SolidObserver::Services::FlushEventBuffer do
       end
     end
 
-    context "when other errors occur" do
+    context "when StatementInvalid occurs" do
       before do
-        allow(SolidObserver::QueueEvent).to receive(:insert_all!).and_raise(StandardError, "DB connection lost")
+        allow(SolidObserver::QueueEvent).to receive(:insert_all!).and_raise(ActiveRecord::StatementInvalid, "DB connection lost")
+        allow(SolidObserver::QueueEvent).to receive(:insert_all).and_return(true)
       end
 
-      it "logs and re-raises the error" do
-        expect { service.call }.to raise_error(StandardError, "DB connection lost")
-        expect(Rails.logger).to have_received(:error).with("[SolidObserver] Event buffer flush failed: DB connection lost")
+      it "falls back to batch retry" do
+        service.call
+        expect(SolidObserver::QueueEvent).to have_received(:insert_all).at_least(:once)
       end
     end
   end

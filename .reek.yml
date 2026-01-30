@@ -22,6 +22,7 @@ detectors:
       - SolidObserver::QueueEventBuffer#push
       - SolidObserver::QueueEventBuffer#schedule_flush
       - SolidObserver::Services::FlushEventBuffer#call
+      - SolidObserver::Services::FlushEventBuffer#retry_with_smaller_batches
       - SolidObserver::Services::RecordEvent#extract_metadata
       - SolidObserver::Services::CleanupStorage#call
       - SolidObserver::Services::CleanupStorage#check_storage_warnings
@@ -33,6 +34,8 @@ detectors:
       - SolidObserver::CLI::Storage#call
       - SolidObserver::CLI::Storage#calculate_database_size
       - SolidObserver::CLI::Storage#print_configuration
+      - SolidObserver::Engine#activate_subscribers
+      - SolidObserver::Subscriber#subscribe!
 
   LongParameterList:
     exclude:
@@ -71,6 +74,7 @@ detectors:
       - SolidObserver::QueueEventBuffer#flush!
       - SolidObserver::Services::RecordEvent#extract_metadata
       - SolidObserver::Services::RecordEvent#handle_error
+      - SolidObserver::Services::FlushEventBuffer#retry_with_smaller_batches
       - SolidObserver::CLI::Status#print_queue_stats
       - SolidObserver::CLI::Status#print_queue_table
       - SolidObserver::CLI::Status#print_queue_depths
@@ -80,6 +84,10 @@ detectors:
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::CLI::Storage#print_section_header
       - SolidObserver::CLI::Storage#print_storage_table
+
+  InstanceVariableAssumption:
+    exclude:
+      - SolidObserver::Subscriber
 
   MissingSafeMethod:
     exclude:

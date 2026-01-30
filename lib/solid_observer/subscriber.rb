@@ -2,14 +2,36 @@
 
 module SolidObserver
   class Subscriber
+    EVENTS = %w[
+      enqueue.active_job
+      perform.active_job
+      retry_stopped.active_job
+      discard.active_job
+    ].freeze
+
     class << self
       def subscribe!
         return unless SolidObserver.config.observe_queue
 
-        subscribe_to_enqueue
-        subscribe_to_perform
-        subscribe_to_retry_stopped
-        subscribe_to_discard
+        @subscriptions = []
+        @subscriptions << subscribe_to_enqueue
+        @subscriptions << subscribe_to_perform
+        @subscriptions << subscribe_to_retry_stopped
+        @subscriptions << subscribe_to_discard
+        @subscriptions.compact!
+      end
+
+      def unsubscribe!
+        return unless @subscriptions
+
+        @subscriptions.each do |subscription|
+          ActiveSupport::Notifications.unsubscribe(subscription)
+        end
+        @subscriptions = []
+      end
+
+      def subscribed?
+        @subscriptions&.any?
       end
 
       private

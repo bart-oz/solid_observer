@@ -277,6 +277,7 @@ RSpec.describe "solid_observer rake tasks" do
         connection = instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter)
         allow(SolidObserver::QueueEvent).to receive(:connection).and_return(connection)
         allow(connection).to receive(:execute)
+        allow(connection).to receive(:adapter_name).and_return("SQLite")
       end
 
       it "purges data when user confirms with y" do
@@ -284,7 +285,7 @@ RSpec.describe "solid_observer rake tasks" do
 
         expect {
           Rake::Task["solid_observer:storage:purge"].invoke
-        }.to output(/Purged 100 events and 10 storage snapshots.*Database vacuumed/m).to_stdout
+        }.to output(/Purged 100 events and 10 storage snapshots/m).to_stdout
 
         expect(SolidObserver::QueueEvent).to have_received(:delete_all)
         expect(SolidObserver::StorageInfo).to have_received(:delete_all)

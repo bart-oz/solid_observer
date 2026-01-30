@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 module SolidObserver
+  # BaseMetric provides the foundation for time-series metrics storage.
+  #
+  # NOTE: Metrics functionality is planned for v0.2.0. The database connection
+  # will be configured by the Engine (similar to BaseEvent) when metrics are
+  # fully implemented.
+  #
   class BaseMetric < ActiveRecord::Base
     self.abstract_class = true
     self.table_name = "solid_observer_metrics"
