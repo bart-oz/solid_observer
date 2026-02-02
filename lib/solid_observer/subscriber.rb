@@ -39,7 +39,7 @@ module SolidObserver
       end
 
       def subscribed?
-        @subscriptions&.any?
+        !!@subscriptions&.any?
       end
 
       private
