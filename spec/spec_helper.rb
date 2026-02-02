@@ -60,4 +60,8 @@ RSpec.configure do |config|
 
   config.order = :random
   Kernel.srand config.seed
+
+  config.before(:suite) do
+    ActiveJob::Base.logger = Logger.new(nil)
+  end
 end
