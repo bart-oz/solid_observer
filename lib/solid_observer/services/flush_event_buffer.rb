@@ -2,9 +2,18 @@
 
 module SolidObserver
   module Services
+    # Flushes buffered events to the database using bulk insert.
+    #
+    # Attempts bulk insert with automatic fallback to smaller batches
+    # if the initial insert fails.
+    #
+    # @example Flush events
+    #   FlushEventBuffer.call(events)
     class FlushEventBuffer
       BATCH_SIZE = 100
 
+      # @param events [Array<Hash>] Array of event data to insert
+      # @return [Integer] Number of events successfully inserted
       def self.call(events)
         new(events).call
       end

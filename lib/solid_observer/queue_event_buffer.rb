@@ -3,6 +3,14 @@
 require "singleton"
 
 module SolidObserver
+  # Thread-safe buffer for collecting queue events before batch insertion.
+  #
+  # Events are buffered in memory and flushed either when:
+  # - Buffer size reaches the configured threshold
+  # - Flush interval timer expires
+  #
+  # @example Push an event to the buffer
+  #   QueueEventBuffer.instance.push(event_data)
   class QueueEventBuffer
     include Singleton
 
@@ -12,6 +20,10 @@ module SolidObserver
       @flush_scheduled = false
     end
 
+    # Adds an event to the buffer and triggers flush if threshold reached.
+    #
+    # @param event_data [Hash] Event data to buffer
+    # @return [void]
     def push(event_data)
       should_flush = false
 
@@ -24,6 +36,9 @@ module SolidObserver
       flush! if should_flush
     end
 
+    # Flushes all buffered events to the database.
+    #
+    # @return [void]
     def flush!
       events_to_flush = nil
 
@@ -51,11 +66,15 @@ module SolidObserver
 
     def schedule_flush
       @flush_scheduled = true
-      Thread.new do
+      thread = Thread.new do
         sleep SolidObserver.config.flush_interval
         @mutex.synchronize { @flush_scheduled = false }
         flush!
+      rescue => e
+        Rails.logger&.error "[SolidObserver] Scheduled flush failed: #{e.message}" if defined?(Rails)
       end
+      thread.name = "SolidObserver::QueueEventBuffer#flush"
+      thread.report_on_exception = false
     end
   end
 end

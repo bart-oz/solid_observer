@@ -8,10 +8,7 @@ RSpec.describe SolidObserver::Subscriber do
   end
 
   after do
-    ActiveSupport::Notifications.unsubscribe("enqueue.active_job")
-    ActiveSupport::Notifications.unsubscribe("perform.active_job")
-    ActiveSupport::Notifications.unsubscribe("retry_stopped.active_job")
-    ActiveSupport::Notifications.unsubscribe("discard.active_job")
+    described_class.unsubscribe!
   end
 
   describe ".subscribe!" do

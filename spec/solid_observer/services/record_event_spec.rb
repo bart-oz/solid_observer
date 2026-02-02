@@ -171,9 +171,12 @@ RSpec.describe SolidObserver::Services::RecordEvent do
       event_data = service.send(:build_event_data)
       metadata = JSON.parse(event_data[:metadata])
 
+      # Top-level columns for efficient querying
+      expect(event_data[:job_class]).to eq("TestJob")
+      expect(event_data[:queue_name]).to eq("default")
+
+      # Remaining metadata in JSON
       expect(metadata["job_id"]).to eq("test-job-123")
-      expect(metadata["job_class"]).to eq("TestJob")
-      expect(metadata["queue_name"]).to eq("default")
       expect(metadata["arguments"]).to eq([1, 2, 3])
       expect(metadata["executions"]).to eq(1)
       expect(metadata["priority"]).to eq(10)

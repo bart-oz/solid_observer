@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 module SolidObserver
+  # Subscribes to ActiveSupport::Notifications for ActiveJob events.
+  #
+  # Monitors job lifecycle events (enqueue, perform, retry_stopped, discard)
+  # and records them through the event buffer for observability.
+  #
+  # @example Subscribe to job events
+  #   SolidObserver::Subscriber.subscribe!
   class Subscriber
     EVENTS = %w[
       enqueue.active_job
@@ -12,6 +19,7 @@ module SolidObserver
     class << self
       def subscribe!
         return unless SolidObserver.config.observe_queue
+        return if subscribed?
 
         @subscriptions = []
         @subscriptions << subscribe_to_enqueue

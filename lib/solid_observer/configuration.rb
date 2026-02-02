@@ -36,11 +36,11 @@ module SolidObserver
     attr_accessor :metrics_retention
 
     # Storage Settings
-    attr_accessor :max_db_size,
-      :warning_threshold
+    attr_accessor :max_db_size
 
-    # Performance Settings
-    attr_accessor :sampling_rate,
+    # Performance Settings (with validation)
+    attr_reader :sampling_rate,
+      :warning_threshold,
       :buffer_size,
       :flush_interval
 
@@ -57,12 +57,12 @@ module SolidObserver
 
       # Observer defaults
       @observe_queue = true
-      @observe_cache = false  # v0.2.0
-      @observe_cable = false  # v0.2.0
+      @observe_cache = false
+      @observe_cable = false
 
       # Retention defaults
       @event_retention = 30.days
-      @metrics_retention = 90.days  # v0.2.0
+      @metrics_retention = 90.days
 
       # Storage defaults
       @max_db_size = 1.gigabyte
@@ -70,7 +70,7 @@ module SolidObserver
 
       # Performance defaults
       @sampling_rate = 1.0
-      @cache_sampling_rate = 0.1  # v0.2.0
+      @cache_sampling_rate = 0.1
       @buffer_size = 1000
       @flush_interval = 10.seconds
 
@@ -78,7 +78,45 @@ module SolidObserver
       @correlation_id_generator = nil
     end
 
+    def sampling_rate=(value)
+      validate_rate!(:sampling_rate, value)
+      @sampling_rate = value
+    end
+
+    def warning_threshold=(value)
+      validate_rate!(:warning_threshold, value)
+      @warning_threshold = value
+    end
+
+    def buffer_size=(value)
+      validate_positive_integer!(:buffer_size, value)
+      @buffer_size = value
+    end
+
+    def flush_interval=(value)
+      validate_positive_numeric!(:flush_interval, value)
+      @flush_interval = value
+    end
+
     private
+
+    def validate_rate!(name, value)
+      unless value.is_a?(Numeric) && value >= 0.0 && value <= 1.0
+        raise ArgumentError, "#{name} must be a number between 0.0 and 1.0"
+      end
+    end
+
+    def validate_positive_integer!(name, value)
+      unless value.is_a?(Integer) && value > 0
+        raise ArgumentError, "#{name} must be a positive integer"
+      end
+    end
+
+    def validate_positive_numeric!(name, value)
+      unless value.is_a?(Numeric) && value > 0
+        raise ArgumentError, "#{name} must be a positive number"
+      end
+    end
 
     def production?
       defined?(Rails) && Rails.env.production?

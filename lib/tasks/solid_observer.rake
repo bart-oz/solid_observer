@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 namespace :solid_observer do
+  desc "Display SolidObserver version"
+  task :version do
+    puts "SolidObserver #{SolidObserver::VERSION}"
+    puts "Ruby: #{SolidObserver::RUBY_MINIMUM_VERSION}+"
+    puts "Rails: #{SolidObserver::RAILS_MINIMUM_VERSION}+"
+  end
+
   namespace :install do
     desc "Copy SolidObserver migrations to your application"
     task migrations: :environment do
