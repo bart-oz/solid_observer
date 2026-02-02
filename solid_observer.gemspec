@@ -7,8 +7,8 @@ Gem::Specification.new do |spec|
   spec.version = SolidObserver::VERSION
   spec.authors = ["BartOz"]
   spec.email = ["bartek.ozdoba@gmail.com"]
-  spec.summary = "Observe your Solid Stack like a pro!"
-  spec.description = "SolidObserver is a production-grade observability solution for Rails 8's Solid Stack (Solid Queue, Solid Cache, Solid Cable). It provides unified monitoring, health metrics, and debugging tools across all three Solid technologies."
+  spec.summary = "Observability for the Rails 8's Solid Stack"
+  spec.description = "Production-grade observability for Rails 8's Solid Stack. Monitor ActiveJob performance, track queue metrics, and debug issues with zero external dependencies. Built-in CLI, retention policies, and APM integrations."
   spec.homepage = "https://solid.observer"
   spec.license = "MIT"
   spec.files = Dir["lib/**/*", "app/**/*", "db/**/*", "README.md", "LICENSE.txt", "CHANGELOG.md", "bin/*"]
