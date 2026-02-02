@@ -57,12 +57,12 @@ module SolidObserver
 
       # Observer defaults
       @observe_queue = true
-      @observe_cache = false  # v0.2.0
-      @observe_cable = false  # v0.2.0
+      @observe_cache = false
+      @observe_cable = false
 
       # Retention defaults
       @event_retention = 30.days
-      @metrics_retention = 90.days  # v0.2.0
+      @metrics_retention = 90.days
 
       # Storage defaults
       @max_db_size = 1.gigabyte
@@ -70,7 +70,7 @@ module SolidObserver
 
       # Performance defaults
       @sampling_rate = 1.0
-      @cache_sampling_rate = 0.1  # v0.2.0
+      @cache_sampling_rate = 0.1
       @buffer_size = 1000
       @flush_interval = 10.seconds
 
