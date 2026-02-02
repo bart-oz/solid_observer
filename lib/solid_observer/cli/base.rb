@@ -3,10 +3,8 @@
 module SolidObserver
   module CLI
     class Base
-      class << self
-        def call(*args, **kwargs)
-          new.call(*args, **kwargs)
-        end
+      def self.call(*args, **kwargs)
+        new.call(*args, **kwargs)
       end
 
       def call

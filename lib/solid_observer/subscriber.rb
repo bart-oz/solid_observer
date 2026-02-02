@@ -12,6 +12,7 @@ module SolidObserver
     class << self
       def subscribe!
         return unless SolidObserver.config.observe_queue
+        return if subscribed?
 
         @subscriptions = []
         @subscriptions << subscribe_to_enqueue

@@ -44,9 +44,17 @@ module SolidObserver
       end
 
       def vacuum_database
-        QueueEvent.connection.execute("VACUUM")
+        adapter = QueueEvent.connection.adapter_name.downcase
+        case adapter
+        when "sqlite"
+          QueueEvent.connection.execute("VACUUM")
+        when "postgresql"
+          QueueEvent.connection.execute("VACUUM ANALYZE solid_observer_queue_events")
+        when "mysql2", "trilogy"
+          QueueEvent.connection.execute("OPTIMIZE TABLE solid_observer_queue_events")
+        end
       rescue => e
-        Rails.logger.warn "[SolidObserver] VACUUM failed: #{e.message}"
+        Rails.logger.warn "[SolidObserver] Database maintenance failed: #{e.message}"
       end
 
       def calculate_database_size

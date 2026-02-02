@@ -26,6 +26,7 @@ detectors:
       - SolidObserver::Services::RecordEvent#extract_metadata
       - SolidObserver::Services::CleanupStorage#call
       - SolidObserver::Services::CleanupStorage#check_storage_warnings
+      - SolidObserver::Services::CleanupStorage#vacuum_database
       - SolidObserver::CLI::Base#table
       - SolidObserver::CLI::Base#confirm
       - SolidObserver::CLI::Status#print_queue_depths
@@ -35,12 +36,14 @@ detectors:
       - SolidObserver::CLI::Storage#calculate_database_size
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::Engine#activate_subscribers
+      - SolidObserver::Engine#self.activate_subscribers
       - SolidObserver::Subscriber#subscribe!
+      - SolidObserver::Subscriber#self.subscribe!
 
   LongParameterList:
     exclude:
-      - SolidObserver::BaseMetric#self.increment
-      - SolidObserver::BaseMetric#self.record
+      - SolidObserver::BaseMetric#increment
+      - SolidObserver::BaseMetric#record
       - SolidObserver::Services::RecordEvent#self.call
       - SolidObserver::CLI::Jobs#list
       - SolidObserver::CLI::Jobs#fetch_job
@@ -64,6 +67,9 @@ detectors:
       - SolidObserver::CLI::Jobs#build_job_details
       - SolidObserver::CLI::Jobs#add_scheduled_details
       - SolidObserver::CLI::Jobs#fetch_jobs
+      - SolidObserver::Configuration#validate_rate!
+      - SolidObserver::Configuration#validate_positive_integer!
+      - SolidObserver::Configuration#validate_positive_numeric!
 
   DuplicateMethodCall:
     exclude:
@@ -71,6 +77,7 @@ detectors:
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CorrelationIdResolver#log_generator_error
       - SolidObserver::Services::CleanupStorage#check_storage_warnings
+      - SolidObserver::Services::CleanupStorage#vacuum_database
       - SolidObserver::QueueEventBuffer#flush!
       - SolidObserver::Services::RecordEvent#extract_metadata
       - SolidObserver::Services::RecordEvent#handle_error
@@ -93,6 +100,7 @@ detectors:
     exclude:
       - SolidObserver::Subscriber
       - SolidObserver::QueueEventBuffer
+      - SolidObserver::Configuration
 
   RepeatedConditional:
     exclude:
@@ -123,6 +131,7 @@ detectors:
   DataClump:
     exclude:
       - SolidObserver::CLI::Jobs
+      - SolidObserver::Configuration
 
   TooManyMethods:
     exclude:

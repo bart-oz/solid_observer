@@ -30,11 +30,15 @@ module SolidObserver
       end
 
       def build_event_data
+        metadata = extract_metadata
+
         {
           event_type: @event_type,
+          job_class: metadata[:job_class],
+          queue_name: metadata[:queue_name],
           correlation_id: CorrelationIdResolver.resolve(@event),
           duration: @event.duration,
-          metadata: extract_metadata.to_json,
+          metadata: metadata.except(:job_class, :queue_name).to_json,
           recorded_at: Time.current
         }
       end

@@ -51,11 +51,15 @@ module SolidObserver
 
     def schedule_flush
       @flush_scheduled = true
-      Thread.new do
+      thread = Thread.new do
         sleep SolidObserver.config.flush_interval
         @mutex.synchronize { @flush_scheduled = false }
         flush!
+      rescue => e
+        Rails.logger&.error "[SolidObserver] Scheduled flush failed: #{e.message}" if defined?(Rails)
       end
+      thread.name = "SolidObserver::QueueEventBuffer#flush"
+      thread.report_on_exception = false
     end
   end
 end

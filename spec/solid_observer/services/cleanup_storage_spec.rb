@@ -22,6 +22,7 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
 
     allow(relation).to receive(:delete_all).and_return(10)
     allow(connection).to receive(:execute)
+    allow(connection).to receive(:adapter_name).and_return("SQLite")
 
     allow(SolidObserver::StorageInfo).to receive(:record_snapshot)
     allow(File).to receive(:exist?).and_return(true)
@@ -71,7 +72,7 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
       end
 
       it "logs warning but does not raise" do
-        expect(logger).to receive(:warn).with(/VACUUM failed/)
+        expect(logger).to receive(:warn).with(/Database maintenance failed/)
 
         expect { described_class.call }.not_to raise_error
       end

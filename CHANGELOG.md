@@ -1,6 +1,4 @@
-## [Unreleased]
-
-## [0.1.0] - 2026-01-28
+## [0.1.0] - 2026-02-02
 
 ### Added
 
@@ -9,12 +7,19 @@
 - Rails Engine setup for seamless integration
 - Separate database support for observability data
 - Module-level `configure`, `config`, and `reset_configuration!` methods
+- **QueueEvent validations** with `EVENT_TYPES`
+- **Configuration validation**
+- **Thread error handling** in `QueueEventBuffer#schedule_flush`
 
 #### Queue Monitoring
 - Real-time Solid Queue status monitoring (ready, scheduled, claimed, failed jobs)
 - Queue depth tracking per queue name
 - Worker count monitoring
 - Event collection with buffered writes for performance
+- **CleanupJob** inherits from `ActiveJob::Base` for better engine isolation
+- **Database maintenance** commands are adapter-aware (SQLite VACUUM, PostgreSQL VACUUM ANALYZE, MySQL OPTIMIZE TABLE)
+- **Subscriber** includes idempotency check to prevent duplicate subscriptions
+- **RecordEvent** properly populates `job_class` and `queue_name` columns
 
 #### CLI Tools
 - `solid_observer:status` — Queue overview with formatted tables
