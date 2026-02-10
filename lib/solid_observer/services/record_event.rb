@@ -81,6 +81,8 @@ module SolidObserver
       end
 
       def increment_metric
+        return unless SolidObserver.config.persistence_mode?
+
         period = Time.current.beginning_of_hour
         QueueMetric.increment(metric: @metric_name, period: period)
       rescue => e

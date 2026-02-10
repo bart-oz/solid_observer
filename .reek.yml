@@ -37,6 +37,8 @@ detectors:
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::Engine#activate_subscribers
       - SolidObserver::Engine#self.activate_subscribers
+      - SolidObserver::Engine#configure_database_connection
+      - SolidObserver::Engine#self.configure_database_connection
       - SolidObserver::Subscriber#subscribe!
       - SolidObserver::Subscriber#self.subscribe!
 
@@ -70,6 +72,7 @@ detectors:
       - SolidObserver::Configuration#validate_rate!
       - SolidObserver::Configuration#validate_positive_integer!
       - SolidObserver::Configuration#validate_positive_numeric!
+      - SolidObserver::Services::CleanupStorage#format_bytes
 
   DuplicateMethodCall:
     exclude:

@@ -11,17 +11,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version"></a>
+  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.1.1-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-93.23%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-93.06%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
 
 SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. Starting with **Solid Queue** monitoring in v0.1.0, it provides unified visibility into your background job processing with CLI tools, metrics collection, and distributed tracing support.
 
-## Features (v0.1.0)
+## Features (v0.1.1)
 
 - 📊 **Real-time Queue Status** — Monitor jobs across all states (ready, scheduled, claimed, failed)
 - 🔍 **Job Management CLI** — List, inspect, retry, and discard failed jobs
@@ -29,6 +29,7 @@ SolidObserver is a production-grade observability solution for Rails 8's Solid S
 - 🔗 **Distributed Tracing** — Correlate jobs with APM tools (Datadog, Sentry, OpenTelemetry)
 - ⚡ **High Performance** — Buffered writes, configurable sampling, minimal overhead
 - 🛡️ **Production Ready** — Automatic cleanup, size limits, retention policies
+- 🚀 **Two Operating Modes** — Real-time (no migrations) or persistence (full event history)
 
 ## Requirements
 
@@ -46,20 +47,37 @@ Add to your Gemfile:
 gem "solid_observer"
 ```
 
-Run the installer:
-
 ```bash
 bundle install
 rails generate solid_observer:install
 ```
 
-Install and run migrations:
+SolidObserver supports two operating modes. Choose the one that fits your needs:
+
+### Real-time Mode (no migrations needed)
+
+Get queue monitoring and job management instantly — no database setup required. SolidObserver queries Solid Queue directly.
+
+```ruby
+# config/initializers/solid_observer.rb
+SolidObserver.configure do |config|
+  config.storage_mode = :realtime
+end
+```
+
+That's it. You now have access to queue status, job listing, retry, and discard commands.
+
+### Persistence Mode (default)
+
+Store event history, metrics, and storage snapshots in a dedicated SQLite database. This gives you everything in real-time mode plus long-term event tracking, buffered writes, and retention-based cleanup.
 
 ```bash
 bin/rails solid_observer:install:migrations
 bin/rails db:create
 bin/rails db:migrate
 ```
+
+No additional configuration needed — persistence is the default `storage_mode`.
 
 ## Quick Start
 
@@ -116,7 +134,7 @@ bin/rails "solid_observer:jobs:retry[JOB_ID]"
 bin/rails "solid_observer:jobs:discard[JOB_ID]"
 ```
 
-### Check Storage
+### Check Storage (Persistence Mode)
 
 ```bash
 bin/rails solid_observer:storage
@@ -142,18 +160,23 @@ After installation, configure SolidObserver in `config/initializers/solid_observ
 
 ```ruby
 SolidObserver.configure do |config|
+  # Storage Mode (:persistence or :realtime)
+  # :persistence — stores events, metrics, snapshots (requires migrations)
+  # :realtime    — live monitoring only, no database needed
+  config.storage_mode = :persistence  # default
+
   # Enable queue monitoring (default: true)
   config.observe_queue = true
 
-  # Data Retention
+  # Data Retention (persistence mode only)
   config.event_retention = 30.days    # Keep events for 30 days
   config.metrics_retention = 90.days  # Keep metrics for 90 days
 
-  # Database Limits
+  # Database Limits (persistence mode only)
   config.max_db_size = 1.gigabyte     # Maximum database size
   config.warning_threshold = 0.8      # Warn at 80% capacity
 
-  # Performance Tuning
+  # Performance Tuning (persistence mode only)
   config.buffer_size = 1000           # Buffer before flushing to DB
   config.flush_interval = 10.seconds  # Flush interval
   config.sampling_rate = 1.0          # 1.0 = capture all events
@@ -192,6 +215,8 @@ When configured, all job events will include your correlation ID, allowing you t
 
 ## CLI Reference
 
+**Available in both modes (real-time and persistence):**
+
 | Command | Description |
 |---------|-------------|
 | `solid_observer:status` | Show queue status overview |
@@ -199,13 +224,18 @@ When configured, all job events will include your correlation ID, allowing you t
 | `solid_observer:jobs:show[ID]` | Show job details |
 | `solid_observer:jobs:retry[ID]` | Retry a failed job |
 | `solid_observer:jobs:discard[ID]` | Discard a failed job |
+
+**Persistence mode only:**
+
+| Command | Description |
+|---------|-------------|
 | `solid_observer:storage` | Show storage statistics |
 | `solid_observer:buffer:flush` | Force flush event buffer to database |
 | `solid_observer:buffer:clear` | Clear buffer without saving |
 | `solid_observer:storage:cleanup` | Run retention-based cleanup |
 | `solid_observer:storage:purge` | Delete ALL SolidObserver data |
 
-> **Note:** These commands manage **SolidObserver's storage** (event logs, metrics, snapshots) - not Solid Queue's jobs. To manage jobs, use `jobs:discard` or `jobs:retry`.
+> **Note:** Storage commands manage **SolidObserver's storage** (event logs, metrics, snapshots) — not Solid Queue's jobs. To manage jobs, use `jobs:discard` or `jobs:retry`.
 
 ### Jobs List Arguments
 
@@ -226,7 +256,7 @@ bin/rails "solid_observer:jobs:list[ready,mailers]"          # Ready jobs in mai
 bin/rails "solid_observer:jobs:list[failed,,,50]"            # 50 failed jobs (skip queue/class)
 ```
 
-### Buffer & Storage Management
+### Buffer & Storage Management (Persistence Mode)
 
 ```bash
 # Flush in-memory buffer to database
@@ -244,7 +274,9 @@ bin/rails solid_observer:storage:purge
 
 > **Important:** `storage:purge` deletes SolidObserver's monitoring data, NOT your Solid Queue jobs. Your queued jobs remain safe.
 
-## Database Setup
+## Database Setup (Persistence Mode)
+
+> **Tip:** If you're using real-time mode (`storage_mode: :realtime`), you can skip this section entirely — no database setup is needed.
 
 **SolidObserver works with any main application database** — PostgreSQL, MySQL, or SQLite.
 
@@ -266,12 +298,13 @@ SolidObserver is actively developed. Here's what's coming:
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| v0.1.0 | Solid Queue monitoring, CLI tools | ✅ Current |
-| v0.2.0 | Solid Cache monitoring | 🔜 Planned |
-| v0.3.0 | Solid Cable monitoring | 🔜 Planned |
-| v0.4.0 | Cross-component correlation, health scores | 🔜 Planned |
-| v0.5.0 | Alerting & notifications | 🔜 Planned |
-| v0.6.0 | Web UI dashboard | 🔜 Planned |
+| v0.1.0 | Solid Queue monitoring, CLI tools | ✅ Released |
+| v0.1.1 | Real-time mode (no migrations needed) | ✅ Current |
+| v0.2.0 | Web UI dashboard (vanilla HTML/CSS) | 🔜 Planned |
+| v0.3.0 | Solid Cache monitoring | 🔜 Planned |
+| v0.4.0 | Solid Cable monitoring | 🔜 Planned |
+| v0.5.0 | Cross-component correlation, health scores | 🔜 Planned |
+| v0.6.0 | Alerting & notifications | 🔜 Planned |
 | v1.0.0 | Production stable release | 🎯 Goal |
 
 See [GitHub Milestones](https://github.com/bart-oz/solid_observer/milestones) for detailed plans.

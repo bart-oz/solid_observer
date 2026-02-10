@@ -1,3 +1,13 @@
+## [0.1.1] - 2026-02-10
+
+### Added
+- **Real-time mode** (`storage_mode: :realtime`) — run SolidObserver without database migrations
+  - Queue status and job management CLI commands work without any SolidObserver database
+  - `storage_mode` configuration option (`:persistence` default, `:realtime` for no-DB operation)
+  - `persistence_mode?` and `realtime_mode?` configuration predicates
+  - Graceful `CLI::Storage` message when in real-time mode
+  - Event buffering, metric incrementing, and cleanup automatically disabled in real-time mode
+
 ## [0.1.0] - 2026-02-02
 
 ### Added

@@ -4,6 +4,14 @@ module SolidObserver
   module CLI
     class Storage < Base
       def call
+        if SolidObserver.config.realtime_mode?
+          print_section_header("💾 Storage Status")
+          info("Storage monitoring is not available in real-time mode.")
+          info("Switch to persistence mode for event history and storage tracking.")
+          output("")
+          return
+        end
+
         print_section_header("💾 Storage Status")
 
         current_stats = gather_storage_stats

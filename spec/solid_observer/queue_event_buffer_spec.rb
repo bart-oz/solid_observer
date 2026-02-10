@@ -30,6 +30,17 @@ RSpec.describe SolidObserver::QueueEventBuffer do
         expect(buffer.size).to eq(0)
       end
     end
+
+    context "when in realtime mode" do
+      before do
+        allow(SolidObserver.config).to receive(:persistence_mode?).and_return(false)
+      end
+
+      it "does not add event to buffer" do
+        buffer.push(event_data)
+        expect(buffer.size).to eq(0)
+      end
+    end
   end
 
   describe "#flush!" do

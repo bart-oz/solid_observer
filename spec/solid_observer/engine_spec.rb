@@ -43,6 +43,8 @@ RSpec.describe SolidObserver::Engine do
       allow(SolidObserver::Subscriber).to receive(:subscribe!)
     end
 
+    after { SolidObserver.reset_configuration! }
+
     it "activates subscribers when tables exist" do
       allow(connection).to receive(:table_exists?).with("solid_observer_queue_events").and_return(true)
 
@@ -67,6 +69,20 @@ RSpec.describe SolidObserver::Engine do
       expect(logger).to receive(:info).with(/Database not ready/)
 
       described_class.activate_subscribers
+    end
+
+    context "when in realtime mode" do
+      before do
+        SolidObserver.config.storage_mode = :realtime
+      end
+
+      it "subscribes without checking tables" do
+        expect(logger).to receive(:info).with(/real-time mode/)
+        expect(SolidObserver::Subscriber).to receive(:subscribe!)
+        expect(connection).not_to receive(:table_exists?)
+
+        described_class.activate_subscribers
+      end
     end
   end
 
