@@ -8,6 +8,8 @@ module SolidObserver
       end
 
       def call
+        return 0 if SolidObserver.config.realtime_mode?
+
         deleted_count = 0
 
         QueueEvent.transaction do

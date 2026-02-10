@@ -15,7 +15,29 @@ RSpec.describe SolidObserver::CLI::Storage do
     allow(SolidObserver::QueueEvent).to receive(:connection_db_config).and_return(db_config)
   end
 
+  after { SolidObserver.reset_configuration! }
+
   describe "#call" do
+    context "when in realtime mode" do
+      before do
+        SolidObserver.config.storage_mode = :realtime
+      end
+
+      it "displays informative message" do
+        output = capture_stdout { storage_cli.call }
+
+        expect(output).to include("💾 Storage Status")
+        expect(output).to include("not available in real-time mode")
+        expect(output).to include("persistence mode")
+      end
+
+      it "does not query the database" do
+        expect(SolidObserver::QueueEvent).not_to receive(:count)
+
+        capture_stdout { storage_cli.call }
+      end
+    end
+
     context "when database file exists" do
       before do
         FileUtils.mkdir_p(File.dirname(temp_db_path))

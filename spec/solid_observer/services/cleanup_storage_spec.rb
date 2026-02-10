@@ -29,7 +29,22 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
     allow(File).to receive(:size).and_return(500.kilobytes)
   end
 
+  after { SolidObserver.reset_configuration! }
+
   describe ".call" do
+    context "when in realtime mode" do
+      before do
+        SolidObserver.config.storage_mode = :realtime
+      end
+
+      it "returns 0 without performing cleanup" do
+        result = described_class.call
+
+        expect(result).to eq(0)
+        expect(SolidObserver::QueueEvent).not_to have_received(:transaction)
+      end
+    end
+
     it "deletes events older than retention period" do
       expect(relation).to receive(:delete_all)
 

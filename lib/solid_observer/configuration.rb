@@ -38,6 +38,9 @@ module SolidObserver
     # Storage Settings
     attr_accessor :max_db_size
 
+    # Storage Mode
+    attr_reader :storage_mode
+
     # Performance Settings (with validation)
     attr_reader :sampling_rate,
       :warning_threshold,
@@ -54,6 +57,9 @@ module SolidObserver
       @http_basic_auth_enabled = false
       @http_basic_auth_user = nil
       @http_basic_auth_password = nil
+
+      # Storage mode
+      @storage_mode = :persistence
 
       # Observer defaults
       @observe_queue = true
@@ -76,6 +82,23 @@ module SolidObserver
 
       # Correlation defaults
       @correlation_id_generator = nil
+    end
+
+    STORAGE_MODES = %i[persistence realtime].freeze
+
+    def storage_mode=(value)
+      value = value.to_sym
+      raise ArgumentError, "storage_mode must be :persistence or :realtime" unless STORAGE_MODES.include?(value)
+
+      @storage_mode = value
+    end
+
+    def persistence_mode?
+      @storage_mode == :persistence
+    end
+
+    def realtime_mode?
+      @storage_mode == :realtime
     end
 
     def sampling_rate=(value)

@@ -25,12 +25,15 @@ module SolidObserver
     # @param event_data [Hash] Event data to buffer
     # @return [void]
     def push(event_data)
+      config = SolidObserver.config
+      return unless config.persistence_mode?
+
       should_flush = false
 
       @mutex.synchronize do
         @buffer << event_data
         schedule_flush unless @flush_scheduled
-        should_flush = @buffer.size >= SolidObserver.config.buffer_size
+        should_flush = @buffer.size >= config.buffer_size
       end
 
       flush! if should_flush

@@ -133,6 +133,26 @@ RSpec.describe SolidObserver::Services::RecordEvent do
       end
     end
 
+    context "when in realtime mode" do
+      before do
+        allow(service).to receive(:rand).and_return(0.5)
+        allow(SolidObserver.config).to receive(:sampling_rate).and_return(1.0)
+        allow(SolidObserver.config).to receive(:persistence_mode?).and_return(false)
+      end
+
+      it "does not increment metric" do
+        service.call
+
+        expect(SolidObserver::QueueMetric).not_to have_received(:increment)
+      end
+
+      it "still pushes event to buffer" do
+        service.call
+
+        expect(buffer).to have_received(:push)
+      end
+    end
+
     context "when metric increment fails" do
       before do
         allow(service).to receive(:rand).and_return(0.5)

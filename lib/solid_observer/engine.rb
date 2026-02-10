@@ -12,6 +12,8 @@ module SolidObserver
       end
 
       def configure_database_connection
+        return if SolidObserver.config.realtime_mode?
+
         db_config = ActiveRecord::Base.configurations.configs_for(
           env_name: Rails.env,
           name: "solid_observer_queue"
@@ -30,12 +32,15 @@ module SolidObserver
       def activate_subscribers
         logger = Rails.logger
 
-        unless table_exists?("solid_observer_queue_events")
+        if SolidObserver.config.realtime_mode?
+          logger.info "[SolidObserver] Starting in real-time mode (no persistence)"
+        elsif !table_exists?("solid_observer_queue_events")
           logger.info "[SolidObserver] Tables not found. Run: rails solid_observer:install:migrations && rails db:migrate"
           return
+        else
+          logger.info "[SolidObserver] Activating event subscribers"
         end
 
-        logger.info "[SolidObserver] Activating event subscribers"
         Subscriber.subscribe!
       rescue ActiveRecord::NoDatabaseError
         logger.info "[SolidObserver] Database not ready yet. Skipping subscriber activation."
