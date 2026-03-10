@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
 SolidObserver::Engine.routes.draw do
-  # Only mount UI routes if enabled in configuration
-  if SolidObserver.config.ui_enabled
-    # TODO: Add UI routes in SO-013
-    # root "dashboard#index"
-    # resources :queue_events, only: [:index, :show]
-    # resources :metrics, only: [:index]
+  root "dashboard#index"
+
+  resources :jobs, only: %i[index show] do
+    member do
+      post :retry
+      post :discard
+    end
   end
+
+  resource :storage, only: %i[show]
+  resources :events, only: %i[index show]
 end

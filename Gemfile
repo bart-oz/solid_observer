@@ -14,6 +14,7 @@ group :development do
   gem "standard-performance", "~> 1.9.0"
   gem "guard-rspec", "~> 4.7.3"
   gem "benchmark", "~> 0.5.0" # in Ruby v4.0.0 it's removed from stdlib
+  gem "puma"
 end
 
 group :test do

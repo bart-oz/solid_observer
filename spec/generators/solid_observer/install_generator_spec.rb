@@ -13,6 +13,14 @@ RSpec.describe SolidObserver::Generators::InstallGenerator do
     FileUtils.mkdir_p(File.join(destination, "db"))
 
     File.write(
+      File.join(destination, "config", "routes.rb"),
+      <<~RUBY
+        Rails.application.routes.draw do
+        end
+      RUBY
+    )
+
+    File.write(
       File.join(destination, "config", "database.yml"),
       <<~YAML
         default: &default
@@ -62,6 +70,15 @@ RSpec.describe SolidObserver::Generators::InstallGenerator do
       initializer = File.read(File.join(destination, "config/initializers/solid_observer.rb"))
       expect(initializer).to include("config.ui_enabled = !Rails.env.production?")
       expect(initializer).to include("config.observe_queue = true")
+    end
+  end
+
+  describe "engine mount" do
+    before { run_generator }
+
+    it "mounts SolidObserver::Engine in routes.rb" do
+      routes = File.read(File.join(destination, "config/routes.rb"))
+      expect(routes).to include('mount SolidObserver::Engine, at: "/solid_observer"')
     end
   end
 

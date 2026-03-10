@@ -1,0 +1,20 @@
+default: &default
+  adapter: sqlite3
+  pool: 5
+  timeout: 5000
+
+development:
+  primary:
+    <<: *default
+    database: db/development.sqlite3
+  solid_observer_queue:
+    <<: *default
+    database: db/development_solid_observer_queue.sqlite3
+
+test:
+  primary:
+    <<: *default
+    database: db/test.sqlite3
+  solid_observer_queue:
+    <<: *default
+    database: db/test_solid_observer_queue.sqlite3

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SolidObserver — <%= content_for?(:title) ? yield(:title) : "Dashboard" %></title>
+  <%= csrf_meta_tags %>
+  <% if SolidObserver.config.ui_refresh_interval.to_i > 0 %>
+    <meta http-equiv="refresh" content="<%= SolidObserver.config.ui_refresh_interval %>">
+  <% end %>
+  <style>
+    :root {
+      --so-sidebar-width: 240px;
+      --so-sidebar-bg: #1e293b;
+      --so-sidebar-text: #e2e8f0;
+      --so-sidebar-active: #00DBCC;
+      --so-bg: #f8fafc;
+      --so-card-bg: #ffffff;
+      --so-text: #1e293b;
+      --so-text-muted: #64748b;
+      --so-border: #e2e8f0;
+      --so-success: #22c55e;
+      --so-warning: #f59e0b;
+      --so-danger: #ef4444;
+      --so-info: #3b82f6;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+           color: var(--so-text); background: var(--so-bg); }
+
+    .so-layout {
+      display: grid;
+      grid-template-columns: var(--so-sidebar-width) 1fr;
+      min-height: 100vh;
+    }
+
+    .so-sidebar { background: var(--so-sidebar-bg); color: var(--so-sidebar-text); padding: 1.5rem 0; display: flex; flex-direction: column; }
+    .so-sidebar__logo { padding: 1rem 1.25rem 1.5rem; font-size: 1.1rem; font-weight: 700; color: var(--so-sidebar-active); letter-spacing: 0.01em; }
+    .so-sidebar__nav a { display: block; padding: 0.6rem 1.25rem; color: var(--so-sidebar-text); text-decoration: none; font-size: 0.9rem; }
+    .so-sidebar__nav a:hover { background: rgba(255,255,255,0.08); }
+    .so-sidebar__nav a.active { background: var(--so-sidebar-active); color: #fff; border-radius: 0 4px 4px 0; margin-right: 8px; }
+    .so-sidebar__mode { padding: 1rem 1.25rem; font-size: 0.75rem; color: var(--so-text-muted); border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto; }
+
+    .so-content { padding: 2rem; overflow-y: auto; }
+    .so-content__header { margin-bottom: 1.5rem; }
+    .so-content__header h1 { font-size: 1.5rem; font-weight: 600; }
+
+    .so-stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .so-card { background: var(--so-card-bg); border: 1px solid var(--so-border); border-radius: 8px; padding: 1.25rem; }
+    .so-card__label { font-size: 0.8rem; color: var(--so-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .so-card__value { font-size: 1.75rem; font-weight: 700; margin-top: 0.25rem; }
+
+    .so-table { width: 100%; border-collapse: collapse; background: var(--so-card-bg); border: 1px solid var(--so-border); border-radius: 8px; overflow: hidden; }
+    .so-table th { text-align: left; padding: 0.75rem 1rem; background: #f1f5f9; font-size: 0.8rem; color: var(--so-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .so-table td { padding: 0.75rem 1rem; border-top: 1px solid var(--so-border); font-size: 0.9rem; }
+    .so-table tr:hover td { background: #f8fafc; }
+
+    .so-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .so-badge--success { background: #dcfce7; color: #166534; }
+    .so-badge--warning { background: #fef3c7; color: #92400e; }
+    .so-badge--danger { background: #fee2e2; color: #991b1b; }
+    .so-badge--info { background: #dbeafe; color: #1e40af; }
+    .so-badge--default { background: #f1f5f9; color: #475569; }
+
+    .so-flash { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; }
+    .so-flash--notice { background: #dbeafe; color: #1e40af; }
+    .so-flash--alert { background: #fee2e2; color: #991b1b; }
+
+    .so-btn { display: inline-block; padding: 0.4rem 0.75rem; border-radius: 4px; font-size: 0.85rem; font-weight: 500; text-decoration: none; cursor: pointer; border: 1px solid var(--so-border); background: var(--so-card-bg); color: var(--so-text); }
+    .so-btn:hover { background: #f1f5f9; }
+    .so-btn--primary { background: var(--so-info); color: #fff; border-color: var(--so-info); }
+    .so-btn--primary:hover { background: #2563eb; }
+    .so-btn--danger { background: var(--so-danger); color: #fff; border-color: var(--so-danger); }
+    .so-btn--danger:hover { background: #dc2626; }
+
+    .so-pagination { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: center; }
+
+    .so-filters { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .so-filters select, .so-filters input { padding: 0.4rem 0.6rem; border: 1px solid var(--so-border); border-radius: 4px; font-size: 0.85rem; }
+
+    .so-empty { text-align: center; padding: 3rem 1rem; color: var(--so-text-muted); }
+    .so-empty__icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+    .so-usage-bar { height: 8px; background: var(--so-border); border-radius: 4px; overflow: hidden; }
+    .so-usage-bar__fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+    .so-usage-bar__fill--ok { background: var(--so-success); }
+    .so-usage-bar__fill--warning { background: var(--so-warning); }
+    .so-usage-bar__fill--critical { background: var(--so-danger); }
+  </style>
+</head>
+<body>
+  <div class="so-layout">
+    <aside class="so-sidebar">
+      <div class="so-sidebar__logo">SolidObserver</div>
+      <nav class="so-sidebar__nav">
+        <%= link_to "Dashboard", root_path, class: ("active" if controller_name == "dashboard") %>
+        <%= link_to "Jobs", jobs_path, class: ("active" if controller_name == "jobs") %>
+        <% if persistence_mode? %>
+          <%= link_to "Events", events_path, class: ("active" if controller_name == "events") %>
+          <%= link_to "Storage", storage_path, class: ("active" if controller_name == "storages") %>
+        <% end %>
+      </nav>
+      <div class="so-sidebar__mode">
+        Mode: <%= persistence_mode? ? "Persistence" : "Real-time" %>
+      </div>
+    </aside>
+
+    <main class="so-content">
+      <% if flash[:notice] %>
+        <div class="so-flash so-flash--notice"><%= flash[:notice] %></div>
+      <% end %>
+      <% if flash[:alert] %>
+        <div class="so-flash so-flash--alert"><%= flash[:alert] %></div>
+      <% end %>
+      <%= yield %>
+    </main>
+  </div>
+</body>
+</html>

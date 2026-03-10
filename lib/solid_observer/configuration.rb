@@ -15,9 +15,9 @@ module SolidObserver
     # UI Settings
     attr_accessor :ui_enabled,
       :ui_base_controller,
-      :http_basic_auth_enabled,
-      :http_basic_auth_user,
-      :http_basic_auth_password
+      :ui_username,
+      :ui_password,
+      :ui_refresh_interval
 
     # Observer Settings
     attr_accessor :observe_queue
@@ -54,9 +54,9 @@ module SolidObserver
       # UI defaults
       @ui_enabled = !production?
       @ui_base_controller = "::ApplicationController"
-      @http_basic_auth_enabled = false
-      @http_basic_auth_user = nil
-      @http_basic_auth_password = nil
+      @ui_username = nil
+      @ui_password = nil
+      @ui_refresh_interval = 30
 
       # Storage mode
       @storage_mode = :persistence
