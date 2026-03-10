@@ -38,6 +38,7 @@ ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:"
 
 Dir[File.join(__dir__, "../app/models/**/*.rb")].each { |f| require f }
 Dir[File.join(__dir__, "../app/jobs/**/*.rb")].each { |f| require f }
+Dir[File.join(__dir__, "../app/controllers/**/*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
