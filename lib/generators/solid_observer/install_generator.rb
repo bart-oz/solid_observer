@@ -24,6 +24,10 @@ module SolidObserver
         end
       end
 
+      def add_engine_mount
+        route 'mount SolidObserver::Engine, at: "/solid_observer"'
+      end
+
       def show_instructions
         say "\n"
         print_banner
@@ -34,6 +38,7 @@ module SolidObserver
         say "  3. Create database: bin/rails db:create"
         say "  4. Run migrations: bin/rails db:migrate"
         say "  5. Restart your Rails server"
+        say "  6. Visit /solid_observer to access the web dashboard"
         say "\n"
         say "Documentation: https://solid.observer", :cyan
         say "GitHub: https://github.com/bart-oz/solid_observer", :cyan
