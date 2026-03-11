@@ -29,6 +29,14 @@ coverage/
 *.swo
 *~
 
+# Dummy app generated files
+/spec/dummy/db/*.sqlite3
+/spec/dummy/db/*.sqlite3-shm
+/spec/dummy/db/*.sqlite3-wal
+/spec/dummy/log/
+/spec/dummy/tmp/
+/spec/dummy/.bundle/
+
 # Ignore temporary files and directories
 tmp/
 *.log
