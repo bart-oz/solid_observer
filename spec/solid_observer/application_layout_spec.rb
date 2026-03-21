@@ -23,14 +23,15 @@ RSpec.describe "SolidObserver application layout" do
         @persistence_mode = opts.fetch(:persistence_mode, true)
         @flash = opts.fetch(:flash, {})
         @controller_name = opts.fetch(:controller_name, "dashboard")
+        @auto_refresh = opts.fetch(:auto_refresh, false)
       end
 
       def csrf_meta_tags
         '<meta name="csrf-param" content="_token"><meta name="csrf-token" content="test">'
       end
 
-      def content_for?(_key)
-        false
+      def content_for?(key)
+        key == :auto_refresh && @auto_refresh
       end
 
       def link_to(text, url, html_options = {})
@@ -141,16 +142,36 @@ RSpec.describe "SolidObserver application layout" do
     end
 
     describe "auto-refresh" do
-      it "does not emit a refresh meta tag when ui_refresh_interval is 0" do
-        SolidObserver.config.ui_refresh_interval = 0
-        expect(render_layout).not_to include('http-equiv="refresh"')
+      it "does not emit a refresh meta tag without opt-in even when interval > 0" do
+        SolidObserver.config.ui_refresh_interval = 30
+        expect(render_layout(auto_refresh: false)).not_to include('http-equiv="refresh"')
       end
 
-      it "emits a refresh meta tag when ui_refresh_interval is greater than 0" do
+      it "emits a refresh meta tag with opt-in and interval > 0" do
         SolidObserver.config.ui_refresh_interval = 30
-        html = render_layout
+        html = render_layout(auto_refresh: true)
         expect(html).to include('http-equiv="refresh"')
         expect(html).to include('content="30"')
+      end
+
+      it "does not emit a refresh meta tag with opt-in when interval is 0" do
+        SolidObserver.config.ui_refresh_interval = 0
+        expect(render_layout(auto_refresh: true)).not_to include('http-equiv="refresh"')
+      end
+
+      it "renders inline script with opt-in and interval > 0" do
+        SolidObserver.config.ui_refresh_interval = 30
+        html = render_layout(auto_refresh: true)
+        expect(html).to include("<script>")
+        expect(html).to include("setInterval")
+        expect(html).to include("30 * 1000")
+        expect(html).to include("meta.remove()")
+        expect(html).to include("fetch(location.href")
+      end
+
+      it "does not render inline script without opt-in" do
+        SolidObserver.config.ui_refresh_interval = 30
+        expect(render_layout(auto_refresh: false)).not_to include("setInterval")
       end
     end
 
