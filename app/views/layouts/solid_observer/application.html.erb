@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SolidObserver — <%= content_for?(:title) ? yield(:title) : "Dashboard" %></title>
   <%= csrf_meta_tags %>
-  <% if SolidObserver.config.ui_refresh_interval.to_i > 0 %>
+  <% if content_for?(:auto_refresh) && SolidObserver.config.ui_refresh_interval.to_i > 0 %>
     <meta http-equiv="refresh" content="<%= SolidObserver.config.ui_refresh_interval %>">
   <% end %>
   <style>
@@ -116,5 +116,26 @@
       <%= yield %>
     </main>
   </div>
+<% if content_for?(:auto_refresh) && SolidObserver.config.ui_refresh_interval.to_i > 0 %>
+<script>
+  (function() {
+    var interval = <%= SolidObserver.config.ui_refresh_interval %> * 1000;
+    var meta = document.querySelector('meta[http-equiv="refresh"]');
+    if (meta) meta.remove();
+    setInterval(function() {
+      fetch(location.href, { headers: { "X-Requested-With": "SolidObserver" } })
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(html, "text/html");
+          var newContent = doc.querySelector(".so-content");
+          var current = document.querySelector(".so-content");
+          if (newContent && current) current.innerHTML = newContent.innerHTML;
+        })
+        .catch(function() {});
+    }, interval);
+  })();
+</script>
+<% end %>
 </body>
 </html>
