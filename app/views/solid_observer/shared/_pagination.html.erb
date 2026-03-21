@@ -1,0 +1,17 @@
+<% if total_pages > 1 %>
+  <div class="so-pagination">
+    <% if page > 1 %>
+      <%= link_to "Previous", "#{path}?page=#{page - 1}", class: "so-btn" %>
+    <% else %>
+      <span class="so-btn" style="opacity: 0.4; cursor: default;">Previous</span>
+    <% end %>
+
+    <span class="so-btn" style="cursor: default;">Page <%= page %> of <%= total_pages %></span>
+
+    <% if page < total_pages %>
+      <%= link_to "Next", "#{path}?page=#{page + 1}", class: "so-btn" %>
+    <% else %>
+      <span class="so-btn" style="opacity: 0.4; cursor: default;">Next</span>
+    <% end %>
+  </div>
+<% end %>
