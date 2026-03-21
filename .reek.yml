@@ -73,6 +73,7 @@ detectors:
       - SolidObserver::Configuration#validate_positive_integer!
       - SolidObserver::Configuration#validate_positive_numeric!
       - SolidObserver::Services::CleanupStorage#format_bytes
+      - SolidObserver::ApplicationHelper#mode_badge
 
   DuplicateMethodCall:
     exclude:
