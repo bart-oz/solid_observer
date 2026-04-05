@@ -1,2 +1,57 @@
-<h1>Jobs</h1>
-<p>Coming soon.</p>
+<% content_for :title, "Jobs" %>
+
+<div class="so-content__header">
+  <h1>Jobs</h1>
+</div>
+
+<%= form_tag jobs_path, method: :get, class: "so-filters" do %>
+  <%= select_tag :status,
+      options_for_select([["Ready", "ready"], ["Scheduled", "scheduled"], ["Claimed", "claimed"], ["Failed", "failed"]], @status),
+      onchange: "this.form.submit()" %>
+
+  <%= select_tag :queue_name,
+      options_for_select([["All Queues", ""]] + @available_queues.map { |q| [q, q] }, @queue_name),
+      onchange: "this.form.submit()" %>
+
+  <%= select_tag :job_class,
+      options_for_select([["All Classes", ""]] + @available_job_classes.map { |c| [c, c] }, @job_class),
+      onchange: "this.form.submit()" %>
+<% end %>
+
+<% if @jobs.any? %>
+  <table class="so-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Class</th>
+        <th>Queue</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @jobs.each do |execution| %>
+        <% job = execution.job %>
+        <tr>
+          <td><%= link_to execution.id, job_path(execution.id) %></td>
+          <td><%= job&.class_name || "N/A" %></td>
+          <td><%= job&.queue_name || execution.try(:queue_name) || "N/A" %></td>
+          <td><%= status_badge(determine_status(execution).downcase) %></td>
+          <td><%= time_ago_in_words(execution.created_at) %> ago</td>
+          <td>
+            <%= link_to "View", job_path(execution.id), class: "so-btn" %>
+            <% if execution.is_a?(SolidQueue::FailedExecution) %>
+              <%= button_to "Retry", retry_job_path(execution.id), method: :post, class: "so-btn so-btn--primary", form: { style: "display: inline" }, data: { confirm: "Retry job #{execution.id}?" } %>
+              <%= button_to "Discard", discard_job_path(execution.id), method: :post, class: "so-btn so-btn--danger", form: { style: "display: inline" }, data: { confirm: "Discard job #{execution.id}? This cannot be undone." } %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <%= render "solid_observer/shared/pagination", page: @page, total_pages: @total_pages, path: jobs_path(status: @status, queue_name: @queue_name, job_class: @job_class) %>
+<% else %>
+  <%= render "solid_observer/shared/empty_state", message: "No jobs found matching the criteria" %>
+<% end %>

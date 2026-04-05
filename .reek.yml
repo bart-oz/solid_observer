@@ -8,6 +8,8 @@ detectors:
   TooManyInstanceVariables:
     exclude:
       - SolidObserver::Configuration
+      - SolidObserver::JobsController
+      - SolidObserver::EventsController
 
   TooManyStatements:
     exclude:
@@ -41,6 +43,8 @@ detectors:
       - SolidObserver::Engine#self.configure_database_connection
       - SolidObserver::Subscriber#subscribe!
       - SolidObserver::Subscriber#self.subscribe!
+      - SolidObserver::EventsController#set_filter_params
+      - SolidObserver::EventsController#build_event_scope
 
   LongParameterList:
     exclude:
@@ -99,6 +103,8 @@ detectors:
   InstanceVariableAssumption:
     exclude:
       - SolidObserver::Subscriber
+      - SolidObserver::JobsController
+      - SolidObserver::EventsController
 
   MissingSafeMethod:
     exclude:

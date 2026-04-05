@@ -4,8 +4,8 @@ source "https://rubygems.org"
 
 gemspec
 
-# Security: Fix Trix stored XSS vulnerability (GHSA-qmpg-8xg6-ph5q)
-gem "action_text-trix", ">= 2.1.17"
+# Security: Fix Trix XSS vulnerability (GHSA-53p3-c7vp-4mcc)
+gem "action_text-trix", ">= 2.1.18"
 
 group :development do
   gem "rake", "~> 13.3.1"
