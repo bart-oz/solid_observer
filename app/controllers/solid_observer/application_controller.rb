@@ -16,7 +16,7 @@ module SolidObserver
     protect_from_forgery with: :exception
     before_action :verify_ui_enabled
     before_action :authenticate
-    helper_method :persistence_mode?, :realtime_mode?
+    helper_method :persistence_mode?, :realtime_mode?, :determine_status, :solid_queue_available?
     layout "solid_observer/application"
 
     private
@@ -39,12 +39,32 @@ module SolidObserver
       redirect_to root_path, alert: "This page is not available in real-time mode."
     end
 
+    def require_solid_queue
+      return if solid_queue_available?
+
+      redirect_to root_path, alert: "SolidQueue is not available."
+    end
+
+    def solid_queue_available?
+      !!(defined?(SolidQueue) && defined?(SolidQueue::Job))
+    end
+
     def persistence_mode?
       SolidObserver.config.persistence_mode?
     end
 
     def realtime_mode?
       SolidObserver.config.realtime_mode?
+    end
+
+    def determine_status(execution)
+      case execution.class.name
+      when "SolidQueue::ReadyExecution" then "Ready"
+      when "SolidQueue::ScheduledExecution" then "Scheduled"
+      when "SolidQueue::ClaimedExecution" then "Claimed"
+      when "SolidQueue::FailedExecution" then "Failed"
+      else "Unknown"
+      end
     end
 
     def credentials_valid?(username, password)

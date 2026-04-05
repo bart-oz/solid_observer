@@ -1,2 +1,47 @@
-<h1>Event</h1>
-<p>Coming soon.</p>
+<% content_for :title, "Event ##{@event.id}" %>
+
+<div class="so-content__header">
+  <h1>Event #<%= @event.id %></h1>
+</div>
+
+<div style="margin-bottom: 1rem;">
+  <%= link_to "← Back to Events", events_path(event_type: params[:event_type], job_class: params[:job_class], queue_name: params[:queue_name], from: params[:from], to: params[:to]), class: "so-btn" %>
+</div>
+
+<div class="so-card" style="margin-bottom: 1.5rem;">
+  <table class="so-table">
+    <tbody>
+      <tr>
+        <td style="width: 150px; font-weight: 600;">Event Type</td>
+        <td><%= @event.event_type.humanize %></td>
+      </tr>
+      <tr>
+        <td style="font-weight: 600;">Job Class</td>
+        <td><code><%= @event.job_class %></code></td>
+      </tr>
+      <tr>
+        <td style="font-weight: 600;">Queue</td>
+        <td><%= @event.queue_name %></td>
+      </tr>
+      <tr>
+        <td style="font-weight: 600;">Correlation ID</td>
+        <td><code><%= @event.correlation_id || "N/A" %></code></td>
+      </tr>
+      <tr>
+        <td style="font-weight: 600;">Duration</td>
+        <td><%= @event.duration ? format_duration(@event.duration) : "N/A" %></td>
+      </tr>
+      <tr>
+        <td style="font-weight: 600;">Recorded At</td>
+        <td><%= @event.recorded_at.strftime("%Y-%m-%d %H:%M:%S.%3N UTC") %></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<% if @metadata %>
+  <div class="so-card">
+    <div class="so-card__label">Metadata</div>
+    <pre style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 4px; overflow-x: auto;"><code><%= JSON.pretty_generate(@metadata) %></code></pre>
+  </div>
+<% end %>

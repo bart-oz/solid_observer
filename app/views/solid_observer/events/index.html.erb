@@ -1,2 +1,53 @@
-<h1>Events</h1>
-<p>Coming soon.</p>
+<% content_for :title, "Events" %>
+
+<div class="so-content__header">
+  <h1>Events</h1>
+</div>
+
+<%= form_tag events_path, method: :get, class: "so-filters" do %>
+  <%= select_tag :event_type,
+      options_for_select([["All Event Types", ""]] + @available_event_types.map { |t| [t.humanize, t] }, @event_type),
+      onchange: "this.form.submit()" %>
+
+  <%= select_tag :job_class,
+      options_for_select([["All Classes", ""]] + @available_job_classes.map { |c| [c, c] }, @job_class),
+      onchange: "this.form.submit()" %>
+
+  <%= select_tag :queue_name,
+      options_for_select([["All Queues", ""]] + @available_queues.map { |q| [q, q] }, @queue_name),
+      onchange: "this.form.submit()" %>
+
+  <%= date_field_tag :from, @from&.strftime("%Y-%m-%d"), placeholder: "From date", onchange: "this.form.submit()" %>
+  <%= date_field_tag :to, @to&.strftime("%Y-%m-%d"), placeholder: "To date", onchange: "this.form.submit()" %>
+
+  <%= link_to "Clear Filters", events_path, class: "so-btn" if @event_type.present? || @job_class.present? || @queue_name.present? || @from || @to %>
+<% end %>
+
+<% if @events.any? %>
+  <table class="so-table">
+    <thead>
+      <tr>
+        <th>Event</th>
+        <th>Job Class</th>
+        <th>Queue</th>
+        <th>Duration</th>
+        <th>Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @events.each do |event| %>
+        <tr>
+          <td><%= link_to event.event_type.humanize, event_path(event.id) %></td>
+          <td><%= event.job_class %></td>
+          <td><%= event.queue_name %></td>
+          <td><%= event.duration ? format_duration(event.duration) : "—" %></td>
+          <td><%= time_ago_in_words(event.recorded_at) %> ago</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <%= render "solid_observer/shared/pagination", page: @page, total_pages: @total_pages, path: events_path(event_type: @event_type, job_class: @job_class, queue_name: @queue_name, from: @from, to: @to) %>
+<% else %>
+  <%= render "solid_observer/shared/empty_state", message: "No events found matching the criteria" %>
+<% end %>
