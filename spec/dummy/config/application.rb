@@ -10,7 +10,7 @@ require "solid_observer"
 
 module Dummy
   class Application < Rails::Application
-    config.load_defaults 8.1
+    config.load_defaults Rails::VERSION::STRING.to_f
 
     # Dummy app only needs what the engine provides
     config.eager_load = false
