@@ -21,6 +21,7 @@ RSpec.describe SolidObserver::DashboardController do
     end
 
     it "assigns @stats from QueueStats.snapshot" do
+      SolidObserver.config.storage_mode = :realtime
       controller.send(:index)
       expect(controller.instance_variable_get(:@stats)).to eq(stats)
     end
