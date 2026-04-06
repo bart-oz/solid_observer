@@ -36,14 +36,14 @@
         <tr>
           <td><%= link_to execution.id, job_path(execution.id) %></td>
           <td><%= job&.class_name || "N/A" %></td>
-          <td><%= job&.queue_name || execution.try(:queue_name) || "N/A" %></td>
+          <td><%= job&.queue_name || execution&.queue_name || "N/A" %></td>
           <td><%= status_badge(determine_status(execution)) %></td>
           <td><%= time_ago_in_words(execution.created_at) %> ago</td>
           <td>
             <%= link_to "View", job_path(execution.id), class: "so-btn" %>
             <% if execution.is_a?(SolidQueue::FailedExecution) %>
-              <%= button_to "Retry", retry_job_path(execution.id), method: :post, class: "so-btn so-btn--primary", form: { style: "display: inline" }, data: { confirm: "Retry job #{execution.id}?" } %>
-              <%= button_to "Discard", discard_job_path(execution.id), method: :post, class: "so-btn so-btn--danger", form: { style: "display: inline" }, data: { confirm: "Discard job #{execution.id}? This cannot be undone." } %>
+              <%= button_to "Retry", retry_job_path(execution.id), method: :post, class: "so-btn so-btn--primary", form: { class: "so-form--inline" }, data: { confirm: "Retry job #{execution.id}?" } %>
+              <%= button_to "Discard", discard_job_path(execution.id), method: :post, class: "so-btn so-btn--danger", form: { class: "so-form--inline" }, data: { confirm: "Discard job #{execution.id}? This cannot be undone." } %>
             <% end %>
           </td>
         </tr>

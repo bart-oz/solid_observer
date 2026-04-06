@@ -77,6 +77,7 @@ detectors:
       - SolidObserver::Configuration#validate_positive_integer!
       - SolidObserver::Configuration#validate_positive_numeric!
       - SolidObserver::Services::CleanupStorage#format_bytes
+      - SolidObserver::ApplicationHelper#format_bytes
       - SolidObserver::ApplicationHelper#mode_badge
 
   DuplicateMethodCall:
@@ -103,6 +104,7 @@ detectors:
   InstanceVariableAssumption:
     exclude:
       - SolidObserver::Subscriber
+      - SolidObserver::ApplicationController
       - SolidObserver::JobsController
       - SolidObserver::EventsController
 
@@ -116,6 +118,7 @@ detectors:
     exclude:
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CLI::Jobs
+      - SolidObserver::JobsController
 
   UncommunicativeVariableName:
     accept:

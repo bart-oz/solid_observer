@@ -6,14 +6,8 @@ module SolidObserver
       @stats = QueueStats.snapshot
 
       if persistence_mode?
-        @recent_events = QueueEvent
-          .order(recorded_at: :desc)
-          .limit(10)
-
-        @recent_failures = QueueEvent
-          .by_event_type("job_failed")
-          .order(recorded_at: :desc)
-          .limit(5)
+        @recent_events = QueueEvent.recent(10)
+        @recent_failures = QueueEvent.recent_failures(5)
       end
     end
   end

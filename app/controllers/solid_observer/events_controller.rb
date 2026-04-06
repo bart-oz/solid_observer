@@ -45,10 +45,10 @@ module SolidObserver
     end
 
     def load_available_options
-      distinct_events = SolidObserver::QueueEvent.distinct
+      scope = SolidObserver::QueueEvent.distinct
       @available_event_types = SolidObserver::QueueEvent::EVENT_TYPES
-      @available_job_classes = distinct_events.pluck(:job_class).compact.sort
-      @available_queues = distinct_events.pluck(:queue_name).compact.sort
+      @available_job_classes = scope.pluck(:job_class).compact.sort
+      @available_queues = scope.pluck(:queue_name).compact.sort
     end
 
     def set_event

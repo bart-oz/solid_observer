@@ -57,14 +57,15 @@ module SolidObserver
       SolidObserver.config.realtime_mode?
     end
 
+    EXECUTION_STATUS_MAP = {
+      "SolidQueue::ReadyExecution" => "ready",
+      "SolidQueue::ScheduledExecution" => "scheduled",
+      "SolidQueue::ClaimedExecution" => "claimed",
+      "SolidQueue::FailedExecution" => "failed"
+    }.freeze
+
     def determine_status(execution)
-      case execution.class.name
-      when "SolidQueue::ReadyExecution" then "ready"
-      when "SolidQueue::ScheduledExecution" then "scheduled"
-      when "SolidQueue::ClaimedExecution" then "claimed"
-      when "SolidQueue::FailedExecution" then "failed"
-      else "unknown"
-      end
+      EXECUTION_STATUS_MAP.fetch(execution.class.name, "unknown")
     end
 
     def normalize_page

@@ -33,15 +33,8 @@ RSpec.describe SolidObserver::DashboardController do
       let(:failures_scope) { double("failures_scope") }
 
       before do
-        ordered = double("ordered")
-        allow(SolidObserver::QueueEvent).to receive(:order).with(recorded_at: :desc).and_return(ordered)
-        allow(ordered).to receive(:limit).with(10).and_return(events_scope)
-
-        by_type = double("by_type")
-        allow(SolidObserver::QueueEvent).to receive(:by_event_type).with("job_failed").and_return(by_type)
-        ordered2 = double("ordered2")
-        allow(by_type).to receive(:order).with(recorded_at: :desc).and_return(ordered2)
-        allow(ordered2).to receive(:limit).with(5).and_return(failures_scope)
+        allow(SolidObserver::QueueEvent).to receive(:recent).with(10).and_return(events_scope)
+        allow(SolidObserver::QueueEvent).to receive(:recent_failures).with(5).and_return(failures_scope)
       end
 
       it "assigns @recent_events" do

@@ -19,5 +19,7 @@ module SolidObserver
     scope :by_event_type, ->(event_type) { where(event_type: event_type) }
     scope :since, ->(time) { where("recorded_at >= ?", time) }
     scope :before, ->(time) { where("recorded_at < ?", time) }
+    scope :recent, ->(limit = 10) { order(recorded_at: :desc).limit(limit) }
+    scope :recent_failures, ->(limit = 5) { by_event_type("job_failed").order(recorded_at: :desc).limit(limit) }
   end
 end

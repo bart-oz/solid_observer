@@ -1,4 +1,4 @@
-<% local_assigns[:color] ||= nil %>
+<% color = local_assigns[:color] %>
 <div class="so-card">
   <div class="so-card__label"><%= label %></div>
   <div class="so-card__value"<% if color %> style="color: var(--so-<%= color %>)"<% end %>>
