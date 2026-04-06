@@ -18,8 +18,8 @@ RSpec.describe SolidObserver::ApplicationHelper do
       expect(format_bytes(0)).to eq("0 B")
     end
 
-    it "returns '0 B' for values under 1 KB" do
-      expect(format_bytes(500)).to eq("0 B")
+    it "returns byte count for values under 1 KB" do
+      expect(format_bytes(500)).to eq("500 B")
     end
 
     it "formats KB" do

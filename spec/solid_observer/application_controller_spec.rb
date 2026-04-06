@@ -151,6 +151,141 @@ RSpec.describe SolidObserver::ApplicationController do
       end
     end
   end
+  describe "#require_solid_queue" do
+    context "when SolidQueue is available" do
+      before do
+        stub_const("SolidQueue", Module.new)
+        stub_const("SolidQueue::Job", Class.new)
+      end
+
+      it "does not redirect" do
+        expect(controller).not_to receive(:redirect_to)
+        controller.send(:require_solid_queue)
+      end
+    end
+
+    context "when SolidQueue is not available" do
+      it "redirects to root with an alert" do
+        controller.define_singleton_method(:root_path) { "/solid_observer" }
+        expect(controller).to receive(:redirect_to).with(
+          "/solid_observer",
+          alert: "SolidQueue is not available."
+        )
+        controller.send(:require_solid_queue)
+      end
+    end
+  end
+
+  describe "#solid_queue_available?" do
+    context "when SolidQueue and SolidQueue::Job are defined" do
+      before do
+        stub_const("SolidQueue", Module.new)
+        stub_const("SolidQueue::Job", Class.new)
+      end
+
+      it "returns true" do
+        expect(controller.send(:solid_queue_available?)).to be true
+      end
+    end
+
+    context "when SolidQueue is not defined" do
+      it "returns false" do
+        hide_const("SolidQueue") if defined?(SolidQueue)
+        expect(controller.send(:solid_queue_available?)).to be false
+      end
+    end
+  end
+
+  describe "#determine_status" do
+    before do
+      stub_const("SolidQueue::ReadyExecution", Class.new)
+      stub_const("SolidQueue::ScheduledExecution", Class.new)
+      stub_const("SolidQueue::ClaimedExecution", Class.new)
+      stub_const("SolidQueue::FailedExecution", Class.new)
+    end
+
+    it "returns 'ready' for ReadyExecution" do
+      execution = SolidQueue::ReadyExecution.new
+      expect(controller.send(:determine_status, execution)).to eq("ready")
+    end
+
+    it "returns 'scheduled' for ScheduledExecution" do
+      execution = SolidQueue::ScheduledExecution.new
+      expect(controller.send(:determine_status, execution)).to eq("scheduled")
+    end
+
+    it "returns 'claimed' for ClaimedExecution" do
+      execution = SolidQueue::ClaimedExecution.new
+      expect(controller.send(:determine_status, execution)).to eq("claimed")
+    end
+
+    it "returns 'failed' for FailedExecution" do
+      execution = SolidQueue::FailedExecution.new
+      expect(controller.send(:determine_status, execution)).to eq("failed")
+    end
+
+    it "returns 'unknown' for unrecognized class" do
+      expect(controller.send(:determine_status, Object.new)).to eq("unknown")
+    end
+  end
+
+  describe "#normalize_page" do
+    it "sets @page to 1 when below 1" do
+      controller.instance_variable_set(:@page, 0)
+      controller.instance_variable_set(:@total_pages, 5)
+      controller.send(:normalize_page)
+      expect(controller.instance_variable_get(:@page)).to eq(1)
+    end
+
+    it "sets @page to 1 when above total_pages" do
+      controller.instance_variable_set(:@page, 10)
+      controller.instance_variable_set(:@total_pages, 3)
+      controller.send(:normalize_page)
+      expect(controller.instance_variable_get(:@page)).to eq(1)
+    end
+
+    it "does not change @page when within valid range" do
+      controller.instance_variable_set(:@page, 2)
+      controller.instance_variable_set(:@total_pages, 5)
+      controller.send(:normalize_page)
+      expect(controller.instance_variable_get(:@page)).to eq(2)
+    end
+
+    it "does not clamp when total_pages is 0" do
+      controller.instance_variable_set(:@page, 1)
+      controller.instance_variable_set(:@total_pages, 0)
+      controller.send(:normalize_page)
+      expect(controller.instance_variable_get(:@page)).to eq(1)
+    end
+  end
+
+  describe "#paginate_scope" do
+    let(:scope) { double("scope", count: 60) }
+
+    before { controller.instance_variable_set(:@page, 2) }
+
+    it "sets @total_count from scope.count" do
+      controller.send(:paginate_scope, scope, per_page: 25)
+      expect(controller.instance_variable_get(:@total_count)).to eq(60)
+    end
+
+    it "sets @total_pages based on count and per_page" do
+      controller.send(:paginate_scope, scope, per_page: 25)
+      expect(controller.instance_variable_get(:@total_pages)).to eq(3)
+    end
+
+    it "returns the correct offset for page 2" do
+      offset = controller.send(:paginate_scope, scope, per_page: 25)
+      expect(offset).to eq(25)
+    end
+
+    it "returns offset 0 for page 1" do
+      controller.instance_variable_set(:@page, 1)
+      offset = controller.send(:paginate_scope, scope, per_page: 25)
+      expect(offset).to eq(0)
+    end
+  end
+
   describe "API-only app compatibility" do
     it "detects an API-only base controller correctly" do
       stub_const("FakeApiController", Class.new(ActionController::API))

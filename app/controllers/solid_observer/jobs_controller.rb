@@ -55,16 +55,8 @@ module SolidObserver
     end
 
     def paginate_jobs(scope)
-      @total_count = scope.count
-      @total_pages = (@total_count.to_f / PER_PAGE).ceil
-      normalize_page
-      offset = (@page - 1) * PER_PAGE
+      offset = paginate_scope(scope, per_page: PER_PAGE)
       @jobs = scope.order(created_at: :desc).limit(PER_PAGE).offset(offset).includes(:job).to_a
-    end
-
-    def normalize_page
-      @page = 1 if @page < 1
-      @page = 1 if @page > @total_pages && @total_pages > 0
     end
 
     def load_available_options
@@ -96,13 +88,13 @@ module SolidObserver
       return [] unless defined?(SolidQueue::Queue)
 
       SolidQueue::Queue.all.map(&:name)
-    rescue
+    rescue ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished
       []
     end
 
     def fetch_available_job_classes
       SolidQueue::Job.distinct.pluck(:class_name).compact.sort
-    rescue
+    rescue ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished
       []
     end
 

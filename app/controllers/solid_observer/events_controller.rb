@@ -40,16 +40,8 @@ module SolidObserver
     end
 
     def paginate_events(scope)
-      @total_count = scope.count
-      @total_pages = (@total_count.to_f / PER_PAGE).ceil
-      normalize_page
-      offset = (@page - 1) * PER_PAGE
+      offset = paginate_scope(scope, per_page: PER_PAGE)
       @events = scope.limit(PER_PAGE).offset(offset)
-    end
-
-    def normalize_page
-      @page = 1 if @page < 1
-      @page = 1 if @page > @total_pages && @total_pages > 0
     end
 
     def load_available_options
@@ -61,7 +53,7 @@ module SolidObserver
 
     def set_event
       @event = SolidObserver::QueueEvent.find_by(id: params[:id])
-      redirect_to events_path, alert: "Event not found" unless @event
+      redirect_to(events_path, alert: "Event not found") and return unless @event
     end
 
     def parse_date(date_string)

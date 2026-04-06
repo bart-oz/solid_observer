@@ -47,7 +47,7 @@
     </tbody>
   </table>
 
-  <%= render "solid_observer/shared/pagination", page: @page, total_pages: @total_pages, path: events_path(event_type: @event_type, job_class: @job_class, queue_name: @queue_name, from: @from, to: @to) %>
+  <%= render "solid_observer/shared/pagination", page: @page, total_pages: @total_pages %>
 <% else %>
   <%= render "solid_observer/shared/empty_state", message: "No events found matching the criteria" %>
 <% end %>

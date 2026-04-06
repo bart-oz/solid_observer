@@ -146,6 +146,7 @@ detectors:
   TooManyMethods:
     exclude:
       - SolidObserver::CLI::Jobs
+      - SolidObserver::ApplicationController
 
 exclude_paths:
   - spec/

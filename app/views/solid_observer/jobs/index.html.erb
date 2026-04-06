@@ -37,7 +37,7 @@
           <td><%= link_to execution.id, job_path(execution.id) %></td>
           <td><%= job&.class_name || "N/A" %></td>
           <td><%= job&.queue_name || execution.try(:queue_name) || "N/A" %></td>
-          <td><%= status_badge(determine_status(execution).downcase) %></td>
+          <td><%= status_badge(determine_status(execution)) %></td>
           <td><%= time_ago_in_words(execution.created_at) %> ago</td>
           <td>
             <%= link_to "View", job_path(execution.id), class: "so-btn" %>
@@ -51,7 +51,7 @@
     </tbody>
   </table>
 
-  <%= render "solid_observer/shared/pagination", page: @page, total_pages: @total_pages, path: jobs_path(status: @status, queue_name: @queue_name, job_class: @job_class) %>
+  <%= render "solid_observer/shared/pagination", page: @page, total_pages: @total_pages %>
 <% else %>
   <%= render "solid_observer/shared/empty_state", message: "No jobs found matching the criteria" %>
 <% end %>
