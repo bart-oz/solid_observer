@@ -18,7 +18,7 @@ module SolidObserver
     }.freeze
 
     def format_bytes(bytes)
-      return "0 B" if bytes.to_i.zero?
+      return "0 B" if bytes.to_f.zero?
 
       if bytes < KB
         "#{bytes.to_i} B"

@@ -23,8 +23,8 @@ module SolidObserver
 
     def retry
       id = params[:id]
-      execution = SolidQueue::FailedExecution.find_by(id: id)
-      return redirect_to jobs_path, alert: "Failed job not found" unless execution
+      execution = find_failed_execution(id)
+      return unless execution
 
       execution.retry
       redirect_to jobs_path(status: "failed"), notice: "Job #{id} queued for retry"
@@ -32,8 +32,8 @@ module SolidObserver
 
     def discard
       id = params[:id]
-      execution = SolidQueue::FailedExecution.find_by(id: id)
-      return redirect_to jobs_path, alert: "Failed job not found" unless execution
+      execution = find_failed_execution(id)
+      return unless execution
 
       execution.discard
       redirect_to jobs_path(status: "failed"), notice: "Job #{id} discarded"
@@ -98,11 +98,23 @@ module SolidObserver
       []
     end
 
+    def find_failed_execution(id)
+      execution = SolidQueue::FailedExecution.find_by(id: id)
+      redirect_to jobs_path, alert: "Failed job not found" unless execution
+      execution
+    end
+
     def find_execution(id)
-      SolidQueue::ReadyExecution.find_by(id: id) ||
-        SolidQueue::ScheduledExecution.find_by(id: id) ||
-        SolidQueue::ClaimedExecution.find_by(id: id) ||
-        SolidQueue::FailedExecution.find_by(id: id)
+      [
+        SolidQueue::ReadyExecution,
+        SolidQueue::ScheduledExecution,
+        SolidQueue::ClaimedExecution,
+        SolidQueue::FailedExecution
+      ].each do |type|
+        execution = type.find_by(id: id)
+        return execution if execution
+      end
+      nil
     end
   end
 end

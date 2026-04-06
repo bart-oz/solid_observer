@@ -5,7 +5,7 @@
 </div>
 
 <% if @current_storage %>
-  <div class="so-stat-cards" style="margin-bottom: 2rem;">
+  <div class="so-stat-cards">
     <%= render "solid_observer/shared/stat_card", label: "Database Size", value: format_bytes(@current_storage.db_size_bytes) %>
     <%= render "solid_observer/shared/stat_card", label: "Event Count", value: format_number(@current_storage.event_count) %>
     <%= render "solid_observer/shared/stat_card", label: "Last Updated", value: time_ago_in_words(@current_storage.recorded_at) + " ago" %>
@@ -14,7 +14,7 @@
   <% if @storage_history.any? %>
     <div class="so-card">
       <div class="so-card__label">Recent Snapshots</div>
-      <table class="so-table" style="margin-top: 1rem;">
+      <table class="so-table so-table--card">
         <thead>
           <tr>
             <th>Time</th>

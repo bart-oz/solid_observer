@@ -249,4 +249,37 @@ RSpec.describe "SolidObserver application layout" do
       end
     end
   end
+
+  describe "confirmation dialog handler" do
+    it "includes a data-confirm submit handler script" do
+      expect(template_source).to include('querySelector("[data-confirm]")')
+    end
+
+    it "shows window.confirm with the message" do
+      expect(template_source).to include("window.confirm")
+    end
+
+    it "prevents form submission when user cancels" do
+      expect(template_source).to include("event.preventDefault()")
+    end
+  end
+
+  describe "responsive design" do
+    it "includes mobile viewport meta tag" do
+      expect(template_source).to include('name="viewport"')
+      expect(template_source).to include("width=device-width")
+    end
+
+    it "includes mobile media query breakpoint" do
+      expect(template_source).to include("@media (max-width: 768px)")
+    end
+
+    it "makes tables horizontally scrollable on mobile" do
+      expect(template_source).to include("overflow-x: auto")
+    end
+
+    it "collapses sidebar to single column on mobile" do
+      expect(template_source).to include("grid-template-columns: 1fr")
+    end
+  end
 end

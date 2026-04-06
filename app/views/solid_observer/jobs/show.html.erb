@@ -4,40 +4,40 @@
   <h1>Job #<%= @execution.id %></h1>
 </div>
 
-<div style="margin-bottom: 1rem;">
+<div class="so-back-link">
   <%= link_to "← Back to Jobs", jobs_path(status: @status), class: "so-btn" %>
 </div>
 
-<div class="so-card" style="margin-bottom: 1.5rem;">
-  <table class="so-table">
+<div class="so-card so-card--spaced">
+  <table class="so-table so-details">
     <tbody>
       <tr>
-        <td style="width: 150px; font-weight: 600;">Job Class</td>
+        <td>Job Class</td>
         <td><code><%= @job&.class_name || "N/A" %></code></td>
       </tr>
       <tr>
-        <td style="font-weight: 600;">Job ID</td>
+        <td>Job ID</td>
         <td><%= @job&.id || "N/A" %></td>
       </tr>
       <tr>
-        <td style="font-weight: 600;">Status</td>
+        <td>Status</td>
         <td><%= status_badge(@status) %></td>
       </tr>
       <tr>
-        <td style="font-weight: 600;">Queue</td>
-        <td><%= @job&.queue_name || @execution.try(:queue_name) || "N/A" %></td>
+        <td>Queue</td>
+        <td><%= @job&.queue_name || @execution&.queue_name || "N/A" %></td>
       </tr>
       <tr>
-        <td style="font-weight: 600;">Priority</td>
-        <td><%= @execution.try(:priority) || @job&.priority || "N/A" %></td>
+        <td>Priority</td>
+        <td><%= @execution&.priority || @job&.priority || "N/A" %></td>
       </tr>
       <tr>
-        <td style="font-weight: 600;">Created At</td>
+        <td>Created At</td>
         <td><%= @execution.created_at.strftime("%Y-%m-%d %H:%M:%S UTC") %></td>
       </tr>
       <% if @execution.respond_to?(:scheduled_at) && @execution.scheduled_at %>
         <tr>
-          <td style="font-weight: 600;">Scheduled At</td>
+          <td>Scheduled At</td>
           <td><%= @execution.scheduled_at.strftime("%Y-%m-%d %H:%M:%S UTC") %></td>
         </tr>
       <% end %>
@@ -46,32 +46,32 @@
 </div>
 
 <% if @job&.arguments %>
-  <div class="so-card" style="margin-bottom: 1.5rem;">
+  <div class="so-card so-card--spaced">
     <div class="so-card__label">Arguments</div>
-    <pre style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 4px; overflow-x: auto;"><code><%= JSON.pretty_generate(@job.arguments) rescue @job.arguments.to_s %></code></pre>
+    <pre class="so-pre"><code><%= JSON.pretty_generate(@job.arguments) rescue @job.arguments.to_s %></code></pre>
   </div>
 <% end %>
 
 <% if @execution.is_a?(SolidQueue::FailedExecution) && @execution.error %>
-  <div class="so-card" style="border-left: 4px solid var(--so-danger);">
-    <div class="so-card__label" style="color: var(--so-danger);">Error Details</div>
-    <table class="so-table" style="margin: 1rem 0;">
+  <div class="so-card so-card--error">
+    <div class="so-card__label so-card__label--danger">Error Details</div>
+    <table class="so-table so-details so-table--card">
       <tbody>
         <tr>
-          <td style="width: 150px; font-weight: 600;">Error Class</td>
+          <td>Error Class</td>
           <td><code><%= @execution.error.exception_class %></code></td>
         </tr>
         <tr>
-          <td style="font-weight: 600;">Message</td>
+          <td>Message</td>
           <td><%= @execution.error.message %></td>
         </tr>
       </tbody>
     </table>
     <div class="so-card__label">Backtrace</div>
-    <pre style="margin-top: 0.5rem; padding: 1rem; background: #fee2e2; border-radius: 4px; overflow-x: auto; font-size: 0.8rem;"><code><%= @execution.error.backtrace&.first(20)&.join("\n") || "No backtrace available" %></code></pre>
+    <pre class="so-pre so-pre--error"><code><%= @execution.error.backtrace&.first(20)&.join("\n") || "No backtrace available" %></code></pre>
   </div>
 
-  <div style="margin-top: 1.5rem;">
+  <div class="so-actions">
     <%= button_to "Retry Job", retry_job_path(@execution.id), method: :post, class: "so-btn so-btn--primary", data: { confirm: "Retry job #{@execution.id}?" } %>
     <%= button_to "Discard Job", discard_job_path(@execution.id), method: :post, class: "so-btn so-btn--danger", data: { confirm: "Discard job #{@execution.id}? This cannot be undone." } %>
   </div>
