@@ -59,12 +59,24 @@ module SolidObserver
 
     def determine_status(execution)
       case execution.class.name
-      when "SolidQueue::ReadyExecution" then "Ready"
-      when "SolidQueue::ScheduledExecution" then "Scheduled"
-      when "SolidQueue::ClaimedExecution" then "Claimed"
-      when "SolidQueue::FailedExecution" then "Failed"
-      else "Unknown"
+      when "SolidQueue::ReadyExecution" then "ready"
+      when "SolidQueue::ScheduledExecution" then "scheduled"
+      when "SolidQueue::ClaimedExecution" then "claimed"
+      when "SolidQueue::FailedExecution" then "failed"
+      else "unknown"
       end
+    end
+
+    def normalize_page
+      @page = 1 if @page < 1
+      @page = 1 if @page > @total_pages && @total_pages > 0
+    end
+
+    def paginate_scope(scope, per_page:)
+      @total_count = scope.count
+      @total_pages = (@total_count.to_f / per_page).ceil
+      normalize_page
+      (@page - 1) * per_page
     end
 
     def credentials_valid?(username, password)

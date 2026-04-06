@@ -6,7 +6,7 @@ SimpleCov.start do
   add_filter "/spec/"
   add_filter "/lib/solid_observer/version.rb"
   add_filter "/db/"
-  track_files "lib/**/*.rb"
+  track_files "{lib,app}/**/*.rb"
   minimum_coverage 80
   minimum_coverage_by_file 70
 end
@@ -55,9 +55,7 @@ RSpec.configure do |config|
   config.disable_monkey_patching!
   config.warnings = true
 
-  if config.files_to_run.one?
-    config.default_formatter = "doc"
-  end
+  config.default_formatter = "doc" if config.files_to_run.one?
 
   config.order = :random
   Kernel.srand config.seed

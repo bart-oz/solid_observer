@@ -21,7 +21,7 @@ module SolidObserver
       return "0 B" if bytes.to_i.zero?
 
       if bytes < KB
-        "0 B"
+        "#{bytes.to_i} B"
       elsif bytes < MB
         "#{"%.1f" % (bytes / KB.to_f)} KB"
       elsif bytes < GB
