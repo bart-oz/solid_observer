@@ -31,8 +31,10 @@ RSpec.describe SolidObserver::QueueStats do
   end
 
   describe ".snapshot" do
-    it "creates an instance and calls #snapshot" do
-      allow_any_instance_of(described_class).to receive(:snapshot).and_return({ready: 0})
+    it "delegates to a new instance" do
+      instance = instance_double(described_class, snapshot: {ready: 0})
+      allow(described_class).to receive(:new).and_return(instance)
+
       expect(described_class.snapshot).to eq({ready: 0})
     end
   end
@@ -156,81 +158,6 @@ RSpec.describe SolidObserver::QueueStats do
           available: false,
           error: "Database connection failed"
         )
-      end
-    end
-  end
-
-  describe "private methods" do
-    let(:queue_stats) { described_class.new }
-
-    describe "#ready_count" do
-      it "queries ReadyExecution count" do
-        ready_execution = double("ReadyExecution", count: 15)
-        stub_const("SolidQueue::ReadyExecution", ready_execution)
-
-        expect(queue_stats.send(:ready_count)).to eq(15)
-      end
-    end
-
-    describe "#scheduled_count" do
-      it "queries ScheduledExecution count" do
-        scheduled_execution = double("ScheduledExecution", count: 20)
-        stub_const("SolidQueue::ScheduledExecution", scheduled_execution)
-
-        expect(queue_stats.send(:scheduled_count)).to eq(20)
-      end
-    end
-
-    describe "#claimed_count" do
-      it "queries ClaimedExecution count" do
-        claimed_execution = double("ClaimedExecution", count: 7)
-        stub_const("SolidQueue::ClaimedExecution", claimed_execution)
-
-        expect(queue_stats.send(:claimed_count)).to eq(7)
-      end
-    end
-
-    describe "#failed_count" do
-      it "queries FailedExecution count" do
-        failed_execution = double("FailedExecution", count: 4)
-        stub_const("SolidQueue::FailedExecution", failed_execution)
-
-        expect(queue_stats.send(:failed_count)).to eq(4)
-      end
-    end
-
-    describe "#active_workers_count" do
-      it "queries Process count for Workers" do
-        process_model = double("Process")
-        stub_const("SolidQueue::Process", process_model)
-        allow(process_model).to receive(:where).with(kind: "Worker").and_return(double(count: 6))
-
-        expect(queue_stats.send(:active_workers_count)).to eq(6)
-      end
-
-      it "returns 0 when Process model is not defined" do
-        hide_const("SolidQueue::Process")
-
-        expect(queue_stats.send(:active_workers_count)).to eq(0)
-      end
-    end
-
-    describe "#queue_depths" do
-      it "groups ReadyExecution by queue_name and counts" do
-        ready_execution = double("ReadyExecution")
-        stub_const("SolidQueue::ReadyExecution", ready_execution)
-
-        group_double = double
-        allow(ready_execution).to receive(:group).with(:queue_name).and_return(group_double)
-        allow(group_double).to receive(:count).and_return({"default" => 10, "mailers" => 5, "urgent" => 2})
-
-        expect(queue_stats.send(:queue_depths)).to eq({"default" => 10, "mailers" => 5, "urgent" => 2})
-      end
-
-      it "returns empty hash when ReadyExecution is not defined" do
-        hide_const("SolidQueue::ReadyExecution")
-
-        expect(queue_stats.send(:queue_depths)).to eq({})
       end
     end
   end

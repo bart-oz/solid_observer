@@ -74,12 +74,14 @@ RSpec.describe SolidObserver::Configuration do
   end
 
   it "disables UI in production" do
-    allow_any_instance_of(described_class).to receive(:production?).and_return(true)
+    allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
+
     expect(described_class.new.ui_enabled).to be false
   end
 
   it "enables UI outside production" do
-    allow_any_instance_of(described_class).to receive(:production?).and_return(false)
+    allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("test"))
+
     expect(described_class.new.ui_enabled).to be true
   end
 

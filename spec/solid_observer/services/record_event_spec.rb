@@ -72,11 +72,13 @@ RSpec.describe SolidObserver::Services::RecordEvent do
         ))
       end
 
-      it "includes metadata as JSON" do
+      it "includes metadata as JSON with job fields" do
         service.call
 
         expect(buffer).to have_received(:push).with(hash_including(
-          metadata: be_a(String)
+          job_class: "TestJob",
+          queue_name: "default",
+          metadata: satisfy { |m| JSON.parse(m).slice("job_id", "arguments", "executions", "priority") == {"job_id" => "test-job-123", "arguments" => [1, 2, 3], "executions" => 1, "priority" => 10} }
         ))
       end
 
@@ -90,6 +92,48 @@ RSpec.describe SolidObserver::Services::RecordEvent do
           metric: "jobs_completed",
           period: current_time.beginning_of_hour
         )
+      end
+    end
+
+    context "with exception data in payload" do
+      let(:event_payload) do
+        {
+          job: {job_id: "test-job-123", class_name: "TestJob", queue_name: "default"},
+          exception_object: StandardError.new("Something went wrong")
+        }
+      end
+
+      before do
+        allow(service).to receive(:rand).and_return(0.5)
+        allow(SolidObserver.config).to receive(:sampling_rate).and_return(1.0)
+      end
+
+      it "includes exception class and message in metadata" do
+        service.call
+
+        expect(buffer).to have_received(:push).with(hash_including(
+          metadata: satisfy { |m|
+            parsed = JSON.parse(m)
+            parsed["exception_class"] == "StandardError" && parsed["exception_message"] == "Something went wrong"
+          }
+        ))
+      end
+    end
+
+    context "with minimal empty payload" do
+      let(:event_payload) { {} }
+
+      before do
+        allow(service).to receive(:rand).and_return(0.5)
+        allow(SolidObserver.config).to receive(:sampling_rate).and_return(1.0)
+      end
+
+      it "handles missing job data gracefully" do
+        service.call
+
+        expect(buffer).to have_received(:push).with(hash_including(
+          metadata: satisfy { |m| JSON.parse(m) == {} }
+        ))
       end
     end
 
@@ -173,61 +217,6 @@ RSpec.describe SolidObserver::Services::RecordEvent do
         expect(Rails.logger).to have_received(:warn).with(
           "[SolidObserver] Metric increment failed: Metric error"
         )
-      end
-    end
-  end
-
-  describe "#build_event_data" do
-    subject(:service) { described_class.new(event, event_type, buffer, metric_name) }
-
-    it "includes correlation_id from resolver" do
-      event_data = service.send(:build_event_data)
-
-      expect(event_data[:correlation_id]).to eq("correlation-123")
-      expect(SolidObserver::CorrelationIdResolver).to have_received(:resolve).with(event)
-    end
-
-    it "extracts job metadata correctly" do
-      event_data = service.send(:build_event_data)
-      metadata = JSON.parse(event_data[:metadata])
-
-      # Top-level columns for efficient querying
-      expect(event_data[:job_class]).to eq("TestJob")
-      expect(event_data[:queue_name]).to eq("default")
-
-      # Remaining metadata in JSON
-      expect(metadata["job_id"]).to eq("test-job-123")
-      expect(metadata["arguments"]).to eq([1, 2, 3])
-      expect(metadata["executions"]).to eq(1)
-      expect(metadata["priority"]).to eq(10)
-    end
-
-    context "with exception data" do
-      let(:exception_obj) { StandardError.new("Something went wrong") }
-      let(:event_payload) do
-        {
-          job: {job_id: "test-job-123", class_name: "TestJob", queue_name: "default"},
-          exception_object: exception_obj
-        }
-      end
-
-      it "includes exception information" do
-        event_data = service.send(:build_event_data)
-        metadata = JSON.parse(event_data[:metadata])
-
-        expect(metadata["exception_class"]).to eq("StandardError")
-        expect(metadata["exception_message"]).to eq("Something went wrong")
-      end
-    end
-
-    context "with minimal payload" do
-      let(:event_payload) { {} }
-
-      it "handles missing job data gracefully" do
-        event_data = service.send(:build_event_data)
-        metadata = JSON.parse(event_data[:metadata])
-
-        expect(metadata).to eq({})
       end
     end
   end
