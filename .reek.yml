@@ -10,6 +10,7 @@ detectors:
       - SolidObserver::Configuration
       - SolidObserver::JobsController
       - SolidObserver::EventsController
+      - SolidObserver::QueueEventBuffer
 
   TooManyStatements:
     exclude:
@@ -22,7 +23,9 @@ detectors:
       - CreateSolidObserverStorageInfo#change
       - SolidObserver::QueueEventBuffer#flush!
       - SolidObserver::QueueEventBuffer#push
-      - SolidObserver::QueueEventBuffer#schedule_flush
+      - SolidObserver::QueueEventBuffer#replace_timer_if_stopped
+      - SolidObserver::QueueEventBuffer#requeue_failed_events
+      - SolidObserver::QueueEventBuffer#trim_events_for_capacity
       - SolidObserver::Services::FlushEventBuffer#call
       - SolidObserver::Services::FlushEventBuffer#retry_with_smaller_batches
       - SolidObserver::Services::RecordEvent#extract_metadata
@@ -88,6 +91,8 @@ detectors:
       - SolidObserver::Services::CleanupStorage#check_storage_warnings
       - SolidObserver::Services::CleanupStorage#vacuum_database
       - SolidObserver::QueueEventBuffer#flush!
+      - SolidObserver::QueueEventBuffer#replace_timer_if_stopped
+      - SolidObserver::QueueEventBuffer#record_flush_failure
       - SolidObserver::Services::RecordEvent#extract_metadata
       - SolidObserver::Services::RecordEvent#handle_error
       - SolidObserver::Services::FlushEventBuffer#retry_with_smaller_batches
@@ -150,6 +155,7 @@ detectors:
     exclude:
       - SolidObserver::CLI::Jobs
       - SolidObserver::ApplicationController
+      - SolidObserver::QueueEventBuffer
 
 exclude_paths:
   - spec/

@@ -17,6 +17,13 @@
 - Engine boot no longer requires a live database connection (Docker/CI/K8s safe)
 - Table presence check now uses `BaseEvent.connection_pool` instead of `ActiveRecord::Base` (multi-DB safe)
 - Rescue clause in `activate_subscribers` extended to cover `ConnectionNotEstablished`, `StatementInvalid`, and adapter-specific connection errors (`PG::ConnectionBad`, `Mysql2::Error::ConnectionError`, `SQLite3::CantOpenException`)
+- QueueEventBuffer hard-caps at `max_buffer_size` (default 10_000) with configurable overflow strategy; prevents OOM during prolonged DB outages
+- QueueEventBuffer uses a single persistent `Concurrent::TimerTask` for scheduled flushes instead of spawning a new thread every cycle
+
+### Added
+- `SolidObserver::QueueEventBuffer#metrics` — exposes flush latency, failure count, drops count, and last-error for observability
+- `SolidObserver::QueueEventBuffer#shutdown` — graceful drain and timer stop for app-exit hooks
+- `Configuration#max_buffer_size` (default 10_000) and `Configuration#buffer_overflow_strategy` (`:drop_old` default, `:drop_new` alternative)
 
 ### Changed
 - Removed `allow_any_instance_of` anti-pattern from specs; replaced with `instance_double` stubs

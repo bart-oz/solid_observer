@@ -10,6 +10,8 @@ RSpec.describe SolidObserver::Configuration do
 
     expect(config.sampling_rate).to eq(1.0)
     expect(config.buffer_size).to eq(1000)
+    expect(config.max_buffer_size).to eq(10_000)
+    expect(config.buffer_overflow_strategy).to eq(:drop_old)
     expect(config.observe_queue).to be true
     expect(config.max_db_size).to eq(1.gigabyte)
     expect(config.warning_threshold).to eq(0.8)
@@ -70,6 +72,75 @@ RSpec.describe SolidObserver::Configuration do
     it "returns false when storage_mode is :persistence" do
       config = described_class.new
       expect(config.realtime_mode?).to be false
+    end
+  end
+
+  describe "#max_buffer_size" do
+    it "accepts positive integers greater than or equal to buffer_size" do
+      config = described_class.new
+      config.buffer_size = 1000
+      config.max_buffer_size = 5000
+
+      expect(config.max_buffer_size).to eq(5000)
+    end
+
+    it "raises when value is not a positive integer" do
+      config = described_class.new
+
+      expect { config.max_buffer_size = 0 }.to raise_error(
+        ArgumentError, "max_buffer_size must be a positive integer"
+      )
+    end
+
+    it "raises when value is smaller than buffer_size" do
+      config = described_class.new
+      config.buffer_size = 300
+
+      expect { config.max_buffer_size = 299 }.to raise_error(
+        ArgumentError, "max_buffer_size must be >= buffer_size"
+      )
+    end
+  end
+
+  describe "#buffer_size" do
+    it "raises when value is greater than max_buffer_size" do
+      config = described_class.new
+      config.max_buffer_size = 2000
+
+      expect { config.buffer_size = 2001 }.to raise_error(
+        ArgumentError, "buffer_size must be <= max_buffer_size"
+      )
+    end
+  end
+
+  describe "#buffer_overflow_strategy" do
+    it "accepts :drop_old" do
+      config = described_class.new
+      config.buffer_overflow_strategy = :drop_old
+
+      expect(config.buffer_overflow_strategy).to eq(:drop_old)
+    end
+
+    it "accepts :drop_new" do
+      config = described_class.new
+      config.buffer_overflow_strategy = :drop_new
+
+      expect(config.buffer_overflow_strategy).to eq(:drop_new)
+    end
+
+    it "accepts string values" do
+      config = described_class.new
+      config.buffer_overflow_strategy = "drop_new"
+
+      expect(config.buffer_overflow_strategy).to eq(:drop_new)
+    end
+
+    it "raises for unsupported values" do
+      config = described_class.new
+
+      expect { config.buffer_overflow_strategy = :invalid }.to raise_error(
+        ArgumentError, "buffer_overflow_strategy must be :drop_old or :drop_new"
+      )
     end
   end
 
