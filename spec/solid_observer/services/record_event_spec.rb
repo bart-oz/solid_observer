@@ -3,19 +3,18 @@
 require "spec_helper"
 
 RSpec.describe SolidObserver::Services::RecordEvent do
-  let(:event_payload) do
-    {
-      job: {
-        job_id: "test-job-123",
-        class_name: "TestJob",
-        queue_name: "default",
-        arguments: [1, 2, 3],
-        executions: 1,
-        enqueued_at: Time.current,
-        priority: 10
-      }
-    }
+  let(:job_obj) do
+    double(
+      "active_job_instance",
+      job_id: "test-job-123",
+      class: double("job_class", name: "TestJob"),
+      queue_name: "default",
+      executions: 1,
+      enqueued_at: Time.current,
+      priority: 10
+    )
   end
+  let(:event_payload) { {job: job_obj} }
 
   let(:event) do
     double(
@@ -72,13 +71,27 @@ RSpec.describe SolidObserver::Services::RecordEvent do
         ))
       end
 
-      it "includes metadata as JSON with job fields" do
+      it "includes job fields in metadata as JSON" do
         service.call
 
         expect(buffer).to have_received(:push).with(hash_including(
           job_class: "TestJob",
           queue_name: "default",
-          metadata: satisfy { |m| JSON.parse(m).slice("job_id", "arguments", "executions", "priority") == {"job_id" => "test-job-123", "arguments" => [1, 2, 3], "executions" => 1, "priority" => 10} }
+          metadata: satisfy { |m|
+            JSON.parse(m).slice("job_id", "executions", "priority") == {
+              "job_id" => "test-job-123",
+              "executions" => 1,
+              "priority" => 10
+            }
+          }
+        ))
+      end
+
+      it "does not store job arguments in metadata" do
+        service.call
+
+        expect(buffer).to have_received(:push).with(hash_including(
+          metadata: satisfy { |m| !JSON.parse(m).key?("arguments") }
         ))
       end
 
@@ -96,9 +109,20 @@ RSpec.describe SolidObserver::Services::RecordEvent do
     end
 
     context "with exception data in payload" do
+      let(:exception_job) do
+        double(
+          "active_job_instance",
+          job_id: "test-job-123",
+          class: double("job_class", name: "TestJob"),
+          queue_name: "default",
+          executions: 1,
+          enqueued_at: nil,
+          priority: nil
+        )
+      end
       let(:event_payload) do
         {
-          job: {job_id: "test-job-123", class_name: "TestJob", queue_name: "default"},
+          job: exception_job,
           exception_object: StandardError.new("Something went wrong")
         }
       end
@@ -116,6 +140,43 @@ RSpec.describe SolidObserver::Services::RecordEvent do
             parsed = JSON.parse(m)
             parsed["exception_class"] == "StandardError" && parsed["exception_message"] == "Something went wrong"
           }
+        ))
+      end
+    end
+
+    context "with hash-shaped payload[:job] (adapter fallback)" do
+      let(:event_payload) do
+        {
+          job: {
+            job_id: "hash-job-456",
+            class_name: "HashJob",
+            queue_name: "batch",
+            executions: 2,
+            enqueued_at: nil,
+            priority: nil
+          }
+        }
+      end
+
+      before do
+        allow(service).to receive(:rand).and_return(0.5)
+        allow(SolidObserver.config).to receive(:sampling_rate).and_return(1.0)
+      end
+
+      it "extracts job_class and queue_name from hash keys" do
+        service.call
+
+        expect(buffer).to have_received(:push).with(hash_including(
+          job_class: "HashJob",
+          queue_name: "batch"
+        ))
+      end
+
+      it "does not store arguments" do
+        service.call
+
+        expect(buffer).to have_received(:push).with(hash_including(
+          metadata: satisfy { |m| !JSON.parse(m).key?("arguments") }
         ))
       end
     end

@@ -21,6 +21,10 @@
 - QueueEventBuffer uses a single persistent `Concurrent::TimerTask` for scheduled flushes instead of spawning a new thread every cycle
 - Storage monitoring now uses adapter-native size queries (SQLite/PostgreSQL/MySQL/Trilogy) instead of filesystem path checks, fixing `0 MB` false readings on non-SQLite deployments
 - EventsController filter dropdowns were full-table scans on every request
+- `RecordEvent` metadata extraction now supports real `ActiveJob::Base` notification payload objects (with hash fallback)
+
+### Security
+- Removed job arguments from persisted event metadata and from the jobs detail view to reduce PII exposure risk
 
 ### Added
 - `SolidObserver::QueueEventBuffer#metrics` — exposes flush latency, failure count, drops count, and last-error for observability

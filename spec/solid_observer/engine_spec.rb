@@ -35,6 +35,49 @@ RSpec.describe SolidObserver::Engine do
     end
   end
 
+  describe ".check_ui_authentication" do
+    after { SolidObserver.reset_configuration! }
+
+    it "is a public class method" do
+      expect(described_class.public_methods).to include(:check_ui_authentication)
+    end
+
+    context "when UI is disabled" do
+      before { SolidObserver.config.ui_enabled = false }
+
+      it "does not log a warning" do
+        expect(logger).not_to receive(:warn).with(/authentication/)
+        described_class.check_ui_authentication
+      end
+    end
+
+    context "when UI is enabled and username is set" do
+      before do
+        SolidObserver.config.ui_enabled = true
+        SolidObserver.config.ui_username = "admin"
+      end
+
+      it "does not log a warning" do
+        expect(logger).not_to receive(:warn).with(/authentication/)
+        described_class.check_ui_authentication
+      end
+    end
+
+    context "when UI is enabled but no username configured" do
+      before do
+        SolidObserver.config.ui_enabled = true
+        SolidObserver.config.ui_username = nil
+      end
+
+      it "logs a warning" do
+        expect(logger).to receive(:warn).with(
+          /WARNING: UI is enabled with no authentication/
+        )
+        described_class.check_ui_authentication
+      end
+    end
+  end
+
   describe ".activate_subscribers" do
     let(:pool) { instance_double(ActiveRecord::ConnectionAdapters::ConnectionPool) }
     let(:cache) { instance_double(ActiveRecord::ConnectionAdapters::SchemaCache) }

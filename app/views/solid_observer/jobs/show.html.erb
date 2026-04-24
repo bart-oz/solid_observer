@@ -45,13 +45,6 @@
   </table>
 </div>
 
-<% if @job&.arguments %>
-  <div class="so-card so-card--spaced">
-    <div class="so-card__label">Arguments</div>
-    <pre class="so-pre"><code><%= JSON.pretty_generate(@job.arguments) rescue @job.arguments.to_s %></code></pre>
-  </div>
-<% end %>
-
 <% if @execution.is_a?(SolidQueue::FailedExecution) && @execution.error %>
   <div class="so-card so-card--error">
     <div class="so-card__label so-card__label--danger">Error Details</div>

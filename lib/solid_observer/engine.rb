@@ -11,6 +11,15 @@ module SolidObserver
         Rails.logger.warn "[SolidObserver] SolidQueue not detected. Queue observability features will be limited."
       end
 
+      def check_ui_authentication
+        config = SolidObserver.config
+        return unless config.ui_enabled
+        return if config.ui_username.present?
+
+        Rails.logger.warn "[SolidObserver] WARNING: UI is enabled with no authentication configured. " \
+          "Set config.ui_username and config.ui_password."
+      end
+
       def configure_database_connection
         return if SolidObserver.config.realtime_mode?
 
@@ -92,6 +101,7 @@ module SolidObserver
     config.after_initialize do
       Engine.configure_database_connection
       Engine.activate_subscribers
+      Engine.check_ui_authentication
     end
   end
 end
