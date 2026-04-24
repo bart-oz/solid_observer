@@ -30,7 +30,6 @@ detectors:
       - SolidObserver::QueueEventBuffer#trim_events_for_capacity
       - SolidObserver::Services::FlushEventBuffer#call
       - SolidObserver::Services::FlushEventBuffer#retry_with_smaller_batches
-      - SolidObserver::Services::RecordEvent#extract_metadata
       - SolidObserver::Services::DatabaseSize#call
       - SolidObserver::Services::CleanupStorage#call
       - SolidObserver::Services::CleanupStorage#check_storage_warnings
@@ -73,7 +72,6 @@ detectors:
       - CreateSolidObserverQueueEvents#change
       - CreateSolidObserverMetrics#change
       - CreateSolidObserverStorageInfo#change
-      - SolidObserver::Services::RecordEvent#extract_metadata
       - SolidObserver::CLI::Base#confirm
       - SolidObserver::CLI::Status#print_queue_stats
       - SolidObserver::CLI::Status#print_queue_table
@@ -97,7 +95,6 @@ detectors:
       - SolidObserver::QueueEventBuffer#flush!
       - SolidObserver::QueueEventBuffer#replace_timer_if_stopped
       - SolidObserver::QueueEventBuffer#record_flush_failure
-      - SolidObserver::Services::RecordEvent#extract_metadata
       - SolidObserver::Services::RecordEvent#handle_error
       - SolidObserver::Services::FlushEventBuffer#retry_with_smaller_batches
       - SolidObserver::CLI::Status#print_queue_stats

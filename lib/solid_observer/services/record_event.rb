@@ -62,22 +62,55 @@ module SolidObserver
 
       def extract_metadata
         payload = @event.payload || {}
-        exception_obj = payload[:exception_object]
-
-        {
-          job_id: payload.dig(:job, :job_id),
-          job_class: payload.dig(:job, :class_name) || payload.dig(:job, :job_class),
-          queue_name: payload.dig(:job, :queue_name),
-          arguments: payload.dig(:job, :arguments),
-          executions: payload.dig(:job, :executions),
-          exception_class: exception_obj&.class&.name || payload[:exception]&.first,
-          exception_message: exception_obj&.message || payload[:exception]&.last,
-          enqueued_at: payload.dig(:job, :enqueued_at),
-          priority: payload.dig(:job, :priority)
-        }.compact
+        metadata_from(payload, payload[:job]).compact
       rescue => e
         Rails.logger.warn "[SolidObserver] Failed to extract metadata: #{e.message}" if defined?(Rails)
         {}
+      end
+
+      def metadata_from(payload, job)
+        {
+          job_id: read_job_attr(job, :job_id),
+          job_class: read_job_class(job),
+          queue_name: read_job_attr(job, :queue_name),
+          executions: read_job_attr(job, :executions),
+          exception_class: exception_class(payload),
+          exception_message: exception_message(payload),
+          enqueued_at: read_job_attr(job, :enqueued_at),
+          priority: read_job_attr(job, :priority)
+        }
+      end
+
+      def read_job_attr(job, attr)
+        return nil unless job
+
+        if job.is_a?(Hash)
+          job[attr]
+        else
+          job.public_send(attr)
+        end
+      rescue NoMethodError
+        nil
+      end
+
+      def read_job_class(job)
+        return nil unless job
+
+        if job.is_a?(Hash)
+          job[:class_name] || job[:job_class]
+        else
+          job.class.name
+        end
+      end
+
+      def exception_class(payload)
+        exception_obj = payload[:exception_object]
+        exception_obj&.class&.name || payload[:exception]&.first
+      end
+
+      def exception_message(payload)
+        exception_obj = payload[:exception_object]
+        exception_obj&.message || payload[:exception]&.last
       end
 
       def increment_metric

@@ -6,6 +6,8 @@ module SolidObserver
     include RequireSolidQueue
 
     PER_PAGE = 25
+    CACHE_KEY_QUEUES = "solid_observer/jobs/available_queues"
+    CACHE_KEY_JOB_CLASSES = "solid_observer/jobs/available_job_classes"
 
     def index
       filter = Params::JobsFilter.from_params(params)
@@ -50,15 +52,18 @@ module SolidObserver
     private
 
     def fetch_available_queues
-      return [] unless defined?(SolidQueue::Queue)
-
-      SolidQueue::Queue.all.map(&:name)
+      Rails.cache.fetch(CACHE_KEY_QUEUES, expires_in: SolidObserver.config.filter_cache_ttl) do
+        next [] unless defined?(SolidQueue::Queue)
+        SolidQueue::Queue.all.map(&:name)
+      end
     rescue ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished
       []
     end
 
     def fetch_available_job_classes
-      SolidQueue::Job.distinct.pluck(:class_name).compact.sort
+      Rails.cache.fetch(CACHE_KEY_JOB_CLASSES, expires_in: SolidObserver.config.filter_cache_ttl) do
+        SolidQueue::Job.distinct.pluck(:class_name).compact.sort
+      end
     rescue ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished
       []
     end
