@@ -28,11 +28,14 @@ RSpec.describe "Performance Benchmarks", type: :performance do
     end
 
     @original_buffer_size = SolidObserver.config.buffer_size
+    @original_max_buffer_size = SolidObserver.config.max_buffer_size
+    SolidObserver.config.max_buffer_size = 100_000
     SolidObserver.config.buffer_size = 100_000
   end
 
   after(:all) do
     SolidObserver.config.buffer_size = @original_buffer_size if @original_buffer_size
+    SolidObserver.config.max_buffer_size = @original_max_buffer_size if @original_max_buffer_size
   end
 
   let(:buffer) { SolidObserver::QueueEventBuffer.instance }

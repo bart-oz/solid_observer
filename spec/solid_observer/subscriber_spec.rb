@@ -4,6 +4,10 @@ require "spec_helper"
 
 RSpec.describe SolidObserver::Subscriber do
   before do
+    # Engine boot (via dummy app) subscribes globally. Clear before each example
+    # so tests operate on a fresh notifier state and assertions aren't affected
+    # by pre-existing ActiveSupport::Notifications listeners.
+    described_class.unsubscribe!
     allow(SolidObserver::Services::RecordEvent).to receive(:call)
   end
 
@@ -139,9 +143,9 @@ RSpec.describe SolidObserver::Subscriber do
       expect(described_class.subscribed?).to be false
     end
 
-    it "does nothing when not subscribed" do
-      described_class.instance_variable_set(:@subscriptions, nil)
+    it "is a no-op when called without prior subscribe" do
       expect { described_class.unsubscribe! }.not_to raise_error
+      expect(described_class.subscribed?).to be false
     end
   end
 

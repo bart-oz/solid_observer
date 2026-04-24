@@ -45,7 +45,9 @@ module SolidObserver
     attr_reader :sampling_rate,
       :warning_threshold,
       :buffer_size,
-      :flush_interval
+      :flush_interval,
+      :max_buffer_size,
+      :buffer_overflow_strategy
 
     # Correlation Settings
     attr_accessor :correlation_id_generator
@@ -79,12 +81,15 @@ module SolidObserver
       @cache_sampling_rate = 0.1
       @buffer_size = 1000
       @flush_interval = 10.seconds
+      @max_buffer_size = 10_000
+      @buffer_overflow_strategy = :drop_old
 
       # Correlation defaults
       @correlation_id_generator = nil
     end
 
     STORAGE_MODES = %i[persistence realtime].freeze
+    BUFFER_OVERFLOW_STRATEGIES = %i[drop_old drop_new].freeze
 
     def storage_mode=(value)
       value = value.to_sym
@@ -113,12 +118,32 @@ module SolidObserver
 
     def buffer_size=(value)
       validate_positive_integer!(:buffer_size, value)
+      if defined?(@max_buffer_size) && value > @max_buffer_size
+        raise ArgumentError, "buffer_size must be <= max_buffer_size"
+      end
+
       @buffer_size = value
     end
 
     def flush_interval=(value)
       validate_positive_numeric!(:flush_interval, value)
       @flush_interval = value
+    end
+
+    def max_buffer_size=(value)
+      validate_positive_integer!(:max_buffer_size, value)
+      if defined?(@buffer_size) && value < @buffer_size
+        raise ArgumentError, "max_buffer_size must be >= buffer_size"
+      end
+
+      @max_buffer_size = value
+    end
+
+    def buffer_overflow_strategy=(value)
+      value = value.to_sym
+      raise_invalid_buffer_overflow_strategy! unless BUFFER_OVERFLOW_STRATEGIES.include?(value)
+
+      @buffer_overflow_strategy = value
     end
 
     private
@@ -143,6 +168,10 @@ module SolidObserver
 
     def production?
       defined?(Rails) && Rails.env.production?
+    end
+
+    def raise_invalid_buffer_overflow_strategy!
+      raise ArgumentError, "buffer_overflow_strategy must be :drop_old or :drop_new"
     end
   end
 end
