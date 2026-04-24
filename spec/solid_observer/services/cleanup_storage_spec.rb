@@ -6,7 +6,6 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
   let(:logger) { instance_double(Logger, info: nil, warn: nil, error: nil) }
   let(:relation) { instance_double(ActiveRecord::Relation) }
   let(:connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
-  let(:db_config) { instance_double(ActiveRecord::DatabaseConfigurations::HashConfig, database: "/tmp/test.sqlite3") }
 
   before do
     allow(Rails).to receive(:logger).and_return(logger)
@@ -18,15 +17,13 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
     allow(SolidObserver::QueueEvent).to receive(:where).and_return(relation)
     allow(SolidObserver::QueueEvent).to receive(:count).and_return(500)
     allow(SolidObserver::QueueEvent).to receive(:connection).and_return(connection)
-    allow(SolidObserver::QueueEvent).to receive(:connection_db_config).and_return(db_config)
 
     allow(relation).to receive(:delete_all).and_return(10)
     allow(connection).to receive(:execute)
     allow(connection).to receive(:adapter_name).and_return("SQLite")
 
     allow(SolidObserver::StorageInfo).to receive(:record_snapshot)
-    allow(File).to receive(:exist?).and_return(true)
-    allow(File).to receive(:size).and_return(500.kilobytes)
+    allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(500.kilobytes)
   end
 
   after { SolidObserver.reset_configuration! }
@@ -61,8 +58,15 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
 
     it "records snapshot within transaction" do
       expect(SolidObserver::StorageInfo).to receive(:record_snapshot).with(
-        hash_including(:db_size, :event_count)
+        db_size: 500.kilobytes,
+        event_count: 500
       )
+
+      described_class.call
+    end
+
+    it "measures DB size at most once per call" do
+      expect(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).once.and_return(500.kilobytes)
 
       described_class.call
     end
@@ -95,7 +99,7 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
 
     context "when database size exceeds warning threshold" do
       before do
-        allow(File).to receive(:size).with("/tmp/test.sqlite3").and_return(850.kilobytes)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(850.kilobytes)
       end
 
       it "logs warning" do
@@ -107,10 +111,26 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
 
     context "when database size is below warning threshold" do
       before do
-        allow(File).to receive(:size).with("/tmp/test.sqlite3").and_return(500.kilobytes)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(500.kilobytes)
       end
 
       it "does not log warning" do
+        expect(logger).not_to receive(:warn).with(/Queue DB approaching limit/)
+
+        described_class.call
+      end
+    end
+
+    context "when DatabaseSize returns nil" do
+      before do
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(nil)
+      end
+
+      it "records snapshot with nil size and skips warning check" do
+        expect(SolidObserver::StorageInfo).to receive(:record_snapshot).with(
+          db_size: nil,
+          event_count: 500
+        )
         expect(logger).not_to receive(:warn).with(/Queue DB approaching limit/)
 
         described_class.call

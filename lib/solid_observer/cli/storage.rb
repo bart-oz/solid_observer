@@ -29,7 +29,7 @@ module SolidObserver
 
       def gather_storage_stats
         {
-          db_size_bytes: calculate_database_size,
+          db_size_bytes: SolidObserver::Services::DatabaseSize.call(connection: QueueEvent.connection),
           event_count: QueueEvent.count,
           max_size_bytes: SolidObserver.config.max_db_size
         }
@@ -37,35 +37,36 @@ module SolidObserver
         {error: "Failed to gather storage stats: #{e.message}"}
       end
 
-      def calculate_database_size
-        db_config = QueueEvent.connection_db_config
-        db_path = db_config.database
-
-        return 0 unless File.exist?(db_path)
-
-        File.size(db_path)
-      rescue => e
-        warning("Could not calculate database size: #{e.message}")
-        0
-      end
-
       def print_storage_table(stats)
-        size_mb = bytes_to_mb(stats[:db_size_bytes])
-        percentage = calculate_percentage(stats[:db_size_bytes], stats[:max_size_bytes])
-        status = status_indicator(percentage)
+        event_count = stats[:event_count]
+        db_size_bytes = stats[:db_size_bytes]
+        max_size_bytes = stats[:max_size_bytes]
 
         table(
           headers: ["Component", "Size", "Events", "Usage", "Status"],
-          rows: [[
-            "Queue",
-            format_size(size_mb),
-            format_number(stats[:event_count]),
-            "#{percentage}%",
-            status
-          ]]
+          rows: [storage_row(event_count: event_count, db_size_bytes: db_size_bytes, max_size_bytes: max_size_bytes)]
         )
 
         output("")
+      end
+
+      def storage_row(event_count:, db_size_bytes:, max_size_bytes:)
+        size, usage, status = storage_displays(db_size_bytes, max_size_bytes)
+
+        [
+          "Queue",
+          size,
+          format_number(event_count),
+          usage,
+          status
+        ]
+      end
+
+      def storage_displays(db_size_bytes, max_size_bytes)
+        return ["N/A", "N/A", "— Unknown"] unless db_size_bytes
+
+        percentage = calculate_percentage(db_size_bytes, max_size_bytes)
+        [format_size(bytes_to_mb(db_size_bytes)), "#{percentage}%", status_indicator(percentage)]
       end
 
       def print_configuration
