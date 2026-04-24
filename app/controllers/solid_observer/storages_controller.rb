@@ -2,7 +2,7 @@
 
 module SolidObserver
   class StoragesController < ApplicationController
-    before_action :require_persistence_mode
+    include RequirePersistenceMode
 
     def show
       @current_storage = SolidObserver::StorageInfo.order(recorded_at: :desc).first

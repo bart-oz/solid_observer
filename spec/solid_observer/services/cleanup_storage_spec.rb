@@ -149,17 +149,4 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
       end
     end
   end
-
-  describe "private methods" do
-    let(:service) { described_class.new }
-
-    describe "#format_bytes" do
-      it "formats bytes correctly" do
-        expect(service.send(:format_bytes, 0)).to eq("0 B")
-        expect(service.send(:format_bytes, 1024)).to eq("1.0 KB")
-        expect(service.send(:format_bytes, 1.megabyte)).to eq("1.0 MB")
-        expect(service.send(:format_bytes, 1.gigabyte)).to eq("1.0 GB")
-      end
-    end
-  end
 end

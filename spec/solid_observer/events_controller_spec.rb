@@ -17,118 +17,59 @@ RSpec.describe SolidObserver::EventsController do
       expect(callbacks).to include(:require_persistence_mode)
     end
 
-    it "registers :set_event as a before_action only for show" do
-      callbacks = described_class._process_action_callbacks.select { |cb| cb.filter == :set_event }
-      expect(callbacks).not_to be_empty
-      expect(callbacks.first.kind).to eq(:before)
-    end
-
     it "defines PER_PAGE as 50" do
       expect(described_class::PER_PAGE).to eq(50)
     end
   end
 
-  describe "#set_filter_params" do
-    it "extracts event_type from params" do
-      allow(controller).to receive(:params).and_return(ActionController::Parameters.new(event_type: "job_failed"))
-      controller.send(:set_filter_params)
-      expect(controller.instance_variable_get(:@event_type)).to eq("job_failed")
+  describe "#index" do
+    let(:from) { Date.new(2026, 1, 1) }
+    let(:to) { Date.new(2026, 1, 31) }
+    let(:filter) do
+      filter_values = {
+        page: 2,
+        event_type: "job_failed",
+        job_class: "MyJob",
+        queue_name: "default",
+        from: from,
+        to: to
+      }
+      instance_double(SolidObserver::Params::EventsFilter, **filter_values)
     end
-
-    it "extracts job_class from params" do
-      allow(controller).to receive(:params).and_return(ActionController::Parameters.new(job_class: "MyJob"))
-      controller.send(:set_filter_params)
-      expect(controller.instance_variable_get(:@job_class)).to eq("MyJob")
-    end
-
-    it "extracts queue_name from params" do
-      allow(controller).to receive(:params).and_return(ActionController::Parameters.new(queue_name: "default"))
-      controller.send(:set_filter_params)
-      expect(controller.instance_variable_get(:@queue_name)).to eq("default")
-    end
-
-    it "defaults @page to 1 when not given" do
-      allow(controller).to receive(:params).and_return(ActionController::Parameters.new({}))
-      controller.send(:set_filter_params)
-      expect(controller.instance_variable_get(:@page)).to eq(1)
-    end
-
-    it "converts page to integer" do
-      allow(controller).to receive(:params).and_return(ActionController::Parameters.new(page: "4"))
-      controller.send(:set_filter_params)
-      expect(controller.instance_variable_get(:@page)).to eq(4)
-    end
-
-    it "parses from date" do
-      allow(controller).to receive(:params).and_return(ActionController::Parameters.new(from: "2026-01-01"))
-      controller.send(:set_filter_params)
-      expect(controller.instance_variable_get(:@from)).to eq(Date.new(2026, 1, 1))
-    end
-
-    it "parses to date" do
-      allow(controller).to receive(:params).and_return(ActionController::Parameters.new(to: "2026-01-31"))
-      controller.send(:set_filter_params)
-      expect(controller.instance_variable_get(:@to)).to eq(Date.new(2026, 1, 31))
-    end
-  end
-
-  describe "#build_event_scope" do
-    let(:base_scope) { double("base_scope") }
+    let(:scope) { double("scope") }
+    let(:limited_scope) { double("limited_scope") }
+    let(:events) { [double("event")] }
+    let(:query) { instance_double(SolidObserver::Queries::EventsQuery, call: scope) }
 
     before do
-      allow(SolidObserver::QueueEvent).to receive(:order).with(recorded_at: :desc).and_return(base_scope)
-      controller.instance_variable_set(:@event_type, nil)
-      controller.instance_variable_set(:@job_class, nil)
-      controller.instance_variable_set(:@queue_name, nil)
-      controller.instance_variable_set(:@from, nil)
-      controller.instance_variable_set(:@to, nil)
+      allow(controller).to receive(:params).and_return(ActionController::Parameters.new({}))
+      allow(SolidObserver::Params::EventsFilter).to receive(:from_params).and_return(filter)
+      allow(SolidObserver::Queries::EventsQuery).to receive(:new).with(filter).and_return(query)
+      allow(controller).to receive(:paginate_scope).with(scope, per_page: described_class::PER_PAGE).and_return(50)
+      allow(scope).to receive(:limit).with(described_class::PER_PAGE).and_return(limited_scope)
+      allow(limited_scope).to receive(:offset).with(50).and_return(events)
+      allow(controller).to receive(:load_available_options).and_return({})
     end
 
-    it "returns base scope when no filters set" do
-      expect(controller.send(:build_event_scope)).to eq(base_scope)
+    it "assigns @events" do
+      controller.send(:index)
+      expect(controller.instance_variable_get(:@events)).to eq(events)
     end
 
-    it "applies event_type filter" do
-      controller.instance_variable_set(:@event_type, "job_failed")
-      filtered = double("filtered")
-      allow(base_scope).to receive(:by_event_type).with("job_failed").and_return(filtered)
-      expect(controller.send(:build_event_scope)).to eq(filtered)
-    end
-
-    it "applies job_class filter" do
-      controller.instance_variable_set(:@job_class, "MyJob")
-      filtered = double("filtered")
-      allow(base_scope).to receive(:by_job_class).with("MyJob").and_return(filtered)
-      expect(controller.send(:build_event_scope)).to eq(filtered)
-    end
-
-    it "applies queue_name filter" do
-      controller.instance_variable_set(:@queue_name, "default")
-      filtered = double("filtered")
-      allow(base_scope).to receive(:by_queue).with("default").and_return(filtered)
-      expect(controller.send(:build_event_scope)).to eq(filtered)
-    end
-
-    it "applies from date filter" do
-      date = Date.new(2026, 1, 1)
-      controller.instance_variable_set(:@from, date)
-      filtered = double("filtered")
-      allow(base_scope).to receive(:since).with(date.beginning_of_day).and_return(filtered)
-      expect(controller.send(:build_event_scope)).to eq(filtered)
-    end
-
-    it "applies to date filter" do
-      date = Date.new(2026, 1, 31)
-      controller.instance_variable_set(:@to, date)
-      filtered = double("filtered")
-      allow(base_scope).to receive(:before).with(date.end_of_day).and_return(filtered)
-      expect(controller.send(:build_event_scope)).to eq(filtered)
+    it "assigns legacy filter ivars" do
+      controller.send(:index)
+      expect(controller.instance_variable_get(:@event_type)).to eq("job_failed")
+      expect(controller.instance_variable_get(:@job_class)).to eq("MyJob")
+      expect(controller.instance_variable_get(:@queue_name)).to eq("default")
+      expect(controller.instance_variable_get(:@from)).to eq(from)
+      expect(controller.instance_variable_get(:@to)).to eq(to)
+      expect(controller.instance_variable_get(:@page)).to eq(2)
     end
   end
 
-  describe "#set_event" do
+  describe "#show" do
     context "when event exists" do
-      let(:event) { double("event") }
+      let(:event) { double("event", metadata: '{"key":"value"}') }
 
       before do
         allow(controller).to receive(:params).and_return(ActionController::Parameters.new(id: "1"))
@@ -136,13 +77,13 @@ RSpec.describe SolidObserver::EventsController do
       end
 
       it "assigns @event" do
-        controller.send(:set_event)
+        controller.send(:show)
         expect(controller.instance_variable_get(:@event)).to eq(event)
       end
 
-      it "does not redirect" do
-        expect(controller).not_to receive(:redirect_to)
-        controller.send(:set_event)
+      it "assigns parsed metadata" do
+        controller.send(:show)
+        expect(controller.instance_variable_get(:@metadata)).to eq({"key" => "value"})
       end
     end
 
@@ -155,26 +96,8 @@ RSpec.describe SolidObserver::EventsController do
 
       it "redirects with an alert" do
         expect(controller).to receive(:redirect_to).with("/solid_observer/events", alert: "Event not found")
-        controller.send(:set_event)
+        controller.send(:show)
       end
-    end
-  end
-
-  describe "#parse_date" do
-    it "returns nil for blank string" do
-      expect(controller.send(:parse_date, "")).to be_nil
-    end
-
-    it "returns nil for nil" do
-      expect(controller.send(:parse_date, nil)).to be_nil
-    end
-
-    it "parses a valid date string" do
-      expect(controller.send(:parse_date, "2026-04-06")).to eq(Date.new(2026, 4, 6))
-    end
-
-    it "returns nil for invalid date" do
-      expect(controller.send(:parse_date, "not-a-date")).to be_nil
     end
   end
 
@@ -203,7 +126,7 @@ RSpec.describe SolidObserver::EventsController do
       allow(SolidObserver::QueueEvent).to receive(:distinct_queue_names).and_return(%w[default urgent])
     end
 
-    it "sets @available_event_types from EVENT_TYPES constant" do
+    it "assigns available event types from EVENT_TYPES constant" do
       controller.send(:load_available_options)
       expect(controller.instance_variable_get(:@available_event_types)).to eq(SolidObserver::QueueEvent::EVENT_TYPES)
     end
@@ -213,8 +136,10 @@ RSpec.describe SolidObserver::EventsController do
       expect(SolidObserver::QueueEvent).to receive(:distinct_queue_names).once.and_return(["q"])
 
       controller.send(:load_available_options)
-      controller.send(:load_available_options)
+      expect(controller.instance_variable_get(:@available_job_classes)).to eq(["A"])
+      expect(controller.instance_variable_get(:@available_queues)).to eq(["q"])
 
+      controller.send(:load_available_options)
       expect(controller.instance_variable_get(:@available_job_classes)).to eq(["A"])
       expect(controller.instance_variable_get(:@available_queues)).to eq(["q"])
     end

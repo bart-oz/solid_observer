@@ -32,6 +32,7 @@
 ### Changed
 - Removed `allow_any_instance_of` anti-pattern from specs; replaced with `instance_double` stubs
 - Deleted dead private-method `describe` blocks; coverage preserved via public-API assertions
+- Refactor Web UI controllers to thin actions + query/param/presenter objects; replace custom number helpers with Rails built-ins
 
 ## [0.1.1] - 2026-02-10
 

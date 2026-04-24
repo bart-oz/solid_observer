@@ -2,10 +2,6 @@
 
 module SolidObserver
   module ApplicationHelper
-    KB = 1_024
-    MB = 1_048_576
-    GB = 1_073_741_824
-
     STATUS_COLORS = {
       "completed" => "success",
       "ready" => "success",
@@ -17,18 +13,8 @@ module SolidObserver
       "discarded" => "info"
     }.freeze
 
-    def format_bytes(bytes)
-      return "0 B" if bytes.to_f.zero?
-
-      if bytes < KB
-        "#{bytes.to_i} B"
-      elsif bytes < MB
-        "#{"%.1f" % (bytes / KB.to_f)} KB"
-      elsif bytes < GB
-        "#{"%.1f" % (bytes / MB.to_f)} MB"
-      else
-        "#{"%.1f" % (bytes / GB.to_f)} GB"
-      end
+    def execution_status(execution)
+      ExecutionPresenter.new(execution).status
     end
 
     def format_duration(seconds)
@@ -39,10 +25,6 @@ module SolidObserver
       else
         "#{"%.1f" % seconds}s"
       end
-    end
-
-    def format_number(number)
-      number.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, "\\1,").reverse
     end
 
     def status_badge(status)

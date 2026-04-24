@@ -6,8 +6,8 @@
 
 <% if @current_storage %>
   <div class="so-stat-cards">
-    <%= render "solid_observer/shared/stat_card", label: "Database Size", value: format_bytes(@current_storage.db_size_bytes) %>
-    <%= render "solid_observer/shared/stat_card", label: "Event Count", value: format_number(@current_storage.event_count) %>
+    <%= render "solid_observer/shared/stat_card", label: "Database Size", value: number_to_human_size(@current_storage.db_size_bytes, precision: 1, significant: false, strip_insignificant_zeros: false) %>
+    <%= render "solid_observer/shared/stat_card", label: "Event Count", value: number_with_delimiter(@current_storage.event_count) %>
     <%= render "solid_observer/shared/stat_card", label: "Last Updated", value: time_ago_in_words(@current_storage.recorded_at) + " ago" %>
   </div>
 
@@ -26,8 +26,8 @@
           <% @storage_history.each do |snapshot| %>
             <tr>
               <td><%= snapshot.recorded_at.strftime("%Y-%m-%d %H:%M") %></td>
-              <td><%= format_bytes(snapshot.db_size_bytes) %></td>
-              <td><%= format_number(snapshot.event_count) %></td>
+              <td><%= number_to_human_size(snapshot.db_size_bytes, precision: 1, significant: false, strip_insignificant_zeros: false) %></td>
+              <td><%= number_with_delimiter(snapshot.event_count) %></td>
             </tr>
           <% end %>
         </tbody>
