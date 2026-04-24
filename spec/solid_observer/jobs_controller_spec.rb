@@ -126,6 +126,42 @@ RSpec.describe SolidObserver::JobsController do
     end
   end
 
+  describe "#index filter option caching" do
+    before do
+      SolidObserver.config.filter_cache_ttl = 1.minute
+      stub_const("SolidQueue::Queue", Class.new {
+        def self.all = []
+      })
+      allow(SolidQueue::Queue).to receive(:all).and_return([double("q", name: "default")])
+      allow(SolidQueue::Job).to receive(:distinct).and_return(
+        double("distinct", pluck: ["MyJob"])
+      )
+    end
+
+    it "calls source once on cold cache" do
+      expect(SolidQueue::Queue).to receive(:all).once.and_return([double("q", name: "default")])
+      controller.send(:fetch_available_queues)
+      controller.send(:fetch_available_queues)
+    end
+
+    it "calls job class source once on cold cache" do
+      distinct = double("distinct", pluck: ["MyJob"])
+      expect(SolidQueue::Job).to receive(:distinct).once.and_return(distinct)
+      controller.send(:fetch_available_job_classes)
+      controller.send(:fetch_available_job_classes)
+    end
+
+    it "re-fetches after TTL expiry" do
+      distinct = double("distinct", pluck: ["MyJob"])
+      expect(SolidQueue::Job).to receive(:distinct).twice.and_return(distinct)
+
+      controller.send(:fetch_available_job_classes)
+      travel_to(2.minutes.from_now) do
+        controller.send(:fetch_available_job_classes)
+      end
+    end
+  end
+
   describe "#show" do
     context "when execution is found" do
       let(:execution) { double("execution") }
