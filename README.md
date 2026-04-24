@@ -14,21 +14,22 @@
   <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.1.1-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-94.54%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-94.62%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
 
-SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. Starting with **Solid Queue** monitoring in v0.1.0, it provides unified visibility into your background job processing with CLI tools, metrics collection, and distributed tracing support.
+SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. Starting with **Solid Queue** monitoring in v0.1.0, it provides unified visibility into your background job processing with a Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
 
-## Features (v0.1.1)
+## Features (v0.2.0)
 
+- 🖥️ **Web UI Dashboard** — Live queue stats, job browser, event log, and storage info
 - 📊 **Real-time Queue Status** — Monitor jobs across all states (ready, scheduled, claimed, failed)
 - 🔍 **Job Management CLI** — List, inspect, retry, and discard failed jobs
 - 💾 **Storage Monitoring** — Track database size and event counts
 - 🔗 **Distributed Tracing** — Correlate jobs with APM tools (Datadog, Sentry, OpenTelemetry)
 - ⚡ **High Performance** — Buffered writes, configurable sampling, minimal overhead
-- 🛡️ **Production Ready** — Automatic cleanup, size limits, retention policies
+- 🛡️ **Production Ready** — Docker/CI/K8s safe boot, automatic cleanup, size limits, retention policies
 - 🚀 **Two Operating Modes** — Real-time (no migrations) or persistence (full event history)
 
 ## Requirements
@@ -330,6 +331,19 @@ bundle exec reek
 ```
 
 ## Troubleshooting
+
+### Docker, CI, and Offline Boot
+
+SolidObserver is designed to boot without a live database connection. During
+`rails assets:precompile`, CI runs without a database service, or Kubernetes init
+containers, the engine logs a single info message and skips subscriber activation:
+
+```text
+[SolidObserver] Database not reachable at boot. Skipping subscriber activation.
+```
+
+No monkey-patching or environment-variable workarounds are needed. Once the application
+boots with a live database, the engine activates normally on the next restart.
 
 ### "no such table: solid_queue_ready_executions"
 

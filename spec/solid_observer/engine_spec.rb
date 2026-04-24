@@ -36,26 +36,54 @@ RSpec.describe SolidObserver::Engine do
   end
 
   describe ".activate_subscribers" do
+    let(:pool) { instance_double(ActiveRecord::ConnectionAdapters::ConnectionPool) }
+    let(:cache) { instance_double(ActiveRecord::ConnectionAdapters::SchemaCache) }
     let(:connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
 
     before do
-      allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
+      allow(SolidObserver::BaseEvent).to receive(:connection_pool).and_return(pool)
+      allow(pool).to receive(:schema_cache).and_return(cache)
+      allow(pool).to receive(:with_connection).and_yield(connection)
+      allow(cache).to receive(:data_source_exists?).and_return(false)
+      allow(connection).to receive(:data_source_exists?).and_return(true)
       allow(SolidObserver::Subscriber).to receive(:subscribe!)
     end
 
     after { SolidObserver.reset_configuration! }
 
-    it "activates subscribers when tables exist" do
-      allow(connection).to receive(:table_exists?).with("solid_observer_queue_events").and_return(true)
+    it "subscribes in realtime mode without checking database tables" do
+      SolidObserver.config.storage_mode = :realtime
 
-      expect(logger).to receive(:info).with(/Activating event subscribers/)
+      expect(logger).to receive(:info).with(/real-time mode/)
+      expect(SolidObserver::Subscriber).to receive(:subscribe!)
+      expect(pool).not_to receive(:schema_cache)
+      expect(pool).not_to receive(:with_connection)
+
+      described_class.activate_subscribers
+    end
+
+    it "uses schema cache fast path and subscribes without opening a connection" do
+      allow(cache).to receive(:data_source_exists?).with(pool, "solid_observer_queue_events").and_return(true)
+
+      described_class.activate_subscribers
+
+      expect(cache).to have_received(:data_source_exists?).with(pool, "solid_observer_queue_events")
+      expect(pool).not_to have_received(:with_connection)
+      expect(SolidObserver::Subscriber).to have_received(:subscribe!)
+    end
+
+    it "subscribes when table exists via slow path" do
+      allow(cache).to receive(:data_source_exists?).with(pool, "solid_observer_queue_events").and_return(false)
+      allow(connection).to receive(:data_source_exists?).with("solid_observer_queue_events").and_return(true)
+
       expect(SolidObserver::Subscriber).to receive(:subscribe!)
 
       described_class.activate_subscribers
     end
 
-    it "logs migration instruction when tables do not exist" do
-      allow(connection).to receive(:table_exists?).with("solid_observer_queue_events").and_return(false)
+    it "logs migration instruction and does not subscribe when table is absent" do
+      allow(cache).to receive(:data_source_exists?).with(pool, "solid_observer_queue_events").and_return(false)
+      allow(connection).to receive(:data_source_exists?).with("solid_observer_queue_events").and_return(false)
 
       expect(logger).to receive(:info).with(/Tables not found/)
       expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
@@ -63,26 +91,70 @@ RSpec.describe SolidObserver::Engine do
       described_class.activate_subscribers
     end
 
-    it "rescues gracefully when database is not ready" do
-      allow(connection).to receive(:table_exists?).and_raise(ActiveRecord::NoDatabaseError)
+    it "handles ActiveRecord::NoDatabaseError by skipping activation" do
+      allow(pool).to receive(:with_connection).and_raise(ActiveRecord::NoDatabaseError)
 
-      expect(logger).to receive(:info).with(/Database not ready/)
+      expect(logger).to receive(:info).with(/not reachable/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
 
       described_class.activate_subscribers
     end
 
-    context "when in realtime mode" do
-      before do
-        SolidObserver.config.storage_mode = :realtime
-      end
+    it "handles ActiveRecord::ConnectionNotEstablished by skipping activation" do
+      allow(pool).to receive(:with_connection).and_raise(ActiveRecord::ConnectionNotEstablished)
 
-      it "subscribes without checking tables" do
-        expect(logger).to receive(:info).with(/real-time mode/)
-        expect(SolidObserver::Subscriber).to receive(:subscribe!)
-        expect(connection).not_to receive(:table_exists?)
+      expect(logger).to receive(:info).with(/not reachable/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
 
-        described_class.activate_subscribers
-      end
+      described_class.activate_subscribers
+    end
+
+    it "handles ActiveRecord::StatementInvalid by skipping activation" do
+      allow(pool).to receive(:with_connection).and_raise(ActiveRecord::StatementInvalid.new("boom"))
+
+      expect(logger).to receive(:info).with(/not reachable/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
+
+      described_class.activate_subscribers
+    end
+
+    it "handles PG::ConnectionBad by skipping activation" do
+      stub_const("PG::ConnectionBad", Class.new(StandardError))
+      allow(pool).to receive(:with_connection).and_raise(PG::ConnectionBad)
+
+      expect(logger).to receive(:info).with(/not reachable/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
+
+      described_class.activate_subscribers
+    end
+
+    it "handles Mysql2::Error::ConnectionError by skipping activation" do
+      stub_const("Mysql2::Error::ConnectionError", Class.new(StandardError))
+      allow(pool).to receive(:with_connection).and_raise(Mysql2::Error::ConnectionError)
+
+      expect(logger).to receive(:info).with(/not reachable/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
+
+      described_class.activate_subscribers
+    end
+
+    it "handles SQLite3::CantOpenException by skipping activation" do
+      stub_const("SQLite3::CantOpenException", Class.new(StandardError))
+      allow(pool).to receive(:with_connection).and_raise(SQLite3::CantOpenException)
+
+      expect(logger).to receive(:info).with(/not reachable/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
+
+      described_class.activate_subscribers
+    end
+
+    it "uses BaseEvent connection pool and never uses ActiveRecord::Base connection APIs" do
+      expect(SolidObserver::BaseEvent).to receive(:connection_pool).and_return(pool)
+      expect(ActiveRecord::Base).not_to receive(:connection)
+      expect(ActiveRecord::Base).not_to receive(:connection_pool)
+      expect(SolidObserver::Subscriber).to receive(:subscribe!)
+
+      described_class.activate_subscribers
     end
   end
 

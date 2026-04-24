@@ -1,3 +1,27 @@
+## [Unreleased] - v0.3.0 (Web UI Dashboard)
+
+### Added
+- Web UI dashboard at `/solid_observer` — live queue stats, job browser, event log, storage info
+- Dashboard with auto-refresh (meta refresh + fetch-based progressive enhancement)
+- Jobs browser with filtering by status, queue, and job class; retry and discard actions with confirmation dialogs
+- Events log with pagination and metadata display
+- Storage info page with historical size tracking
+- Shared view helpers and ERB partials for the UI layer
+- `ApplicationController` base with configurable HTTP Basic authentication
+- Full application layout with embedded CSS (no external asset pipeline dependency)
+- Controller specs for all Web UI controllers
+
+## [Unreleased] - v0.2.0 (Stability & Refactoring)
+
+### Fixed
+- Engine boot no longer requires a live database connection (Docker/CI/K8s safe)
+- Table presence check now uses `BaseEvent.connection_pool` instead of `ActiveRecord::Base` (multi-DB safe)
+- Rescue clause in `activate_subscribers` extended to cover `ConnectionNotEstablished`, `StatementInvalid`, and adapter-specific connection errors (`PG::ConnectionBad`, `Mysql2::Error::ConnectionError`, `SQLite3::CantOpenException`)
+
+### Changed
+- Removed `allow_any_instance_of` anti-pattern from specs; replaced with `instance_double` stubs
+- Deleted dead private-method `describe` blocks; coverage preserved via public-API assertions
+
 ## [0.1.1] - 2026-02-10
 
 ### Added

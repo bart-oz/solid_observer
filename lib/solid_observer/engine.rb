@@ -34,22 +34,54 @@ module SolidObserver
 
         if SolidObserver.config.realtime_mode?
           logger.info "[SolidObserver] Starting in real-time mode (no persistence)"
-        elsif !table_exists?("solid_observer_queue_events")
-          logger.info "[SolidObserver] Tables not found. Run: rails solid_observer:install:migrations && rails db:migrate"
-          return
         else
+          case table_status("solid_observer_queue_events")
+          when :absent
+            logger.info "[SolidObserver] Tables not found. Run: rails solid_observer:install:migrations && rails db:migrate"
+            return
+          when :unknown
+            logger.info "[SolidObserver] Database not reachable at boot. Skipping subscriber activation."
+            return
+          end
+
           logger.info "[SolidObserver] Activating event subscribers"
         end
 
         Subscriber.subscribe!
-      rescue ActiveRecord::NoDatabaseError
-        logger.info "[SolidObserver] Database not ready yet. Skipping subscriber activation."
       end
 
       private
 
-      def table_exists?(table_name)
-        ActiveRecord::Base.connection.table_exists?(table_name)
+      def table_status(table_name)
+        pool = SolidObserver::BaseEvent.connection_pool
+
+        return :present if cached_data_source_exists?(pool, table_name)
+
+        data_source_exists_in_db?(pool, table_name) ? :present : :absent
+      rescue *boot_connection_errors
+        :unknown
+      end
+
+      def cached_data_source_exists?(pool, table_name)
+        cache = pool.schema_cache
+        cache.data_source_exists?(pool, table_name)
+      rescue ArgumentError
+        cache.data_source_exists?(table_name)
+      end
+
+      def data_source_exists_in_db?(pool, table_name)
+        pool.with_connection { |connection| connection.data_source_exists?(table_name) }
+      end
+
+      def boot_connection_errors
+        [
+          ActiveRecord::NoDatabaseError,
+          ActiveRecord::ConnectionNotEstablished,
+          ActiveRecord::StatementInvalid,
+          *([PG::ConnectionBad] if defined?(PG::ConnectionBad)),
+          *([Mysql2::Error::ConnectionError] if defined?(Mysql2::Error::ConnectionError)),
+          *([SQLite3::CantOpenException] if defined?(SQLite3::CantOpenException))
+        ]
       end
     end
 
