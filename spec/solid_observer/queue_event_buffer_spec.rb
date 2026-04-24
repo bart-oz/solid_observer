@@ -162,14 +162,8 @@ RSpec.describe SolidObserver::QueueEventBuffer do
     it "handles concurrent push and flush safely" do
       allow(SolidObserver::Services::FlushEventBuffer).to receive(:call)
 
-      push_thread = Thread.new do
-        20.times { buffer.push(event_data) }
-      end
-
-      flush_thread = Thread.new do
-        sleep(0.01)
-        buffer.flush!
-      end
+      push_thread = Thread.new { 20.times { buffer.push(event_data) } }
+      flush_thread = Thread.new { buffer.flush! }
 
       push_thread.join
       flush_thread.join
@@ -399,7 +393,7 @@ RSpec.describe SolidObserver::QueueEventBuffer do
       timer_task = buffer.instance_variable_get(:@timer_task)
 
       10.times do
-        sleep(0.03)
+        buffer.flush!
         buffer.push(event_data)
         expect(buffer.instance_variable_get(:@timer_task)).to be(timer_task)
       end
