@@ -14,7 +14,7 @@
   <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.1.1-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-94.84%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-95.15%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
@@ -136,6 +136,10 @@ bin/rails "solid_observer:jobs:discard[JOB_ID]"
 ```
 
 ### Check Storage (Persistence Mode)
+
+Storage monitoring is cross-adapter: SQLite, PostgreSQL, MySQL, and Trilogy are supported.
+SolidObserver uses adapter-native SQL queries to measure size (not filesystem `File.size`),
+so production deployments report real values even when the database is remote.
 
 ```bash
 bin/rails solid_observer:storage

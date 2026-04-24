@@ -4,15 +4,13 @@ require "spec_helper"
 
 RSpec.describe SolidObserver::CLI::Storage do
   let(:storage_cli) { described_class.new }
-  let(:temp_db_path) { File.join(Dir.tmpdir, "test_queue_#{Process.pid}.sqlite3") }
+  let(:connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
 
   before do
     allow(SolidObserver.config).to receive(:max_db_size).and_return(1.gigabyte)
     allow(SolidObserver.config).to receive(:warning_threshold).and_return(0.8)
     allow(SolidObserver.config).to receive(:event_retention).and_return(30.days)
-
-    db_config = double("db_config", database: temp_db_path)
-    allow(SolidObserver::QueueEvent).to receive(:connection_db_config).and_return(db_config)
+    allow(SolidObserver::QueueEvent).to receive(:connection).and_return(connection)
   end
 
   after { SolidObserver.reset_configuration! }
@@ -33,20 +31,16 @@ RSpec.describe SolidObserver::CLI::Storage do
 
       it "does not query the database" do
         expect(SolidObserver::QueueEvent).not_to receive(:count)
+        expect(SolidObserver::Services::DatabaseSize).not_to receive(:call)
 
         capture_stdout { storage_cli.call }
       end
     end
 
-    context "when database file exists" do
+    context "when database size is available" do
       before do
-        FileUtils.mkdir_p(File.dirname(temp_db_path))
-        File.write(temp_db_path, "x" * 10_485_760)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(10_485_760)
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(45_231)
-      end
-
-      after do
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
       end
 
       it "displays storage status with correct calculations" do
@@ -82,13 +76,8 @@ RSpec.describe SolidObserver::CLI::Storage do
 
     context "when database size exceeds warning threshold" do
       before do
-        FileUtils.mkdir_p(File.dirname(temp_db_path))
-        File.write(temp_db_path, "x" * 891_289_600)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(891_289_600)
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(100_000)
-      end
-
-      after do
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
       end
 
       it "shows warning indicator" do
@@ -99,7 +88,7 @@ RSpec.describe SolidObserver::CLI::Storage do
       end
 
       it "displays size in GB when over 1024 MB" do
-        File.write(temp_db_path, "x" * 1_610_612_736)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(1_610_612_736)
 
         output = capture_stdout { storage_cli.call }
 
@@ -107,23 +96,24 @@ RSpec.describe SolidObserver::CLI::Storage do
       end
     end
 
-    context "when database file does not exist" do
+    context "when DatabaseSize returns nil" do
       before do
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
-        allow(SolidObserver::QueueEvent).to receive(:count).and_return(0)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(nil)
+        allow(SolidObserver::QueueEvent).to receive(:count).and_return(1_000)
       end
 
-      it "displays zero size gracefully" do
+      it "displays unknown storage values as N/A" do
         output = capture_stdout { storage_cli.call }
 
-        expect(output).to include("0.0 MB")
-        expect(output).to include("0%")
-        expect(output).to include("✓ OK")
+        expect(output).to include("N/A")
+        expect(output.scan("N/A").length).to be >= 2
+        expect(output).to include("— Unknown")
       end
     end
 
     context "when there is an error gathering stats" do
       before do
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(10_485_760)
         allow(SolidObserver::QueueEvent).to receive(:count).and_raise(StandardError.new("Connection failed"))
       end
 
@@ -135,95 +125,80 @@ RSpec.describe SolidObserver::CLI::Storage do
       end
     end
 
-    context "when database size calculation fails" do
+    context "when DatabaseSize raises an unexpected error" do
       before do
-        allow(File).to receive(:exist?).and_return(true)
-        allow(File).to receive(:size).and_raise(StandardError.new("Permission denied"))
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_raise(StandardError.new("Permission denied"))
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(1000)
       end
 
-      it "displays warning and continues with zero size" do
+      it "displays error message" do
         output = capture_stdout { storage_cli.call }
 
-        expect(output).to include("Could not calculate database size")
-        expect(output).to include("0.0 MB")
+        expect(output).to include("Failed to gather storage stats")
+        expect(output).to include("Permission denied")
       end
     end
 
     context "with different retention periods" do
       it "displays 7 days retention" do
         allow(SolidObserver.config).to receive(:event_retention).and_return(7.days)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(1_048_576)
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(100)
-        File.write(temp_db_path, "x" * 1_048_576)
 
         output = capture_stdout { storage_cli.call }
 
         expect(output).to include("Retention: 7 days")
-
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
       end
 
       it "displays 90 days retention" do
         allow(SolidObserver.config).to receive(:event_retention).and_return(90.days)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(1_048_576)
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(100)
-        File.write(temp_db_path, "x" * 1_048_576)
 
         output = capture_stdout { storage_cli.call }
 
         expect(output).to include("Retention: 90 days")
-
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
       end
     end
 
     context "with different max_db_size configurations" do
       it "displays 500 MB max size" do
         allow(SolidObserver.config).to receive(:max_db_size).and_return(500.megabytes)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(1_048_576)
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(100)
-        File.write(temp_db_path, "x" * 1_048_576) # 1 MB
 
         output = capture_stdout { storage_cli.call }
 
         expect(output).to include("Max size:  500.0 MB per database")
-
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
       end
 
       it "displays 2 GB max size" do
         allow(SolidObserver.config).to receive(:max_db_size).and_return(2.gigabytes)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(1_048_576)
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(100)
-        File.write(temp_db_path, "x" * 1_048_576)
 
         output = capture_stdout { storage_cli.call }
 
         expect(output).to include("Max size:  2.0 GB per database")
-
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
       end
     end
 
     context "with different warning thresholds" do
       it "shows warning at 90% threshold" do
         allow(SolidObserver.config).to receive(:warning_threshold).and_return(0.9)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(943_718_400)
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(100)
-        File.write(temp_db_path, "x" * 943_718_400)
 
         output = capture_stdout { storage_cli.call }
 
         expect(output).to include("Warning:   90% threshold")
         expect(output).to include("✓ OK")
-
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
       end
     end
 
     context "number formatting" do
       before do
-        File.write(temp_db_path, "x" * 1_048_576)
-      end
-
-      after do
-        File.delete(temp_db_path) if File.exist?(temp_db_path)
+        allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(1_048_576)
       end
 
       it "formats small numbers without commas" do

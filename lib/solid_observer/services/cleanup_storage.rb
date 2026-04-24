@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "database_size"
+
 module SolidObserver
   module Services
     class CleanupStorage
@@ -36,12 +38,10 @@ module SolidObserver
       end
 
       def record_snapshot_after_cleanup
-        db_size = calculate_database_size
-        event_count = QueueEvent.count
-
+        # StorageInfo.db_size_bytes is NOT NULL; record_snapshot coerces nil to 0.
         StorageInfo.record_snapshot(
-          db_size: db_size,
-          event_count: event_count
+          db_size: current_database_size,
+          event_count: QueueEvent.count
         )
       end
 
@@ -59,23 +59,23 @@ module SolidObserver
         Rails.logger.warn "[SolidObserver] Database maintenance failed: #{e.message}"
       end
 
-      def calculate_database_size
-        db_path = QueueEvent.connection_db_config.database
-        File.size(db_path) if File.exist?(db_path)
-      rescue => e
-        Rails.logger.warn "[SolidObserver] Could not calculate DB size: #{e.message}"
-        0
-      end
-
       def check_storage_warnings
+        current_size = current_database_size
+        return unless current_size
+
         max_size = SolidObserver.config.max_db_size
         threshold = SolidObserver.config.warning_threshold
-        current_size = calculate_database_size
 
         return unless current_size > (max_size * threshold)
 
         percentage = ((current_size.to_f / max_size) * 100).round(1)
         Rails.logger.warn "[SolidObserver] Queue DB approaching limit: #{format_bytes(current_size)} / #{format_bytes(max_size)} (#{percentage}%)"
+      end
+
+      def current_database_size
+        return @current_database_size if defined?(@current_database_size)
+
+        @current_database_size = DatabaseSize.call(connection: QueueEvent.connection)
       end
 
       def log_results(deleted_count)
