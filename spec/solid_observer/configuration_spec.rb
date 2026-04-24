@@ -12,6 +12,7 @@ RSpec.describe SolidObserver::Configuration do
     expect(config.buffer_size).to eq(1000)
     expect(config.max_buffer_size).to eq(10_000)
     expect(config.buffer_overflow_strategy).to eq(:drop_old)
+    expect(config.filter_cache_ttl).to eq(1.minute)
     expect(config.observe_queue).to be true
     expect(config.max_db_size).to eq(1.gigabyte)
     expect(config.warning_threshold).to eq(0.8)
@@ -140,6 +141,48 @@ RSpec.describe SolidObserver::Configuration do
 
       expect { config.buffer_overflow_strategy = :invalid }.to raise_error(
         ArgumentError, "buffer_overflow_strategy must be :drop_old or :drop_new"
+      )
+    end
+  end
+
+  describe "#filter_cache_ttl=" do
+    it "accepts positive numeric duration values" do
+      config = described_class.new
+      config.filter_cache_ttl = 5.minutes
+      expect(config.filter_cache_ttl).to eq(5.minutes)
+    end
+
+    it "accepts positive numeric seconds" do
+      config = described_class.new
+      config.filter_cache_ttl = 30
+      expect(config.filter_cache_ttl).to eq(30)
+    end
+
+    it "rejects zero" do
+      config = described_class.new
+      expect { config.filter_cache_ttl = 0 }.to raise_error(
+        ArgumentError, "filter_cache_ttl must be a positive number"
+      )
+    end
+
+    it "rejects negative values" do
+      config = described_class.new
+      expect { config.filter_cache_ttl = -1 }.to raise_error(
+        ArgumentError, "filter_cache_ttl must be a positive number"
+      )
+    end
+
+    it "rejects strings" do
+      config = described_class.new
+      expect { config.filter_cache_ttl = "abc" }.to raise_error(
+        ArgumentError, "filter_cache_ttl must be a positive number"
+      )
+    end
+
+    it "rejects nil" do
+      config = described_class.new
+      expect { config.filter_cache_ttl = nil }.to raise_error(
+        ArgumentError, "filter_cache_ttl must be a positive number"
       )
     end
   end

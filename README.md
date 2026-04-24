@@ -14,7 +14,7 @@
   <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.1.1-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-95.15%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-95.28%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
@@ -134,6 +134,11 @@ bin/rails "solid_observer:jobs:retry[JOB_ID]"
 # Discard a failed job
 bin/rails "solid_observer:jobs:discard[JOB_ID]"
 ```
+
+### Events Page Filters (Web UI)
+
+Filter dropdowns on `/solid_observer/events` (job class and queue) are cached for 1 minute by default and scoped to the configured retention window.
+Tune the cache TTL with `config.filter_cache_ttl`.
 
 ### Check Storage (Persistence Mode)
 
@@ -305,11 +310,12 @@ SolidObserver is actively developed. Here's what's coming:
 |---------|-------|--------|
 | v0.1.0 | Solid Queue monitoring, CLI tools | ✅ Released |
 | v0.1.1 | Real-time mode (no migrations needed) | ✅ Current |
-| v0.2.0 | Web UI dashboard (vanilla HTML/CSS) | 🔜 Planned |
-| v0.3.0 | Solid Cache monitoring | 🔜 Planned |
-| v0.4.0 | Solid Cable monitoring | 🔜 Planned |
-| v0.5.0 | Cross-component correlation, health scores | 🔜 Planned |
-| v0.6.0 | Alerting & notifications | 🔜 Planned |
+| v0.2.0 | Stability & Refactoring | 🔜 In progress |
+| v0.3.0 | Web UI dashboard (vanilla HTML/CSS) | 🔜 In progress |
+| v0.4.0 | Solid Cache monitoring | 🔜 Planned |
+| v0.5.0 | Solid Cable monitoring | 🔜 Planned |
+| v0.6.0 | Cross-component correlation, health scores | 🔜 Planned |
+| v0.7.0 | Alerting & notifications | 🔜 Planned |
 | v1.0.0 | Production stable release | 🎯 Goal |
 
 See [GitHub Milestones](https://github.com/bart-oz/solid_observer/milestones) for detailed plans.

@@ -21,6 +21,7 @@ detectors:
       - CreateSolidObserverQueueEvents#change
       - CreateSolidObserverMetrics#change
       - CreateSolidObserverStorageInfo#change
+      - AddCompositeIndexesToQueueEvents#change
       - SolidObserver::QueueEventBuffer#flush!
       - SolidObserver::QueueEventBuffer#push
       - SolidObserver::QueueEventBuffer#replace_timer_if_stopped

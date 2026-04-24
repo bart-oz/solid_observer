@@ -17,6 +17,7 @@ require "rails"
 require "action_controller/railtie"
 require "active_record/railtie"
 require "active_job/railtie"
+require "active_support/testing/time_helpers"
 
 ENV["RAILS_ENV"] = "test"
 Rails.env = ActiveSupport::StringInquirer.new("test")
@@ -35,12 +36,15 @@ ActiveRecord::Base.configurations = {
   }
 }
 ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
+Rails.cache = ActiveSupport::Cache.lookup_store(:memory_store)
 
 Dir[File.join(__dir__, "../app/models/**/*.rb")].each { |f| require f }
 Dir[File.join(__dir__, "../app/jobs/**/*.rb")].each { |f| require f }
 Dir[File.join(__dir__, "../app/controllers/**/*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
+  config.include ActiveSupport::Testing::TimeHelpers
+
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
   end
@@ -62,5 +66,10 @@ RSpec.configure do |config|
 
   config.before(:suite) do
     ActiveJob::Base.logger = Logger.new(nil)
+    ActiveRecord::Base.logger = Logger.new(nil)
+  end
+
+  config.before(:each) do
+    Rails.cache.clear if defined?(Rails.cache) && Rails.cache
   end
 end

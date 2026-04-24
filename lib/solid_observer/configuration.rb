@@ -47,7 +47,8 @@ module SolidObserver
       :buffer_size,
       :flush_interval,
       :max_buffer_size,
-      :buffer_overflow_strategy
+      :buffer_overflow_strategy,
+      :filter_cache_ttl
 
     # Correlation Settings
     attr_accessor :correlation_id_generator
@@ -83,6 +84,7 @@ module SolidObserver
       @flush_interval = 10.seconds
       @max_buffer_size = 10_000
       @buffer_overflow_strategy = :drop_old
+      @filter_cache_ttl = 1.minute
 
       # Correlation defaults
       @correlation_id_generator = nil
@@ -141,9 +143,16 @@ module SolidObserver
 
     def buffer_overflow_strategy=(value)
       value = value.to_sym
-      raise_invalid_buffer_overflow_strategy! unless BUFFER_OVERFLOW_STRATEGIES.include?(value)
+      unless BUFFER_OVERFLOW_STRATEGIES.include?(value)
+        raise ArgumentError, "buffer_overflow_strategy must be :drop_old or :drop_new"
+      end
 
       @buffer_overflow_strategy = value
+    end
+
+    def filter_cache_ttl=(value)
+      validate_positive_numeric!(:filter_cache_ttl, value)
+      @filter_cache_ttl = value
     end
 
     private
@@ -168,10 +177,6 @@ module SolidObserver
 
     def production?
       defined?(Rails) && Rails.env.production?
-    end
-
-    def raise_invalid_buffer_overflow_strategy!
-      raise ArgumentError, "buffer_overflow_strategy must be :drop_old or :drop_new"
     end
   end
 end
