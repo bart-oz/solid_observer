@@ -197,12 +197,10 @@ RSpec.describe SolidObserver::EventsController do
   end
 
   describe "#load_available_options" do
-    let(:distinct) { double("distinct") }
-
     before do
-      allow(SolidObserver::QueueEvent).to receive(:distinct).and_return(distinct)
-      allow(distinct).to receive(:pluck).with(:job_class).and_return([])
-      allow(distinct).to receive(:pluck).with(:queue_name).and_return([])
+      SolidObserver.config.filter_cache_ttl = 1.minute
+      allow(SolidObserver::QueueEvent).to receive(:distinct_job_classes).and_return(["MyJob", "OtherJob"])
+      allow(SolidObserver::QueueEvent).to receive(:distinct_queue_names).and_return(%w[default urgent])
     end
 
     it "sets @available_event_types from EVENT_TYPES constant" do
@@ -210,16 +208,34 @@ RSpec.describe SolidObserver::EventsController do
       expect(controller.instance_variable_get(:@available_event_types)).to eq(SolidObserver::QueueEvent::EVENT_TYPES)
     end
 
-    it "sets @available_job_classes from distinct pluck" do
-      allow(distinct).to receive(:pluck).with(:job_class).and_return(["MyJob", nil, "OtherJob"])
+    it "invokes each distinct scope once on cold cache then serves from cache" do
+      expect(SolidObserver::QueueEvent).to receive(:distinct_job_classes).once.and_return(["A"])
+      expect(SolidObserver::QueueEvent).to receive(:distinct_queue_names).once.and_return(["q"])
+
       controller.send(:load_available_options)
-      expect(controller.instance_variable_get(:@available_job_classes)).to eq(["MyJob", "OtherJob"])
+      controller.send(:load_available_options)
+
+      expect(controller.instance_variable_get(:@available_job_classes)).to eq(["A"])
+      expect(controller.instance_variable_get(:@available_queues)).to eq(["q"])
     end
 
-    it "sets @available_queues from distinct pluck" do
-      allow(distinct).to receive(:pluck).with(:queue_name).and_return(["default", nil, "urgent"])
+    it "does not invoke scopes on hot cache" do
       controller.send(:load_available_options)
-      expect(controller.instance_variable_get(:@available_queues)).to eq(["default", "urgent"])
+
+      expect(SolidObserver::QueueEvent).not_to receive(:distinct_job_classes)
+      expect(SolidObserver::QueueEvent).not_to receive(:distinct_queue_names)
+
+      controller.send(:load_available_options)
+    end
+
+    it "re-invokes scope after TTL expiry" do
+      expect(SolidObserver::QueueEvent).to receive(:distinct_job_classes).twice.and_return(["A"])
+      expect(SolidObserver::QueueEvent).to receive(:distinct_queue_names).twice.and_return(["q"])
+
+      controller.send(:load_available_options)
+      travel_to(2.minutes.from_now) do
+        controller.send(:load_available_options)
+      end
     end
   end
 end

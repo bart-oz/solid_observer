@@ -45,10 +45,17 @@ module SolidObserver
     end
 
     def load_available_options
-      scope = SolidObserver::QueueEvent.distinct
       @available_event_types = SolidObserver::QueueEvent::EVENT_TYPES
-      @available_job_classes = scope.pluck(:job_class).compact.sort
-      @available_queues = scope.pluck(:queue_name).compact.sort
+      @available_job_classes = cached_filter_options("solid_observer/events/distinct_job_classes") {
+        SolidObserver::QueueEvent.distinct_job_classes
+      }
+      @available_queues = cached_filter_options("solid_observer/events/distinct_queue_names") {
+        SolidObserver::QueueEvent.distinct_queue_names
+      }
+    end
+
+    def cached_filter_options(key, &block)
+      Rails.cache.fetch(key, expires_in: SolidObserver.config.filter_cache_ttl, &block)
     end
 
     def set_event

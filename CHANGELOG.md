@@ -20,12 +20,14 @@
 - QueueEventBuffer hard-caps at `max_buffer_size` (default 10_000) with configurable overflow strategy; prevents OOM during prolonged DB outages
 - QueueEventBuffer uses a single persistent `Concurrent::TimerTask` for scheduled flushes instead of spawning a new thread every cycle
 - Storage monitoring now uses adapter-native size queries (SQLite/PostgreSQL/MySQL/Trilogy) instead of filesystem path checks, fixing `0 MB` false readings on non-SQLite deployments
+- EventsController filter dropdowns were full-table scans on every request
 
 ### Added
 - `SolidObserver::QueueEventBuffer#metrics` — exposes flush latency, failure count, drops count, and last-error for observability
 - `SolidObserver::QueueEventBuffer#shutdown` — graceful drain and timer stop for app-exit hooks
 - `Configuration#max_buffer_size` (default 10_000) and `Configuration#buffer_overflow_strategy` (`:drop_old` default, `:drop_new` alternative)
 - `SolidObserver::Services::DatabaseSize` service for cross-adapter queue table size measurement and shared use in cleanup + CLI
+- `Configuration#filter_cache_ttl`; `QueueEvent.distinct_job_classes` / `distinct_queue_names` scopes; composite indexes
 
 ### Changed
 - Removed `allow_any_instance_of` anti-pattern from specs; replaced with `instance_double` stubs
