@@ -9,32 +9,6 @@ RSpec.describe SolidObserver::ApplicationHelper do
   include ActionView::Helpers::OutputSafetyHelper
   include described_class
 
-  describe "#format_bytes" do
-    it "returns '0 B' for nil" do
-      expect(format_bytes(nil)).to eq("0 B")
-    end
-
-    it "returns '0 B' for zero" do
-      expect(format_bytes(0)).to eq("0 B")
-    end
-
-    it "returns byte count for values under 1 KB" do
-      expect(format_bytes(500)).to eq("500 B")
-    end
-
-    it "formats KB" do
-      expect(format_bytes(2_048)).to eq("2.0 KB")
-    end
-
-    it "formats MB" do
-      expect(format_bytes(5 * 1_048_576)).to eq("5.0 MB")
-    end
-
-    it "formats GB" do
-      expect(format_bytes(2 * 1_073_741_824)).to eq("2.0 GB")
-    end
-  end
-
   describe "#format_duration" do
     it "returns '0ms' for nil" do
       expect(format_duration(nil)).to eq("0ms")
@@ -54,20 +28,6 @@ RSpec.describe SolidObserver::ApplicationHelper do
 
     it "formats exactly 1 second" do
       expect(format_duration(1.0)).to eq("1.0s")
-    end
-  end
-
-  describe "#format_number" do
-    it "returns '0' for nil" do
-      expect(format_number(nil)).to eq("0")
-    end
-
-    it "formats large numbers with commas" do
-      expect(format_number(1_234_567)).to eq("1,234,567")
-    end
-
-    it "returns small numbers unchanged" do
-      expect(format_number(42)).to eq("42")
     end
   end
 

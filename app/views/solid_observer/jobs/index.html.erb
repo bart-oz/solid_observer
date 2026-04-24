@@ -37,7 +37,7 @@
           <td><%= link_to execution.id, job_path(execution.id) %></td>
           <td><%= job&.class_name || "N/A" %></td>
           <td><%= job&.queue_name || execution&.queue_name || "N/A" %></td>
-          <td><%= status_badge(determine_status(execution)) %></td>
+          <td><%= status_badge(execution_status(execution)) %></td>
           <td><%= time_ago_in_words(execution.created_at) %> ago</td>
           <td>
             <%= link_to "View", job_path(execution.id), class: "so-btn" %>

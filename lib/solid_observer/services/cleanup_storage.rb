@@ -61,15 +61,30 @@ module SolidObserver
 
       def check_storage_warnings
         current_size = current_database_size
-        return unless current_size
+        return unless warning_needed?(current_size)
 
+        Rails.logger.warn(storage_warning_message(current_size))
+      end
+
+      def warning_needed?(current_size)
+        return false unless current_size
+
+        config = SolidObserver.config
+        max_size = config.max_db_size
+        threshold = config.warning_threshold
+        current_size > (max_size * threshold)
+      end
+
+      def storage_warning_message(current_size)
         max_size = SolidObserver.config.max_db_size
-        threshold = SolidObserver.config.warning_threshold
-
-        return unless current_size > (max_size * threshold)
-
         percentage = ((current_size.to_f / max_size) * 100).round(1)
-        Rails.logger.warn "[SolidObserver] Queue DB approaching limit: #{format_bytes(current_size)} / #{format_bytes(max_size)} (#{percentage}%)"
+        current_size_human = human_size(current_size)
+        max_size_human = human_size(max_size)
+        "[SolidObserver] Queue DB approaching limit: #{current_size_human} / #{max_size_human} (#{percentage}%)"
+      end
+
+      def human_size(bytes)
+        ActiveSupport::NumberHelper.number_to_human_size(bytes, precision: 1, significant: false, strip_insignificant_zeros: false)
       end
 
       def current_database_size
@@ -80,16 +95,6 @@ module SolidObserver
 
       def log_results(deleted_count)
         Rails.logger.info "[SolidObserver] Cleaned #{deleted_count} queue events"
-      end
-
-      def format_bytes(bytes)
-        return "0 B" if bytes.zero?
-
-        units = ["B", "KB", "MB", "GB"]
-        exp = (Math.log(bytes) / Math.log(1024)).to_i
-        exp = [exp, units.length - 1].min
-
-        "%.1f %s" % [bytes.to_f / (1024**exp), units[exp]]
       end
     end
   end

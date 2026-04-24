@@ -28,7 +28,7 @@
           <% @stats[:queues].each do |queue_name, count| %>
             <tr>
               <td><%= queue_name %></td>
-              <td><%= format_number(count) %></td>
+              <td><%= number_with_delimiter(count) %></td>
             </tr>
           <% end %>
         </tbody>

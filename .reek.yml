@@ -8,9 +8,10 @@ detectors:
   TooManyInstanceVariables:
     exclude:
       - SolidObserver::Configuration
+      - SolidObserver::QueueEventBuffer
       - SolidObserver::JobsController
       - SolidObserver::EventsController
-      - SolidObserver::QueueEventBuffer
+      - SolidObserver::Params::EventsFilter
 
   TooManyStatements:
     exclude:
@@ -47,8 +48,10 @@ detectors:
       - SolidObserver::Engine#self.configure_database_connection
       - SolidObserver::Subscriber#subscribe!
       - SolidObserver::Subscriber#self.subscribe!
-      - SolidObserver::EventsController#set_filter_params
-      - SolidObserver::EventsController#build_event_scope
+      - SolidObserver::JobsController#index
+      - SolidObserver::EventsController#index
+      - SolidObserver::Queries::EventsQuery#call
+      - SolidObserver::Params::EventsFilter#initialize
 
   LongParameterList:
     exclude:
@@ -57,6 +60,7 @@ detectors:
       - SolidObserver::Services::RecordEvent#self.call
       - SolidObserver::CLI::Jobs#list
       - SolidObserver::CLI::Jobs#fetch_job
+      - SolidObserver::Params::EventsFilter#initialize
 
   UtilityFunction:
     enabled: false
@@ -80,8 +84,7 @@ detectors:
       - SolidObserver::Configuration#validate_rate!
       - SolidObserver::Configuration#validate_positive_integer!
       - SolidObserver::Configuration#validate_positive_numeric!
-      - SolidObserver::Services::CleanupStorage#format_bytes
-      - SolidObserver::ApplicationHelper#format_bytes
+      - SolidObserver::Queries::JobExecutionsQuery#apply_queue_filter
       - SolidObserver::ApplicationHelper#mode_badge
 
   DuplicateMethodCall:
@@ -110,10 +113,9 @@ detectors:
   InstanceVariableAssumption:
     exclude:
       - SolidObserver::Subscriber
-      - SolidObserver::ApplicationController
+      - SolidObserver::Services::CleanupStorage
       - SolidObserver::JobsController
       - SolidObserver::EventsController
-      - SolidObserver::Services::CleanupStorage
 
   MissingSafeMethod:
     exclude:
@@ -125,7 +127,6 @@ detectors:
     exclude:
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CLI::Jobs
-      - SolidObserver::JobsController
 
   UncommunicativeVariableName:
     accept:
@@ -156,7 +157,6 @@ detectors:
   TooManyMethods:
     exclude:
       - SolidObserver::CLI::Jobs
-      - SolidObserver::ApplicationController
       - SolidObserver::QueueEventBuffer
 
 exclude_paths:

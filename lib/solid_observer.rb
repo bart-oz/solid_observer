@@ -5,6 +5,11 @@ require_relative "solid_observer/configuration"
 require_relative "solid_observer/correlation_id_resolver"
 require_relative "solid_observer/base_event" if defined?(ActiveRecord)
 require_relative "solid_observer/base_metric" if defined?(ActiveRecord)
+require_relative "solid_observer/params/jobs_filter"
+require_relative "solid_observer/params/events_filter"
+require_relative "solid_observer/queries/job_executions_query" if defined?(ActiveRecord)
+require_relative "solid_observer/queries/events_query" if defined?(ActiveRecord)
+require_relative "solid_observer/queries/execution_finder" if defined?(ActiveRecord)
 require_relative "solid_observer/services/record_event" if defined?(ActiveRecord)
 require_relative "solid_observer/services/flush_event_buffer" if defined?(ActiveRecord)
 require_relative "solid_observer/services/cleanup_storage" if defined?(ActiveRecord)
@@ -15,6 +20,7 @@ require_relative "solid_observer/cli/status"
 require_relative "solid_observer/cli/storage"
 require_relative "solid_observer/cli/jobs"
 require_relative "solid_observer/queue_stats"
+require_relative "../app/presenters/solid_observer/execution_presenter"
 require_relative "solid_observer/engine" if defined?(Rails::Engine)
 
 module SolidObserver

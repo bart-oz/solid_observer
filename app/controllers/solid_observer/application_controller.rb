@@ -2,21 +2,20 @@
 
 module SolidObserver
   class ApplicationController < ActionController::Base
-    if defined?(ActionController::API) &&
-        begin
-          SolidObserver.config.ui_base_controller.constantize.ancestors.include?(ActionController::API)
-        rescue NameError
-          false
-        end
+    api_controller = defined?(ActionController::API) && begin
+      SolidObserver.config.ui_base_controller.constantize.ancestors.include?(ActionController::API)
+    rescue NameError
+      false
+    end
+    if api_controller
       include ActionView::Layouts
       include ActionView::Rendering
       include ActionController::RequestForgeryProtection
     end
-
     protect_from_forgery with: :exception
     before_action :verify_ui_enabled
     before_action :authenticate
-    helper_method :persistence_mode?, :realtime_mode?, :determine_status, :solid_queue_available?
+    helper_method :persistence_mode?, :realtime_mode?, :solid_queue_available?
     layout "solid_observer/application"
 
     private
@@ -27,26 +26,11 @@ module SolidObserver
 
     def authenticate
       return unless SolidObserver.config.ui_username.present?
-
-      authenticate_or_request_with_http_basic("SolidObserver") do |username, password|
-        credentials_valid?(username, password)
-      end
-    end
-
-    def require_persistence_mode
-      return unless realtime_mode?
-
-      redirect_to root_path, alert: "This page is not available in real-time mode."
-    end
-
-    def require_solid_queue
-      return if solid_queue_available?
-
-      redirect_to root_path, alert: "SolidQueue is not available."
+      authenticate_or_request_with_http_basic("SolidObserver") { |username, password| credentials_valid?(username, password) }
     end
 
     def solid_queue_available?
-      !!(defined?(SolidQueue) && defined?(SolidQueue::Job))
+      QueueStats.solid_queue_available?
     end
 
     def persistence_mode?
@@ -55,29 +39,6 @@ module SolidObserver
 
     def realtime_mode?
       SolidObserver.config.realtime_mode?
-    end
-
-    EXECUTION_STATUS_MAP = {
-      "SolidQueue::ReadyExecution" => "ready",
-      "SolidQueue::ScheduledExecution" => "scheduled",
-      "SolidQueue::ClaimedExecution" => "claimed",
-      "SolidQueue::FailedExecution" => "failed"
-    }.freeze
-
-    def determine_status(execution)
-      EXECUTION_STATUS_MAP.fetch(execution.class.name, "unknown")
-    end
-
-    def normalize_page
-      @page = 1 if @page < 1
-      @page = 1 if @page > @total_pages && @total_pages > 0
-    end
-
-    def paginate_scope(scope, per_page:)
-      @total_count = scope.count
-      @total_pages = (@total_count.to_f / per_page).ceil
-      normalize_page
-      (@page - 1) * per_page
     end
 
     def credentials_valid?(username, password)
