@@ -18,15 +18,9 @@ module SolidObserver
 
     class << self
       def subscribe!
-        return unless SolidObserver.config.observe_queue
-        return if subscribed?
+        return unless subscription_allowed?
 
-        @subscriptions = []
-        @subscriptions << subscribe_to_enqueue
-        @subscriptions << subscribe_to_perform
-        @subscriptions << subscribe_to_retry_stopped
-        @subscriptions << subscribe_to_discard
-        @subscriptions.compact!
+        @subscriptions = subscriptions_for_events.compact
       end
 
       def unsubscribe!
@@ -43,6 +37,19 @@ module SolidObserver
       end
 
       private
+
+      def subscription_allowed?
+        SolidObserver.config.observe_queue && !subscribed?
+      end
+
+      def subscriptions_for_events
+        [
+          subscribe_to_enqueue,
+          subscribe_to_perform,
+          subscribe_to_retry_stopped,
+          subscribe_to_discard
+        ]
+      end
 
       def subscribe_to_enqueue
         ActiveSupport::Notifications.subscribe("enqueue.active_job") do |*args|

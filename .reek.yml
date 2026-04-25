@@ -15,42 +15,21 @@ detectors:
 
   TooManyStatements:
     exclude:
-      - SolidObserver::Configuration#initialize
       - SolidObserver::Generators::InstallGenerator#show_instructions
       - SolidObserver::CorrelationIdResolver#resolve
-      - SolidObserver::CorrelationIdResolver#call_custom_generator
       - CreateSolidObserverQueueEvents#change
       - CreateSolidObserverMetrics#change
-      - CreateSolidObserverStorageInfo#change
       - AddCompositeIndexesToQueueEvents#change
       - SolidObserver::QueueEventBuffer#flush!
-      - SolidObserver::QueueEventBuffer#push
-      - SolidObserver::QueueEventBuffer#replace_timer_if_stopped
-      - SolidObserver::QueueEventBuffer#requeue_failed_events
-      - SolidObserver::QueueEventBuffer#trim_events_for_capacity
-      - SolidObserver::Services::FlushEventBuffer#call
-      - SolidObserver::Services::FlushEventBuffer#retry_with_smaller_batches
-      - SolidObserver::Services::DatabaseSize#call
-      - SolidObserver::Services::CleanupStorage#call
-      - SolidObserver::Services::CleanupStorage#check_storage_warnings
-      - SolidObserver::Services::CleanupStorage#vacuum_database
       - SolidObserver::CLI::Base#table
       - SolidObserver::CLI::Base#confirm
       - SolidObserver::CLI::Status#print_queue_depths
       - SolidObserver::CLI::Jobs#retry_job
       - SolidObserver::CLI::Jobs#discard
-      - SolidObserver::CLI::Storage#call
       - SolidObserver::CLI::Storage#print_configuration
-      - SolidObserver::Engine#activate_subscribers
-      - SolidObserver::Engine#self.activate_subscribers
-      - SolidObserver::Engine#configure_database_connection
-      - SolidObserver::Engine#self.configure_database_connection
-      - SolidObserver::Subscriber#subscribe!
-      - SolidObserver::Subscriber#self.subscribe!
       - SolidObserver::JobsController#index
       - SolidObserver::EventsController#index
       - SolidObserver::Queries::EventsQuery#call
-      - SolidObserver::Params::EventsFilter#initialize
 
   LongParameterList:
     exclude:
@@ -91,18 +70,14 @@ detectors:
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CorrelationIdResolver#log_generator_error
       - SolidObserver::Services::CleanupStorage#check_storage_warnings
-      - SolidObserver::Services::CleanupStorage#vacuum_database
       - SolidObserver::QueueEventBuffer#flush!
-      - SolidObserver::QueueEventBuffer#replace_timer_if_stopped
       - SolidObserver::QueueEventBuffer#record_flush_failure
       - SolidObserver::Services::RecordEvent#handle_error
-      - SolidObserver::Services::FlushEventBuffer#retry_with_smaller_batches
       - SolidObserver::CLI::Status#print_queue_stats
       - SolidObserver::CLI::Status#print_queue_table
       - SolidObserver::CLI::Status#print_queue_depths
       - SolidObserver::CLI::Jobs#add_error_details
       - SolidObserver::CLI::Jobs#scope_for_status
-      - SolidObserver::CLI::Storage#call
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::CLI::Storage#print_section_header
       - SolidObserver::CLI::Storage#print_storage_table

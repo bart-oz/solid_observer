@@ -26,31 +26,47 @@ module SolidObserver
       def call
         return 0 if @events.empty?
 
-        QueueEvent.transaction do
-          QueueEvent.insert_all!(@events)
-        end
-
+        bulk_insert
         @events.size
       rescue ActiveRecord::RecordInvalid, ActiveRecord::StatementInvalid => e
-        log_error("Bulk insert failed, retrying in batches: #{e.message}")
-        retry_with_smaller_batches
+        handle_bulk_insert_failure(e)
       end
 
       private
 
-      def retry_with_smaller_batches
-        inserted = 0
-
-        @events.each_slice(BATCH_SIZE) do |batch|
-          QueueEvent.insert_all(batch, returning: false)
-          inserted += batch.size
-        rescue ActiveRecord::StatementInvalid, ActiveRecord::RecordInvalid => e
-          @failed_count += batch.size
-          log_warning("Failed to insert batch of #{batch.size} events: #{e.message}")
+      def bulk_insert
+        QueueEvent.transaction do
+          QueueEvent.insert_all!(@events)
         end
+      end
 
-        log_warning("#{@failed_count} events could not be saved") if @failed_count.positive?
+      def handle_bulk_insert_failure(error)
+        log_error("Bulk insert failed, retrying in batches: #{error.message}")
+        retry_with_smaller_batches
+      end
+
+      def retry_with_smaller_batches
+        inserted = @events.each_slice(BATCH_SIZE).sum { |batch| insert_batch(batch) }
+        log_failed_count if @failed_count.positive?
         inserted
+      end
+
+      def insert_batch(batch)
+        QueueEvent.insert_all(batch, returning: false)
+        batch.size
+      rescue ActiveRecord::StatementInvalid, ActiveRecord::RecordInvalid => e
+        register_failed_batch(batch, e)
+        0
+      end
+
+      def register_failed_batch(batch, error)
+        batch_size = batch.size
+        @failed_count += batch_size
+        log_warning("Failed to insert batch of #{batch_size} events: #{error.message}")
+      end
+
+      def log_failed_count
+        log_warning("#{@failed_count} events could not be saved")
       end
 
       def log_error(message)

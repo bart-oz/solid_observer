@@ -29,12 +29,8 @@ module SolidObserver
       attr_reader :event_type, :job_class, :queue_name, :from, :to, :page
 
       def initialize(event_type:, job_class:, queue_name:, from:, to:, page:)
-        @event_type = event_type
-        @job_class = job_class
-        @queue_name = queue_name
-        @from = from
-        @to = to
-        @page = page
+        @event_type, @job_class, @queue_name = event_type, job_class, queue_name
+        @from, @to, @page = from, to, page
       end
     end
   end
