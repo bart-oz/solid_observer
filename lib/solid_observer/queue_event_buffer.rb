@@ -36,17 +36,9 @@ module SolidObserver
     # @param event_data [Hash] Event data to buffer
     # @return [void]
     def push(event_data)
-      config = SolidObserver.config
-      return unless config.persistence_mode?
+      return unless (config = SolidObserver.config).persistence_mode?
 
-      should_flush = false
-      drops_count = 0
-
-      @mutex.synchronize do
-        drops_count = apply_overflow_policy(event_data, config)
-        should_flush = @buffer.size >= config.buffer_size
-      end
-
+      drops_count, should_flush = sync_push_and_check(event_data, config)
       record_drop(drops_count) if drops_count.positive?
       ensure_timer_running
       flush! if should_flush
@@ -126,32 +118,15 @@ module SolidObserver
     def requeue_failed_events(events_to_flush)
       return unless events_to_flush
 
-      config = SolidObserver.config
-      dropped_count = 0
-
-      @mutex.synchronize do
-        combined_events = events_to_flush + @buffer
-        combined_events, dropped_count = trim_events_for_capacity(combined_events, config.max_buffer_size)
-        @buffer.replace(combined_events)
-      end
-
+      dropped_count = sync_requeue_events(events_to_flush, SolidObserver.config.max_buffer_size)
       record_drop(dropped_count) if dropped_count.positive?
     end
 
     def trim_events_for_capacity(events, max_buffer_size)
-      events_size = events.size
-      return [events, 0] if events_size <= max_buffer_size
+      dropped_count = events.size - max_buffer_size
+      return [events, 0] if dropped_count <= 0
 
-      dropped_count = events_size - max_buffer_size
-      overflow_strategy = SolidObserver.config.buffer_overflow_strategy
-      kept_events =
-        if overflow_strategy == :drop_old
-          events.last(max_buffer_size)
-        else
-          events.first(max_buffer_size)
-        end
-
-      [kept_events, dropped_count]
+      [events_to_keep(events, max_buffer_size), dropped_count]
     end
 
     def ensure_timer_running
@@ -165,13 +140,9 @@ module SolidObserver
     def replace_timer_if_stopped
       @mutex.synchronize do
         current_timer_task = @timer_task
-        return [nil, nil] if current_timer_task && !current_timer_task.shuttingdown?
+        return [nil, nil] if timer_running?(current_timer_task)
 
-        @timer_task = Concurrent::TimerTask.new(
-          execution_interval: SolidObserver.config.flush_interval,
-          run_now: false
-        ) { flush! }
-        [@timer_task, current_timer_task]
+        [build_timer_task, current_timer_task]
       end
     end
 
@@ -206,6 +177,41 @@ module SolidObserver
       @metrics_mutex.synchronize do
         @metrics[:drops_count] += count
       end
+    end
+
+    def sync_push_and_check(event_data, config)
+      @mutex.synchronize do
+        drops_count = apply_overflow_policy(event_data, config)
+        [drops_count, @buffer.size >= config.buffer_size]
+      end
+    end
+
+    def sync_requeue_events(events_to_flush, max_buffer_size)
+      @mutex.synchronize do
+        combined_events = events_to_flush + @buffer
+        kept_events, dropped_count = trim_events_for_capacity(combined_events, max_buffer_size)
+        @buffer.replace(kept_events)
+        dropped_count
+      end
+    end
+
+    def events_to_keep(events, max_buffer_size)
+      if SolidObserver.config.buffer_overflow_strategy == :drop_old
+        events.last(max_buffer_size)
+      else
+        events.first(max_buffer_size)
+      end
+    end
+
+    def timer_running?(timer_task)
+      timer_task && !timer_task.shuttingdown?
+    end
+
+    def build_timer_task
+      @timer_task = Concurrent::TimerTask.new(
+        execution_interval: SolidObserver.config.flush_interval,
+        run_now: false
+      ) { flush! }
     end
 
     def monotonic_ms

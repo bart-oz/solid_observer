@@ -38,12 +38,7 @@ module SolidObserver
     end
 
     def call_custom_generator
-      result = SolidObserver.config.correlation_id_generator.call
-      return nil if result.blank?
-      result
-    rescue => e
-      log_generator_error(e)
-      nil
+      custom_generator_value.presence
     end
 
     def log_generator_error(exception)
@@ -57,6 +52,13 @@ module SolidObserver
 
     def extract_job_id
       @event.payload[:job].job_id
+    end
+
+    def custom_generator_value
+      SolidObserver.config.correlation_id_generator.call
+    rescue => e
+      log_generator_error(e)
+      nil
     end
   end
 end

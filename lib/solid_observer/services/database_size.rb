@@ -18,16 +18,9 @@ module SolidObserver
       end
 
       def call
-        case adapter_key
-        when :sqlite then sqlite_size
-        when :postgresql then postgresql_size
-        when :mysql then mysql_size
-        else
-          log_unknown_adapter
-          nil
-        end
+        fetch_size
       rescue ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished => e
-        Rails.logger&.warn("[SolidObserver] DatabaseSize query failed: #{e.message}")
+        log_query_failure(e.message)
         nil
       end
 
@@ -41,6 +34,21 @@ module SolidObserver
         when /postgres|postgis/ then :postgresql
         when "mysql2", "trilogy" then :mysql
         end
+      end
+
+      def fetch_size
+        case adapter_key
+        when :sqlite then sqlite_size
+        when :postgresql then postgresql_size
+        when :mysql then mysql_size
+        else
+          unknown_adapter_size
+        end
+      end
+
+      def unknown_adapter_size
+        log_unknown_adapter
+        nil
       end
 
       def sqlite_size
@@ -68,6 +76,10 @@ module SolidObserver
           "[SolidObserver] Unknown adapter for DatabaseSize: " \
           "#{connection.adapter_name.inspect} — storage monitoring disabled"
         )
+      end
+
+      def log_query_failure(message)
+        Rails.logger&.warn("[SolidObserver] DatabaseSize query failed: #{message}")
       end
     end
   end

@@ -22,14 +22,29 @@ module SolidObserver
 
       def configure_database_connection
         return if SolidObserver.config.realtime_mode?
+        return unless queue_db_config
 
-        db_config = ActiveRecord::Base.configurations.configs_for(
+        connect_observer_models
+      end
+
+      def activate_subscribers
+        return activate_subscribers_in_realtime if SolidObserver.config.realtime_mode?
+        return if activation_skipped_for_table_status?
+
+        Rails.logger.info "[SolidObserver] Activating event subscribers"
+        Subscriber.subscribe!
+      end
+
+      private
+
+      def queue_db_config
+        ActiveRecord::Base.configurations.configs_for(
           env_name: Rails.env,
           name: "solid_observer_queue"
         )
+      end
 
-        return unless db_config
-
+      def connect_observer_models
         connection_config = {
           database: {writing: :solid_observer_queue, reading: :solid_observer_queue}
         }
@@ -38,28 +53,27 @@ module SolidObserver
         SolidObserver::BaseMetric.connects_to(**connection_config)
       end
 
-      def activate_subscribers
-        logger = Rails.logger
-
-        if SolidObserver.config.realtime_mode?
-          logger.info "[SolidObserver] Starting in real-time mode (no persistence)"
-        else
-          case table_status("solid_observer_queue_events")
-          when :absent
-            logger.info "[SolidObserver] Tables not found. Run: rails solid_observer:install:migrations && rails db:migrate"
-            return
-          when :unknown
-            logger.info "[SolidObserver] Database not reachable at boot. Skipping subscriber activation."
-            return
-          end
-
-          logger.info "[SolidObserver] Activating event subscribers"
-        end
-
+      def activate_subscribers_in_realtime
+        Rails.logger.info "[SolidObserver] Starting in real-time mode (no persistence)"
         Subscriber.subscribe!
       end
 
-      private
+      def activation_skipped_for_table_status?
+        case table_status("solid_observer_queue_events")
+        when :absent
+          log_activation_skip("Tables not found. Run: rails solid_observer:install:migrations && rails db:migrate")
+          true
+        when :unknown
+          log_activation_skip("Database not reachable at boot. Skipping subscriber activation.")
+          true
+        else
+          false
+        end
+      end
+
+      def log_activation_skip(message)
+        Rails.logger.info("[SolidObserver] #{message}")
+      end
 
       def table_status(table_name)
         pool = SolidObserver::BaseEvent.connection_pool

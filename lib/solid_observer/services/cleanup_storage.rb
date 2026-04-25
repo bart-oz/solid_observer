@@ -12,25 +12,33 @@ module SolidObserver
       def call
         return 0 if SolidObserver.config.realtime_mode?
 
-        deleted_count = 0
-
-        QueueEvent.transaction do
-          deleted_count = delete_old_events
-          record_snapshot_after_cleanup
-        end
-
-        vacuum_database
-
-        check_storage_warnings
-        log_results(deleted_count)
-
-        deleted_count
+        deleted_count = perform_cleanup_transaction
+        post_cleanup(deleted_count)
       rescue => e
-        Rails.logger.error "[SolidObserver] Cleanup failed: #{e.message}"
-        raise
+        handle_cleanup_failure(e)
       end
 
       private
+
+      def handle_cleanup_failure(error)
+        Rails.logger.error "[SolidObserver] Cleanup failed: #{error.message}"
+        raise
+      end
+
+      def perform_cleanup_transaction
+        QueueEvent.transaction do
+          deleted_count = delete_old_events
+          record_snapshot_after_cleanup
+          deleted_count
+        end
+      end
+
+      def post_cleanup(deleted_count)
+        vacuum_database
+        check_storage_warnings
+        log_results(deleted_count)
+        deleted_count
+      end
 
       def delete_old_events
         cutoff = SolidObserver.config.event_retention.ago
@@ -46,15 +54,10 @@ module SolidObserver
       end
 
       def vacuum_database
-        adapter = QueueEvent.connection.adapter_name.downcase
-        case adapter
-        when "sqlite"
-          QueueEvent.connection.execute("VACUUM")
-        when "postgresql"
-          QueueEvent.connection.execute("VACUUM ANALYZE solid_observer_queue_events")
-        when "mysql2", "trilogy"
-          QueueEvent.connection.execute("OPTIMIZE TABLE solid_observer_queue_events")
-        end
+        statement = maintenance_statement
+        return unless statement
+
+        QueueEvent.connection.execute(statement)
       rescue => e
         Rails.logger.warn "[SolidObserver] Database maintenance failed: #{e.message}"
       end
@@ -95,6 +98,14 @@ module SolidObserver
 
       def log_results(deleted_count)
         Rails.logger.info "[SolidObserver] Cleaned #{deleted_count} queue events"
+      end
+
+      def maintenance_statement
+        case QueueEvent.connection.adapter_name.downcase
+        when "sqlite" then "VACUUM"
+        when "postgresql" then "VACUUM ANALYZE solid_observer_queue_events"
+        when "mysql2", "trilogy" then "OPTIMIZE TABLE solid_observer_queue_events"
+        end
       end
     end
   end

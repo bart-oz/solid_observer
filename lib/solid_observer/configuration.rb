@@ -54,40 +54,17 @@ module SolidObserver
     attr_accessor :correlation_id_generator
 
     def initialize
-      # UI defaults
-      @ui_enabled = !production?
-      @ui_base_controller = "::ApplicationController"
-      @ui_username = nil
-      @ui_password = nil
-      @ui_refresh_interval = 30
-
-      # Storage mode
-      @storage_mode = :persistence
-
-      # Observer defaults
-      @observe_queue = true
-      @observe_cache = false
-      @observe_cable = false
-
-      # Retention defaults
-      @event_retention = 30.days
-      @metrics_retention = 90.days
-
-      # Storage defaults
-      @max_db_size = 1.gigabyte
-      @warning_threshold = 0.8
-
-      # Performance defaults
-      @sampling_rate = 1.0
-      @cache_sampling_rate = 0.1
-      @buffer_size = 1000
-      @flush_interval = 10.seconds
-      @max_buffer_size = 10_000
-      @buffer_overflow_strategy = :drop_old
-      @filter_cache_ttl = 1.minute
-
-      # Correlation defaults
-      @correlation_id_generator = nil
+      @ui_enabled, @ui_base_controller, @ui_username, @ui_password, @ui_refresh_interval,
+        @storage_mode, @observe_queue, @observe_cache, @observe_cable,
+        @event_retention, @metrics_retention, @max_db_size, @warning_threshold,
+        @sampling_rate, @cache_sampling_rate, @buffer_size, @flush_interval,
+        @max_buffer_size, @buffer_overflow_strategy, @filter_cache_ttl,
+        @correlation_id_generator = !production?, "::ApplicationController", nil, nil, 30,
+          :persistence, true, false, false,
+          30.days, 90.days, 1.gigabyte, 0.8,
+          1.0, 0.1, 1000, 10.seconds,
+          10_000, :drop_old, 1.minute,
+          nil
     end
 
     STORAGE_MODES = %i[persistence realtime].freeze

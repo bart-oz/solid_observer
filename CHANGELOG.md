@@ -39,6 +39,7 @@
 - Deleted dead private-method `describe` blocks; coverage preserved via public-API assertions
 - Refactor Web UI controllers to thin actions + query/param/presenter objects; replace custom number helpers with Rails built-ins
 - QueueEventBuffer timer lifecycle specs now use deterministic synchronization (no `sleep`-based waiting)
+- Reduced `.reek.yml` suppressions by removing stale entries and refactoring hot-path services/buffer/engine methods to pass `TooManyStatements` without new suppressions
 
 ## [0.1.1] - 2026-02-10
 
