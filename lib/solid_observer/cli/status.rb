@@ -3,16 +3,34 @@
 module SolidObserver
   module CLI
     class Status < Base
+      BANNER_ICON_TOP = "         ┌─   ─┐"
+      BANNER_ICON_MID_LEFT = "            ◉"
+      BANNER_ICON_BOT = "         └─   ─┘"
+      BANNER_NAME = "solid_observer"
+      BANNER_NAME_GAP = "     "
+
       def call
+        print_banner
         print_header
         print_queue_stats
       end
 
       private
 
+      def print_banner
+        output(BANNER_ICON_TOP, color: :red)
+        output(banner_middle_line)
+        output(BANNER_ICON_BOT, color: :red)
+      end
+
+      def banner_middle_line
+        icon = color_enabled? ? colorize(BANNER_ICON_MID_LEFT, :red) : BANNER_ICON_MID_LEFT
+        "#{icon}#{BANNER_NAME_GAP}#{BANNER_NAME}"
+      end
+
       def print_header
-        output("\n📊 SolidObserver Status", color: :cyan)
-        output("=" * 50, color: :cyan)
+        output("\n📊 SolidObserver Status", color: :red)
+        output("=" * 50, color: :red)
         output("")
       end
 

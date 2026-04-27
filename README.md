@@ -2,19 +2,15 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/solid_logo_dark.svg">
     <source media="(prefers-color-scheme: light)" srcset=".github/solid_logo_light.svg">
-    <img alt="SolidObserver" src=".github/solid_logo_light.svg" width="250">
+    <img alt="SolidObserver" src=".github/solid_logo_light.svg" width="400">
   </picture>
-</p>
-
-<p align="center">
-  <strong>Observe your Solid Stack like a pro!</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.38%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.43%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---

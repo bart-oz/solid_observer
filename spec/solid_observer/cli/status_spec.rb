@@ -27,6 +27,19 @@ RSpec.describe SolidObserver::CLI::Status do
         expect { status.call }.to output(/📊 SolidObserver Status/).to_stdout
       end
 
+      it "prints the indented banner icon with name beside the middle row, above the header" do
+        output = capture_stdout { status.call }
+
+        expect(output).to include("         ┌─   ─┐")
+        expect(output).to include("            ◉")
+        expect(output).to include("         └─   ─┘")
+        expect(output).to include("solid_observer")
+
+        icon_idx = output.index("         ┌─   ─┐")
+        header_idx = output.index("📊 SolidObserver Status")
+        expect(icon_idx).to be < header_idx
+      end
+
       it "displays queue statistics table" do
         output = capture_stdout { status.call }
 

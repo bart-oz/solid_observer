@@ -186,8 +186,8 @@ module SolidObserver
       end
 
       def print_section_header(title)
-        output("\n#{title}", color: :cyan)
-        output("=" * 80, color: :cyan)
+        output("\n#{title}", color: :red)
+        output("=" * 80, color: :red)
         output("")
       end
     end
