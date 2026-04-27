@@ -3,7 +3,7 @@
 module SolidObserver
   # BaseMetric provides the foundation for time-series metrics storage.
   #
-  # NOTE: Metrics functionality is planned for v0.2.0. The database connection
+  # NOTE: Metrics functionality is planned for a future release. The database connection
   # will be configured by the Engine (similar to BaseEvent) when metrics are
   # fully implemented.
   #

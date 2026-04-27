@@ -11,17 +11,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.1.1-blue.svg" alt="Version"></a>
+  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-95.12%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.38%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
 
-SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. Starting with **Solid Queue** monitoring in v0.1.0, it provides unified visibility into your background job processing with a Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
+SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. Starting with **Solid Queue** monitoring in v0.3.0, it provides unified visibility into your background job processing with a Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
 
-## Features (v0.2.0)
+## Features (v0.3.0)
 
 - 🖥️ **Web UI Dashboard** — Live queue stats, job browser, event log, and storage info
 - 📊 **Real-time Queue Status** — Monitor jobs across all states (ready, scheduled, claimed, failed)
@@ -70,7 +70,7 @@ That's it. You now have access to queue status, job listing, retry, and discard 
 
 ### Persistence Mode (default)
 
-Store event history, metrics, and storage snapshots in a dedicated SQLite database. This gives you everything in real-time mode plus long-term event tracking, buffered writes, and retention-based cleanup.
+Store event history, metrics, and storage snapshots in a dedicated observer database. This gives you everything in real-time mode plus long-term event tracking, buffered writes, and retention-based cleanup. The install generator defaults to SQLite; the database can use any Rails-supported adapter for record persistence, and storage-size monitoring is implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. See [Database Setup](#database-setup-persistence-mode) below.
 
 ```bash
 bin/rails solid_observer:install:migrations
@@ -163,6 +163,68 @@ Configuration:
   Max size:  1024.0 MB per database
   Warning:   80% threshold
 ```
+
+## Web UI Dashboard
+
+SolidObserver ships with a zero-dependency Web UI (no asset pipeline, no JS framework) at `/solid_observer`.
+
+### Mount
+
+The install generator mounts it for you. To mount manually:
+
+```ruby
+# config/routes.rb
+mount SolidObserver::Engine, at: "/solid_observer"
+```
+
+### Configuration
+
+```ruby
+SolidObserver.configure do |config|
+  config.ui_enabled          = !Rails.env.production?  # default: true outside production
+  config.ui_username         = "admin"                 # HTTP Basic Auth: BOTH username AND password must be set
+  config.ui_password         = ENV["SOLID_OBSERVER_PASSWORD"]
+  config.ui_refresh_interval = 30                      # seconds; 0 disables auto-refresh
+  config.ui_base_controller  = "ApplicationController" # name of your host app's base controller (used for API-only detection)
+end
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `ui_enabled` | `!Rails.env.production?` | Master switch for the Web UI |
+| `ui_username` / `ui_password` | `nil` | HTTP Basic Auth credentials. Auth is enabled only when **both** are set; if either is missing or `nil`, the UI is unauthenticated |
+| `ui_refresh_interval` | `30` | Dashboard auto-refresh interval in seconds |
+| `ui_base_controller` | `"ApplicationController"` | Name of your host app's base controller. SolidObserver does **not** inherit from it; the value is used to detect API-only apps so the engine can include the rendering modules its dashboard needs |
+
+### Production hardening (recommended)
+
+The snippet above silently disables auth if `ENV["SOLID_OBSERVER_PASSWORD"]` is unset (fail-open with a boot warning — see Caveats). For production, prefer one of these patterns so a missing env var fails loudly at boot rather than shipping an unauthenticated UI:
+
+```ruby
+# Option A: fail at boot if the password env var is missing
+SolidObserver.configure do |config|
+  config.ui_username = "admin"
+  config.ui_password = ENV.fetch("SOLID_OBSERVER_PASSWORD")  # raises KeyError if unset
+end
+
+# Option B: only enable auth when the env var is present (no auth otherwise)
+SolidObserver.configure do |config|
+  if (password = ENV["SOLID_OBSERVER_PASSWORD"]).present?
+    config.ui_username = "admin"
+    config.ui_password = password
+  end
+end
+```
+
+Option A is best when the UI must always be authenticated in production (a missing env var crashes boot — you find out immediately). Option B is best when the UI is optional in some environments.
+
+### Caveats
+
+- **Realtime mode** (`storage_mode: :realtime`) — Events and Storage navigation links are hidden. Direct visits to `/solid_observer/events` or `/solid_observer/storage` redirect to the dashboard with a flash alert (`This page is not available in real-time mode`).
+- **API-only apps** — works out of the box. SolidObserver's controllers always inherit from `ActionController::Base`, so the dashboard renders even when your host app uses `ActionController::API`.
+- **Custom API base controller** — if your host app's API base controller is **not** named `ApplicationController`, set `config.ui_base_controller` to its name (e.g. `"Api::BaseController"`). The engine uses this only to detect `ActionController::API` ancestry; if detected, it includes `ActionView::Layouts`, `ActionView::Rendering`, and `ActionController::RequestForgeryProtection` so layouts and CSRF forms render.
+- **Host-app callbacks are not inherited.** SolidObserver does not run your host app's `before_action`s or authentication. Use `ui_username` / `ui_password` for the engine's built-in HTTP Basic Auth.
+- **Auth misconfiguration is fail-open, but loud.** If you set `ui_username` but `ui_password` resolves to `nil` (e.g. an unset ENV var), the UI ships unauthenticated rather than locking everyone out — and the engine logs a `WARNING` at boot naming the missing credential. Verify both are set in production.
 
 ## Configuration
 
@@ -290,17 +352,17 @@ bin/rails solid_observer:storage:purge
 
 **SolidObserver works with any main application database** — PostgreSQL, MySQL, or SQLite.
 
-For its own monitoring data, SolidObserver uses a **separate SQLite database**. This keeps monitoring isolated from your main app and provides simple file-based storage that requires no additional infrastructure.
+For its own monitoring data, the install generator defaults to a **separate SQLite database** — file-based, no extra infrastructure needed. The example below is what `rails generate solid_observer:install` produces:
 
 ```yaml
-# config/database.yml
+# config/database.yml (generator default)
 solid_observer_queue:
   <<: *default
-  adapter: sqlite3  # Always SQLite for SolidObserver storage
+  adapter: sqlite3
   database: storage/<%= Rails.env %>_solid_observer_queue.sqlite3
 ```
 
-> **Note:** Your main app's `primary` database can be PostgreSQL, MySQL, or any Rails-supported adapter. Only the `solid_observer_queue` database needs to be SQLite.
+> **Note:** SQLite is the generator default, not a requirement. The `solid_observer_queue` database can use any Rails-supported adapter for record persistence. Adapter-native **storage-size monitoring** is currently implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. On other adapters, the size query returns `nil` and the engine logs a single `[SolidObserver] Unknown adapter for DatabaseSize: …` warning — record persistence still works, but the size column on the dashboard will be empty until adapter support is added.
 
 ## Roadmap
 
@@ -309,9 +371,8 @@ SolidObserver is actively developed. Here's what's coming:
 | Version | Focus | Status |
 |---------|-------|--------|
 | v0.1.0 | Solid Queue monitoring, CLI tools | ✅ Released |
-| v0.1.1 | Real-time mode (no migrations needed) | ✅ Current |
-| v0.2.0 | Stability & Refactoring | 🔜 In progress |
-| v0.3.0 | Web UI dashboard (vanilla HTML/CSS) | 🔜 In progress |
+| v0.1.1 | Real-time mode (no migrations needed) | ✅ Released |
+| v0.3.0 | Web UI dashboard + stability hardening | ✅ Current |
 | v0.4.0 | Solid Cache monitoring | 🔜 Planned |
 | v0.5.0 | Solid Cable monitoring | 🔜 Planned |
 | v0.6.0 | Cross-component correlation, health scores | 🔜 Planned |

@@ -12,12 +12,7 @@ module SolidObserver
       end
 
       def check_ui_authentication
-        config = SolidObserver.config
-        return unless config.ui_enabled
-        return if config.ui_username.present?
-
-        Rails.logger.warn "[SolidObserver] WARNING: UI is enabled with no authentication configured. " \
-          "Set config.ui_username and config.ui_password."
+        Services::UiAuthCheck.call(config: SolidObserver.config)
       end
 
       def configure_database_connection

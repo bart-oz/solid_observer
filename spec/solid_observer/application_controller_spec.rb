@@ -69,6 +69,30 @@ RSpec.describe SolidObserver::ApplicationController do
       end
     end
 
+    context "when ui_username is set but ui_password is missing" do
+      before do
+        SolidObserver.config.ui_username = "admin"
+        SolidObserver.config.ui_password = nil
+      end
+
+      it "skips HTTP Basic Auth (does not enable auth with a blank password)" do
+        expect(controller).not_to receive(:authenticate_or_request_with_http_basic)
+        controller.send(:authenticate)
+      end
+    end
+
+    context "when ui_password is set but ui_username is missing" do
+      before do
+        SolidObserver.config.ui_username = nil
+        SolidObserver.config.ui_password = "secret"
+      end
+
+      it "skips HTTP Basic Auth (both credentials must be configured)" do
+        expect(controller).not_to receive(:authenticate_or_request_with_http_basic)
+        controller.send(:authenticate)
+      end
+    end
+
     context "when ui_username is configured" do
       before do
         SolidObserver.config.ui_username = "admin"

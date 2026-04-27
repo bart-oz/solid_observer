@@ -25,7 +25,8 @@ module SolidObserver
     end
 
     def authenticate
-      return unless SolidObserver.config.ui_username.present?
+      cfg = SolidObserver.config
+      return unless cfg.ui_username.present? && cfg.ui_password.present?
       authenticate_or_request_with_http_basic("SolidObserver") { |username, password| credentials_valid?(username, password) }
     end
 
