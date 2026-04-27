@@ -39,8 +39,8 @@ module SolidObserver
 
         widths = calculate_column_widths(headers, rows)
 
-        output(format_table_row(headers, widths), color: :cyan)
-        output(separator_line(widths), color: :cyan)
+        output(format_table_row(headers, widths), color: :red)
+        output(separator_line(widths), color: :red)
 
         rows.each do |row|
           output(format_table_row(row, widths))

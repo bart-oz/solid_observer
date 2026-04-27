@@ -13,6 +13,7 @@ require_relative "solid_observer/queries/execution_finder" if defined?(ActiveRec
 require_relative "solid_observer/services/record_event" if defined?(ActiveRecord)
 require_relative "solid_observer/services/flush_event_buffer" if defined?(ActiveRecord)
 require_relative "solid_observer/services/cleanup_storage" if defined?(ActiveRecord)
+require_relative "solid_observer/services/ui_auth_check"
 require_relative "solid_observer/queue_event_buffer" if defined?(ActiveRecord)
 require_relative "solid_observer/subscriber" if defined?(ActiveSupport)
 require_relative "solid_observer/cli/base"

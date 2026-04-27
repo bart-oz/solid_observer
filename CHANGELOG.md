@@ -1,45 +1,33 @@
-## [Unreleased] - v0.3.0 (Web UI Dashboard)
+## [0.3.0] - 2026-04-27
+
+> Note: there is no separate `0.2.0` gem release — work originally scoped for v0.2.0 (stability + refactoring, SO-040 through SO-049) was folded into this release.
+
+Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 
 ### Added
-- Web UI dashboard at `/solid_observer` — live queue stats, job browser, event log, storage info
-- Dashboard with auto-refresh (meta refresh + fetch-based progressive enhancement)
-- Jobs browser with filtering by status, queue, and job class; retry and discard actions with confirmation dialogs
-- Events log with pagination and metadata display
-- Storage info page with historical size tracking
-- Shared view helpers and ERB partials for the UI layer
-- `ApplicationController` base with configurable HTTP Basic authentication
-- Full application layout with embedded CSS (no external asset pipeline dependency)
-- Controller specs for all Web UI controllers
-
-## [Unreleased] - v0.2.0 (Stability & Refactoring)
+- Web UI dashboard at `/solid_observer` — queue stats, jobs browser, events log, storage info; auto-refresh, responsive layout, optional HTTP Basic Auth
+- Web UI config: `ui_enabled`, `ui_username`, `ui_password`, `ui_base_controller`, `ui_refresh_interval`
+- Retry / discard actions with confirmation dialogs and CSRF protection
+- `QueueEventBuffer#metrics` and `#shutdown` (graceful drain on app exit)
+- Configuration: `max_buffer_size` (default 10_000), `buffer_overflow_strategy` (`:drop_old` / `:drop_new`), `filter_cache_ttl`
+- `Services::DatabaseSize` for cross-adapter table-size measurement; composite indexes and `distinct_job_classes` / `distinct_queue_names` scopes
 
 ### Fixed
-- Engine boot no longer requires a live database connection (Docker/CI/K8s safe)
-- Table presence check now uses `BaseEvent.connection_pool` instead of `ActiveRecord::Base` (multi-DB safe)
-- Rescue clause in `activate_subscribers` extended to cover `ConnectionNotEstablished`, `StatementInvalid`, and adapter-specific connection errors (`PG::ConnectionBad`, `Mysql2::Error::ConnectionError`, `SQLite3::CantOpenException`)
-- QueueEventBuffer hard-caps at `max_buffer_size` (default 10_000) with configurable overflow strategy; prevents OOM during prolonged DB outages
-- QueueEventBuffer uses a single persistent `Concurrent::TimerTask` for scheduled flushes instead of spawning a new thread every cycle
-- Storage monitoring now uses adapter-native size queries (SQLite/PostgreSQL/MySQL/Trilogy) instead of filesystem path checks, fixing `0 MB` false readings on non-SQLite deployments
-- EventsController filter dropdowns were full-table scans on every request
-- JobsController filter dropdown queries are now cached using `filter_cache_ttl` (queues and job classes)
-- `RecordEvent` metadata extraction now supports real `ActiveJob::Base` notification payload objects (with hash fallback)
+- Engine boot no longer requires a live DB (Docker/CI/K8s safe); table check uses `BaseEvent.connection_pool` (multi-DB safe); broader rescue covering adapter-specific connection errors
+- `QueueEventBuffer` hard-caps at `max_buffer_size` with overflow strategy; uses a single persistent `Concurrent::TimerTask` instead of spawning a thread per flush
+- Storage monitoring uses adapter-native size queries (SQLite / PostgreSQL / MySQL / Trilogy) — fixes `0 MB` readings off SQLite
+- `EventsController` and `JobsController` filter dropdowns no longer full-table-scan on every request (cached via `filter_cache_ttl`)
+- `RecordEvent` correctly handles real `ActiveJob::Base` payload objects (with hash fallback)
 
 ### Security
-- Removed job arguments from persisted event metadata and from the jobs detail view to reduce PII exposure risk
-
-### Added
-- `SolidObserver::QueueEventBuffer#metrics` — exposes flush latency, failure count, drops count, and last-error for observability
-- `SolidObserver::QueueEventBuffer#shutdown` — graceful drain and timer stop for app-exit hooks
-- `Configuration#max_buffer_size` (default 10_000) and `Configuration#buffer_overflow_strategy` (`:drop_old` default, `:drop_new` alternative)
-- `SolidObserver::Services::DatabaseSize` service for cross-adapter queue table size measurement and shared use in cleanup + CLI
-- `Configuration#filter_cache_ttl`; `QueueEvent.distinct_job_classes` / `distinct_queue_names` scopes; composite indexes
+- Job arguments removed from persisted event metadata and the jobs detail view (PII reduction)
+- Web UI HTTP Basic Auth now requires **both** `ui_username` and `ui_password` to be configured. Previously, setting only `ui_username` (with `ui_password` missing or `nil`) would still trigger an auth challenge that any blank-password request would pass `secure_compare("", "")`, granting unauthenticated access. The README's "both must be set" guidance now matches the implementation; misconfigured auth now ships unauthenticated rather than allowing a bypass.
+- Boot-time `Engine.check_ui_authentication` now warns on partial misconfiguration (exactly one of `ui_username` / `ui_password` set), naming the missing credential. Previously the check exited silently as soon as `ui_username.present?`, hiding the fail-open auth misconfiguration from operators.
 
 ### Changed
-- Removed `allow_any_instance_of` anti-pattern from specs; replaced with `instance_double` stubs
-- Deleted dead private-method `describe` blocks; coverage preserved via public-API assertions
-- Refactor Web UI controllers to thin actions + query/param/presenter objects; replace custom number helpers with Rails built-ins
-- QueueEventBuffer timer lifecycle specs now use deterministic synchronization (no `sleep`-based waiting)
-- Reduced `.reek.yml` suppressions by removing stale entries and refactoring hot-path services/buffer/engine methods to pass `TooManyStatements` without new suppressions
+- Web UI controllers refactored to thin actions + query/param/presenter objects; Rails built-in number helpers replace custom ones
+- Specs: `allow_any_instance_of` → `instance_double`; sleep-based timer specs use deterministic synchronisation; dead private-method `describe` blocks removed
+- `.reek.yml` suppressions trimmed; hot-path services/buffer/engine methods refactored to pass `TooManyStatements` without new suppressions
 
 ## [0.1.1] - 2026-02-10
 

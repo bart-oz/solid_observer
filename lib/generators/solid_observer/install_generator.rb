@@ -40,37 +40,19 @@ module SolidObserver
         say "  5. Restart your Rails server"
         say "  6. Visit /solid_observer to access the web dashboard"
         say "\n"
-        say "Documentation: https://solid.observer", :cyan
-        say "GitHub: https://github.com/bart-oz/solid_observer", :cyan
+        say "Documentation: https://solid.observer", :red
+        say "GitHub: https://github.com/bart-oz/solid_observer", :red
         say "\n"
       end
 
       private
 
       def print_banner
-        banner = <<~BANNER
-
-          ███████╗ ██████╗ ██╗     ██╗██████╗
-          ██╔════╝██╔═══██╗██║     ██║██╔══██╗
-          ███████╗██║   ██║██║     ██║██║  ██║
-          ╚════██║██║   ██║██║     ██║██║  ██║
-          ███████║╚██████╔╝███████╗██║██████╔╝
-          ╚══════╝ ╚═════╝ ╚══════╝╚═╝╚═════╝
-
-           ██████╗ ██████╗ ███████╗███████╗██████╗ ██╗   ██╗███████╗██████╗
-          ██╔═══██╗██╔══██╗██╔════╝██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗
-          ██║   ██║██████╔╝███████╗█████╗  ██████╔╝██║   ██║█████╗  ██████╔╝
-          ██║   ██║██╔══██╗╚════██║██╔══╝  ██╔══██╗╚██╗ ██╔╝██╔══╝  ██╔══██╗
-          ╚██████╔╝██████╔╝███████║███████╗██║  ██║ ╚████╔╝ ███████╗██║  ██║
-           ╚═════╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝
-
-                 Observe your Solid Stack like a pro! 🔭
-                                v#{SolidObserver::VERSION}
-
-        BANNER
-
-        banner.each_line { |line| say line.chomp, :cyan }
-        say "  ✓ SolidObserver installed successfully!", :green
+        say "         ┌─   ─┐", :red
+        say "            ◉     solid_observer", :red
+        say "         └─   ─┘", :red
+        say ""
+        say "   ✓ SolidObserver installed successfully!", :green
       end
     end
   end

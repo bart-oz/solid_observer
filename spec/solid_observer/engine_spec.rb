@@ -51,10 +51,11 @@ RSpec.describe SolidObserver::Engine do
       end
     end
 
-    context "when UI is enabled and username is set" do
+    context "when UI is enabled and both credentials are set" do
       before do
         SolidObserver.config.ui_enabled = true
         SolidObserver.config.ui_username = "admin"
+        SolidObserver.config.ui_password = "secret"
       end
 
       it "does not log a warning" do
@@ -63,15 +64,46 @@ RSpec.describe SolidObserver::Engine do
       end
     end
 
-    context "when UI is enabled but no username configured" do
+    context "when UI is enabled but neither credential is set" do
       before do
         SolidObserver.config.ui_enabled = true
         SolidObserver.config.ui_username = nil
+        SolidObserver.config.ui_password = nil
       end
 
-      it "logs a warning" do
+      it "logs the no-authentication warning" do
         expect(logger).to receive(:warn).with(
-          /WARNING: UI is enabled with no authentication/
+          /WARNING: UI is enabled with no authentication configured/
+        )
+        described_class.check_ui_authentication
+      end
+    end
+
+    context "when UI is enabled and only ui_username is set" do
+      before do
+        SolidObserver.config.ui_enabled = true
+        SolidObserver.config.ui_username = "admin"
+        SolidObserver.config.ui_password = nil
+      end
+
+      it "logs a misconfiguration warning naming the missing password" do
+        expect(logger).to receive(:warn).with(
+          /UI authentication is misconfigured — ui_username is set but ui_password is missing\/nil/
+        )
+        described_class.check_ui_authentication
+      end
+    end
+
+    context "when UI is enabled and only ui_password is set" do
+      before do
+        SolidObserver.config.ui_enabled = true
+        SolidObserver.config.ui_username = nil
+        SolidObserver.config.ui_password = "secret"
+      end
+
+      it "logs a misconfiguration warning naming the missing username" do
+        expect(logger).to receive(:warn).with(
+          /UI authentication is misconfigured — ui_password is set but ui_username is missing\/nil/
         )
         described_class.check_ui_authentication
       end

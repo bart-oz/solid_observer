@@ -22,11 +22,11 @@ SolidObserver.configure do |config|
   # === Queue Observability (v0.1.0) ===
   config.observe_queue = true
 
-  # === Cache Observability (Coming in v0.2.0+) ===
+  # === Cache Observability (Coming in v0.4.0+) ===
   # config.observe_cache = true
   # config.cache_sampling_rate = 0.1  # Sample 10% of cache operations
 
-  # === Cable Observability (Coming in v0.2.0+) ===
+  # === Cable Observability (Coming in v0.5.0+) ===
   # config.observe_cable = true
 
   # Data Retention

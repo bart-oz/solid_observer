@@ -7,9 +7,9 @@ RSpec.describe SolidObserver::QueueMetric do
     expect(described_class.ancestors).to include(SolidObserver::BaseMetric)
   end
 
-  it "is documented as planned for v0.2.0" do
+  it "is documented as planned for a future release" do
     model_content = File.read(File.join(__dir__, "../../../app/models/solid_observer/queue_metric.rb"))
-    expect(model_content).to include("v0.2.0")
+    expect(model_content).to include("planned for a future release")
   end
 
   it "is not an abstract class" do
