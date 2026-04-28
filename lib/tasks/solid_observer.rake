@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../solid_observer/services/install_migrations"
+
 namespace :solid_observer do
   desc "Display SolidObserver version"
   task :version do
@@ -11,8 +13,14 @@ namespace :solid_observer do
   namespace :install do
     desc "Copy SolidObserver migrations to your application"
     task migrations: :environment do
-      Rake::Task["railties:install:migrations"].reenable
-      Rake::Task["railties:install:migrations"].invoke
+      result = SolidObserver::Services::InstallMigrations.call
+
+      if result[:copied].any?
+        suffix = (result[:copied].size == 1) ? "" : "s"
+        puts "Copied #{result[:copied].size} SolidObserver migration#{suffix} to #{result[:destination]}/"
+      else
+        puts "No new SolidObserver migrations to copy (all already present in #{result[:destination]}/)"
+      end
     end
   end
 

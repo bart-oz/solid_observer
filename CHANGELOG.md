@@ -1,9 +1,4 @@
-## [Unreleased]
-
-### Fixed
-- Web UI now works on API-only Rails hosts. The engine ships its own Cookies / Session::CookieStore (`key: "_solid_observer_session"`) / Flash middleware stack, so requests routed to `/solid_observer/*` get the middleware they need regardless of whether the host app strips them via `config.api_only = true`. Previously, API-only hosts hit `NoMethodError: undefined method 'flash' for an instance of ActionDispatch::Request` rendering the dashboard layout.
-
-## [0.3.0] - 2026-04-27
+## [0.3.0] - [unreleased]
 
 > Note: there is no separate `0.2.0` gem release — work originally scoped for v0.2.0 (stability + refactoring, SO-040 through SO-049) was folded into this release.
 
@@ -18,6 +13,8 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - `Services::DatabaseSize` for cross-adapter table-size measurement; composite indexes and `distinct_job_classes` / `distinct_queue_names` scopes
 
 ### Fixed
+- Web UI now works on API-only Rails hosts. The engine ships its own Cookies / Session::CookieStore (`key: "_solid_observer_session"`) / Flash middleware stack, so requests routed to `/solid_observer/*` get the middleware they need regardless of whether the host app strips them via `config.api_only = true`. Previously, API-only hosts hit `NoMethodError: undefined method 'flash' for an instance of ActionDispatch::Request` rendering the dashboard layout.
+- `bin/rails solid_observer:install:migrations` now respects `migrations_paths` from the `solid_observer_queue` connection in `config/database.yml`. When the host configures a dedicated migration folder (e.g. `db/solid_observer_migrate`), the install task copies migrations directly there instead of `db/migrate/`. Previously, operators in multi-database setups had to manually move the files after install to prevent cross-database migration contamination.
 - Engine boot no longer requires a live DB (Docker/CI/K8s safe); table check uses `BaseEvent.connection_pool` (multi-DB safe); broader rescue covering adapter-specific connection errors
 - `QueueEventBuffer` hard-caps at `max_buffer_size` with overflow strategy; uses a single persistent `Concurrent::TimerTask` instead of spawning a thread per flush
 - Storage monitoring uses adapter-native size queries (SQLite / PostgreSQL / MySQL / Trilogy) — fixes `0 MB` readings off SQLite
