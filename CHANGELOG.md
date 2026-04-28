@@ -2,6 +2,7 @@
 
 ### Fixed
 - Web UI now works on API-only Rails hosts. The engine ships its own Cookies / Session::CookieStore (`key: "_solid_observer_session"`) / Flash middleware stack, so requests routed to `/solid_observer/*` get the middleware they need regardless of whether the host app strips them via `config.api_only = true`. Previously, API-only hosts hit `NoMethodError: undefined method 'flash' for an instance of ActionDispatch::Request` rendering the dashboard layout.
+- `bin/rails solid_observer:install:migrations` now respects `migrations_paths` from the `solid_observer_queue` connection in `config/database.yml`. When the host configures a dedicated migration folder (e.g. `db/solid_observer_migrate`), the install task copies migrations directly there instead of `db/migrate/`. Previously, operators in multi-database setups had to manually move the files after install to prevent cross-database migration contamination.
 
 ## [0.3.0] - 2026-04-27
 

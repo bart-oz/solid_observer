@@ -111,6 +111,52 @@ RSpec.describe "solid_observer rake tasks" do
       end
     end
 
+    describe "solid_observer:install:migrations" do
+      before do
+        install_migrations_service = Class.new do
+          def self.call
+          end
+        end
+
+        stub_const("SolidObserver::Services::InstallMigrations", install_migrations_service)
+        allow(SolidObserver::Services::InstallMigrations).to receive(:call)
+      end
+
+      it "prints singular copy output when one migration is copied" do
+        allow(SolidObserver::Services::InstallMigrations).to receive(:call).and_return(
+          {destination: "db/solid_observer_migrate", copied: ["20260115000001"]}
+        )
+
+        expect {
+          Rake::Task["solid_observer:install:migrations"].invoke
+        }.to output("Copied 1 SolidObserver migration to db/solid_observer_migrate/\n").to_stdout
+
+        expect(SolidObserver::Services::InstallMigrations).to have_received(:call)
+      end
+
+      it "prints plural copy output when multiple migrations are copied" do
+        allow(SolidObserver::Services::InstallMigrations).to receive(:call).and_return(
+          {destination: "db/solid_observer_migrate", copied: %w[20260115000001 20260115000002]}
+        )
+
+        expect {
+          Rake::Task["solid_observer:install:migrations"].invoke
+        }.to output("Copied 2 SolidObserver migrations to db/solid_observer_migrate/\n").to_stdout
+      end
+
+      it "prints no-op output when all migrations are already present" do
+        allow(SolidObserver::Services::InstallMigrations).to receive(:call).and_return(
+          {destination: "db/solid_observer_migrate", copied: []}
+        )
+
+        expect {
+          Rake::Task["solid_observer:install:migrations"].invoke
+        }.to output(
+          "No new SolidObserver migrations to copy (all already present in db/solid_observer_migrate/)\n"
+        ).to_stdout
+      end
+    end
+
     describe "solid_observer:jobs:list" do
       it "invokes CLI::Jobs#list with arguments" do
         jobs_instance = instance_double(SolidObserver::CLI::Jobs)

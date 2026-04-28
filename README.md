@@ -10,7 +10,7 @@
   <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.43%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.65%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
@@ -360,6 +360,8 @@ solid_observer_queue:
 
 > **Note:** SQLite is the generator default, not a requirement. The `solid_observer_queue` database can use any Rails-supported adapter for record persistence. Adapter-native **storage-size monitoring** is currently implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. On other adapters, the size query returns `nil` and the engine logs a single `[SolidObserver] Unknown adapter for DatabaseSize: …` warning — record persistence still works, but the size column on the dashboard will be empty until adapter support is added.
 
+> **Multi-database isolation:** if your `solid_observer_queue` connection declares `migrations_paths` in `config/database.yml`, `bin/rails solid_observer:install:migrations` copies migrations to that path automatically (no manual `mv` required). This prevents Rails from running SolidObserver's migrations against your other databases.
+
 ## Roadmap
 
 SolidObserver is actively developed. Here's what's coming:
@@ -444,6 +446,7 @@ development:
   solid_observer_queue:
     adapter: sqlite3
     database: storage/development_solid_observer_queue.sqlite3
+    migrations_paths: db/solid_observer_migrate
 ```
 
 ## Contributing
