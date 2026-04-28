@@ -4,6 +4,10 @@ module SolidObserver
   class Engine < ::Rails::Engine
     isolate_namespace SolidObserver
 
+    middleware.use ActionDispatch::Cookies
+    middleware.use ActionDispatch::Session::CookieStore, key: "_solid_observer_session"
+    middleware.use ActionDispatch::Flash
+
     class << self
       def check_solid_queue_availability
         return if defined?(SolidQueue)
