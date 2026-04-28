@@ -17,6 +17,43 @@ RSpec.describe SolidObserver::Engine do
     expect(described_class.isolated?).to be true
   end
 
+  describe "engine-scoped middleware stack" do
+    let(:middleware_stack) do
+      middleware = described_class.middleware
+
+      return middleware if middleware.is_a?(ActionDispatch::MiddlewareStack)
+
+      stack = ActionDispatch::MiddlewareStack.new
+      middleware.merge_into(stack)
+      stack
+    end
+    let(:middleware_classes) { middleware_stack.map(&:klass) }
+
+    it "includes ActionDispatch::Cookies" do
+      expect(middleware_classes).to include(ActionDispatch::Cookies)
+    end
+
+    it "includes ActionDispatch::Session::CookieStore with the engine-scoped key" do
+      session_middleware = middleware_stack.find { |entry| entry.klass == ActionDispatch::Session::CookieStore }
+
+      expect(session_middleware).not_to be_nil
+      expect(session_middleware.args).to include(key: "_solid_observer_session")
+    end
+
+    it "includes ActionDispatch::Flash" do
+      expect(middleware_classes).to include(ActionDispatch::Flash)
+    end
+
+    it "orders Cookies before Session before Flash" do
+      cookies_index = middleware_classes.index(ActionDispatch::Cookies)
+      session_index = middleware_classes.index(ActionDispatch::Session::CookieStore)
+      flash_index = middleware_classes.index(ActionDispatch::Flash)
+
+      expect(cookies_index).to be < session_index
+      expect(session_index).to be < flash_index
+    end
+  end
+
   describe ".check_solid_queue_availability" do
     it "warns when SolidQueue is not defined" do
       hide_const("SolidQueue")

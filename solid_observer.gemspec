@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.description = "Production-grade observability for Rails 8's Solid Stack. Monitor ActiveJob performance, track queue metrics, and debug issues with zero external dependencies. Built-in CLI, retention policies, and APM integrations."
   spec.homepage = "https://solid.observer"
   spec.license = "MIT"
-  spec.files = Dir["lib/**/*", "app/**/*", "db/**/*", "README.md", "LICENSE.txt", "CHANGELOG.md", "bin/*"]
+  spec.files = Dir["lib/**/*", "app/**/*", "config/**/*", "db/**/*", "README.md", "LICENSE.txt", "CHANGELOG.md", "bin/*"]
   spec.require_paths = ["lib"]
   spec.bindir = "bin"
 
