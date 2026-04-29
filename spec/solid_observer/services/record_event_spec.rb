@@ -66,9 +66,32 @@ RSpec.describe SolidObserver::Services::RecordEvent do
         expect(buffer).to have_received(:push).with(hash_including(
           event_type: "job_completed",
           correlation_id: "correlation-123",
-          duration: 150.0,
+          duration: 0.15,
           recorded_at: be_a(Time)
         ))
+      end
+
+      it "converts milliseconds to seconds for storage" do
+        allow(event).to receive(:duration).and_return(1500.0)
+
+        service.call
+
+        expect(buffer).to have_received(:push).with(hash_including(duration: 1.5))
+      end
+
+      it "stores nil duration without raising" do
+        allow(event).to receive(:duration).and_return(nil)
+
+        expect { service.call }.not_to raise_error
+        expect(buffer).to have_received(:push).with(hash_including(duration: nil))
+      end
+
+      it "preserves sub-millisecond precision" do
+        allow(event).to receive(:duration).and_return(0.5)
+
+        service.call
+
+        expect(buffer).to have_received(:push).with(hash_including(duration: 0.0005))
       end
 
       it "includes job fields in metadata as JSON" do
