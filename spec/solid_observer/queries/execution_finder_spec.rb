@@ -62,4 +62,23 @@ RSpec.describe SolidObserver::Queries::ExecutionFinder do
       expect(described_class.find_failed("5")).to be_nil
     end
   end
+
+  describe ".find_by_status" do
+    it "finds by the mapped execution class for status" do
+      execution = double("execution")
+      allow(SolidQueue::ClaimedExecution).to receive(:find_by).with(id: "10").and_return(execution)
+
+      expect(described_class.find_by_status("10", "claimed")).to eq(execution)
+    end
+
+    it "returns nil for unknown status" do
+      expect(described_class.find_by_status("10", "unknown")).to be_nil
+    end
+
+    it "returns nil when mapped constant is unavailable" do
+      hide_const("SolidQueue::ReadyExecution")
+
+      expect(described_class.find_by_status("10", "ready")).to be_nil
+    end
+  end
 end

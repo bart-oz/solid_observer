@@ -4,9 +4,9 @@ require "spec_helper"
 
 RSpec.describe SolidObserver::Params::JobsFilter do
   describe ".from_params" do
-    it "defaults status to ready" do
+    it "defaults status to all_active" do
       filter = described_class.from_params(ActionController::Parameters.new({}))
-      expect(filter.status).to eq("ready")
+      expect(filter.status).to eq("all_active")
     end
 
     it "reads status from params" do
@@ -39,8 +39,18 @@ RSpec.describe SolidObserver::Params::JobsFilter do
       expect(filter.status).to eq("failed")
     end
 
-    it "falls back to ready for unknown status" do
+    it "falls back to all_active for unknown status" do
       filter = described_class.from_params(ActionController::Parameters.new(status: "unknown_status"))
+      expect(filter.status).to eq("all_active")
+    end
+
+    it "accepts all_active pseudo-status" do
+      filter = described_class.from_params(ActionController::Parameters.new(status: "all_active"))
+      expect(filter.status).to eq("all_active")
+    end
+
+    it "still accepts ready status" do
+      filter = described_class.from_params(ActionController::Parameters.new(status: "ready"))
       expect(filter.status).to eq("ready")
     end
   end

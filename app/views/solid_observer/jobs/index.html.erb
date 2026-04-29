@@ -6,7 +6,7 @@
 
 <%= form_tag jobs_path, method: :get, class: "so-filters" do %>
   <%= select_tag :status,
-      options_for_select([["Ready", "ready"], ["Scheduled", "scheduled"], ["Claimed", "claimed"], ["Failed", "failed"]], @status),
+      options_for_select([["All Active", "all_active"], ["Ready", "ready"], ["Scheduled", "scheduled"], ["Claimed", "claimed"], ["Failed", "failed"]], @status),
       onchange: "this.form.submit()" %>
 
   <%= select_tag :queue_name,
@@ -33,14 +33,15 @@
     <tbody>
       <% @jobs.each do |execution| %>
         <% job = execution.job %>
+        <% status = execution_status(execution) %>
         <tr>
-          <td><%= link_to execution.id, job_path(execution.id) %></td>
+          <td><%= link_to execution.id, job_path(execution.id, status: status) %></td>
           <td><%= job&.class_name || "N/A" %></td>
           <td><%= job&.queue_name || execution&.queue_name || "N/A" %></td>
-          <td><%= status_badge(execution_status(execution)) %></td>
+          <td><%= status_badge(status) %></td>
           <td><%= time_ago_in_words(execution.created_at) %> ago</td>
           <td>
-            <%= link_to "View", job_path(execution.id), class: "so-btn" %>
+            <%= link_to "View", job_path(execution.id, status: status), class: "so-btn" %>
             <% if execution.is_a?(SolidQueue::FailedExecution) %>
               <%= button_to "Retry", retry_job_path(execution.id), method: :post, class: "so-btn so-btn--primary", form: { class: "so-form--inline" }, data: { confirm: "Retry job #{execution.id}?" } %>
               <%= button_to "Discard", discard_job_path(execution.id), method: :post, class: "so-btn so-btn--danger", form: { class: "so-form--inline" }, data: { confirm: "Discard job #{execution.id}? This cannot be undone." } %>
@@ -53,5 +54,8 @@
 
   <%= render "solid_observer/shared/pagination", page: @page, total_pages: @total_pages %>
 <% else %>
-  <%= render "solid_observer/shared/empty_state", message: "No jobs found matching the criteria" %>
+  <%= render "solid_observer/shared/empty_state",
+      message: persistence_mode? ?
+        "No jobs match this filter. Successfully completed jobs are not stored here — see #{link_to("Events tab", events_path)} for the full job history.".html_safe :
+        "No jobs match this filter." %>
 <% end %>

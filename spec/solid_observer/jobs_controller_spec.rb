@@ -170,6 +170,7 @@ RSpec.describe SolidObserver::JobsController do
 
       before do
         allow(controller).to receive(:params).and_return(ActionController::Parameters.new(id: "1"))
+        allow(SolidObserver::Queries::ExecutionFinder).to receive(:find_by_status).with("1", nil).and_return(nil)
         allow(SolidObserver::Queries::ExecutionFinder).to receive(:find_any).with("1").and_return(execution)
         allow(SolidObserver::ExecutionPresenter).to receive(:new).with(execution).and_return(presenter)
       end
@@ -190,9 +191,28 @@ RSpec.describe SolidObserver::JobsController do
       end
     end
 
+    context "when status is provided" do
+      let(:execution) { double("execution") }
+      let(:job) { double("job") }
+      let(:presenter) { instance_double(SolidObserver::ExecutionPresenter, job: job, status: "claimed") }
+
+      before do
+        allow(controller).to receive(:params).and_return(ActionController::Parameters.new(id: "1", status: "claimed"))
+        allow(SolidObserver::Queries::ExecutionFinder).to receive(:find_by_status).with("1", "claimed").and_return(execution)
+        allow(SolidObserver::Queries::ExecutionFinder).to receive(:find_any)
+        allow(SolidObserver::ExecutionPresenter).to receive(:new).with(execution).and_return(presenter)
+      end
+
+      it "uses status-aware lookup and does not fallback to find_any" do
+        expect(SolidObserver::Queries::ExecutionFinder).not_to receive(:find_any)
+        controller.send(:show)
+      end
+    end
+
     context "when execution is not found" do
       before do
         allow(controller).to receive(:params).and_return(ActionController::Parameters.new(id: "999"))
+        allow(SolidObserver::Queries::ExecutionFinder).to receive(:find_by_status).with("999", nil).and_return(nil)
         allow(SolidObserver::Queries::ExecutionFinder).to receive(:find_any).with("999").and_return(nil)
         controller.define_singleton_method(:jobs_path) { "/solid_observer/jobs" }
       end

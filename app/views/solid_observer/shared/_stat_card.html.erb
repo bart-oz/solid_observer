@@ -1,6 +1,10 @@
 <% color = local_assigns[:color] %>
+<% subtitle = local_assigns[:subtitle] %>
 <div class="so-card">
   <div class="so-card__label"><%= label %></div>
+  <% if subtitle.present? %>
+    <div class="so-card__subtitle"><%= subtitle %></div>
+  <% end %>
   <div class="so-card__value"<% if color %> style="color: var(--so-<%= color %>)"<% end %>>
     <%= value || 0 %>
   </div>

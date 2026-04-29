@@ -136,4 +136,55 @@ RSpec.describe SolidObserver::Queries::JobExecutionsQuery do
     result = described_class.new(build_filter(status: "ready", job_class: "MyJob")).call
     expect(result).to eq(ordered_scope)
   end
+
+  it "returns a merged array for all_active sorted by created_at desc and preloads jobs" do
+    ready_scope = double("ready_scope")
+    ready_ordered = double("ready_ordered")
+    ready_limited = double("ready_limited")
+    scheduled_scope = double("scheduled_scope")
+    scheduled_ordered = double("scheduled_ordered")
+    scheduled_limited = double("scheduled_limited")
+    claimed_scope = double("claimed_scope")
+    claimed_ordered = double("claimed_ordered")
+    claimed_limited = double("claimed_limited")
+    failed_scope = double("failed_scope")
+    failed_ordered = double("failed_ordered")
+    failed_limited = double("failed_limited")
+
+    ready_record = double("ready_record", created_at: 4.minutes.ago)
+    scheduled_record = double("scheduled_record", created_at: 2.minutes.ago)
+    claimed_record = double("claimed_record", created_at: 1.minute.ago)
+    failed_record = double("failed_record", created_at: 3.minutes.ago)
+
+    allow(SolidQueue::ReadyExecution).to receive(:all).and_return(ready_scope)
+    allow(ready_scope).to receive(:order).with(created_at: :desc).and_return(ready_ordered)
+    allow(ready_ordered).to receive(:limit).with(50).and_return(ready_limited)
+    allow(ready_limited).to receive(:to_a).and_return([ready_record])
+
+    allow(SolidQueue::ScheduledExecution).to receive(:all).and_return(scheduled_scope)
+    allow(scheduled_scope).to receive(:order).with(created_at: :desc).and_return(scheduled_ordered)
+    allow(scheduled_ordered).to receive(:limit).with(50).and_return(scheduled_limited)
+    allow(scheduled_limited).to receive(:to_a).and_return([scheduled_record])
+
+    allow(SolidQueue::ClaimedExecution).to receive(:all).and_return(claimed_scope)
+    allow(claimed_scope).to receive(:order).with(created_at: :desc).and_return(claimed_ordered)
+    allow(claimed_ordered).to receive(:limit).with(50).and_return(claimed_limited)
+    allow(claimed_limited).to receive(:to_a).and_return([claimed_record])
+
+    allow(SolidQueue::FailedExecution).to receive(:all).and_return(failed_scope)
+    allow(failed_scope).to receive(:order).with(created_at: :desc).and_return(failed_ordered)
+    allow(failed_ordered).to receive(:limit).with(50).and_return(failed_limited)
+    allow(failed_limited).to receive(:to_a).and_return([failed_record])
+
+    expected = [claimed_record, scheduled_record, failed_record, ready_record]
+    preloader = instance_double(ActiveRecord::Associations::Preloader, call: true)
+    expect(ActiveRecord::Associations::Preloader).to receive(:new)
+      .with(records: expected, associations: :job)
+      .and_return(preloader)
+
+    result = described_class.new(build_filter(status: "all_active")).call
+
+    expect(result).to be_a(Array)
+    expect(result).to eq(expected)
+  end
 end

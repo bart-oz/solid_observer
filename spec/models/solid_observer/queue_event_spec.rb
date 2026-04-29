@@ -93,4 +93,63 @@ RSpec.describe "SolidObserver::QueueEvent" do
       expect(SolidObserver::QueueEvent.distinct_queue_names.count).to eq(3)
     end
   end
+
+  describe "throughput counters" do
+    before(:all) do
+      connection = SolidObserver::QueueEvent.connection
+      next if connection.table_exists?(:solid_observer_queue_events)
+
+      connection.create_table :solid_observer_queue_events do |t|
+        t.string :event_type, null: false, limit: 50
+        t.string :job_class, limit: 100
+        t.string :queue_name, limit: 50
+        t.datetime :recorded_at, null: false
+      end
+    end
+
+    before { SolidObserver::QueueEvent.delete_all }
+
+    describe ".performed_count_last" do
+      it "counts completed events within the provided window" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", recorded_at: 20.minutes.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", recorded_at: 2.hours.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_failed", recorded_at: 10.minutes.ago)
+
+          expect(SolidObserver::QueueEvent.performed_count_last(1.hour)).to eq(1)
+        end
+      end
+    end
+
+    describe ".failed_count_last" do
+      it "counts failed events within the provided window" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_failed", recorded_at: 6.hours.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_failed", recorded_at: 30.hours.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_discarded", recorded_at: 2.hours.ago)
+
+          expect(SolidObserver::QueueEvent.failed_count_last(24.hours)).to eq(1)
+        end
+      end
+    end
+
+    describe ".enqueue_rate_per_minute" do
+      it "returns jobs per minute rounded to one decimal place" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          12.times { SolidObserver::QueueEvent.create!(event_type: "job_enqueued", recorded_at: 2.minutes.ago) }
+          SolidObserver::QueueEvent.create!(event_type: "job_enqueued", recorded_at: 10.minutes.ago)
+
+          expect(SolidObserver::QueueEvent.enqueue_rate_per_minute(window: 5.minutes)).to eq(2.4)
+        end
+      end
+
+      it "returns 0.0 when there are no enqueues in the window" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_enqueued", recorded_at: 10.minutes.ago)
+
+          expect(SolidObserver::QueueEvent.enqueue_rate_per_minute(window: 5.minutes)).to eq(0.0)
+        end
+      end
+    end
+  end
 end

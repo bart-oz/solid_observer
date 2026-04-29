@@ -11,6 +11,10 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - `QueueEventBuffer#metrics` and `#shutdown` (graceful drain on app exit)
 - Configuration: `max_buffer_size` (default 10_000), `buffer_overflow_strategy` (`:drop_old` / `:drop_new`), `filter_cache_ttl`
 - `Services::DatabaseSize` for cross-adapter table-size measurement; composite indexes and `distinct_job_classes` / `distinct_queue_names` scopes
+- Dashboard now shows three throughput counters (Performed last hour, Failed last 24h, Enqueue rate last 5 min) sourced from the events table, alongside existing point-in-time counters. Throughput counters are persistence-mode only.
+- Stat counter subtitles ("queued" / "future runs" / "in progress" / "awaiting retry" / "active processes") clarify SolidQueue lifecycle terminology.
+- Conceptual hint banner on the dashboard explains the difference between Jobs tab (in-flight + failed) and Events tab (historical record).
+- Jobs tab now has an empty state with a hint pointing to Events tab for completed-job history.
 
 ### Fixed
 - Web UI now works on API-only Rails hosts. The engine ships its own Cookies / Session::CookieStore (`key: "_solid_observer_session"`) / Flash middleware stack, so requests routed to `/solid_observer/*` get the middleware they need regardless of whether the host app strips them via `config.api_only = true`. Previously, API-only hosts hit `NoMethodError: undefined method 'flash' for an instance of ActionDispatch::Request` rendering the dashboard layout.
@@ -34,6 +38,7 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - Web UI controllers refactored to thin actions + query/param/presenter objects; Rails built-in number helpers replace custom ones
 - Specs: `allow_any_instance_of` → `instance_double`; sleep-based timer specs use deterministic synchronisation; dead private-method `describe` blocks removed
 - `.reek.yml` suppressions trimmed; hot-path services/buffer/engine methods refactored to pass `TooManyStatements` without new suppressions
+- Jobs tab default filter changed from `status=ready` to `status=all_active` (ready + scheduled + claimed + failed).
 
 ## [0.1.1] - 2026-02-10
 

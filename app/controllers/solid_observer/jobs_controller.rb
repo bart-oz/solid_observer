@@ -15,20 +15,22 @@ module SolidObserver
       @queue_name = filter.queue_name
       @job_class = filter.job_class
       @page = filter.page
-      scope = Queries::JobExecutionsQuery.new(filter).call
-      offset = paginate_scope(scope, per_page: PER_PAGE)
-      @jobs = scope.limit(PER_PAGE).offset(offset).includes(:job).to_a
+      result = Queries::JobExecutionsQuery.new(filter).call
+      offset = paginate_scope(result, per_page: PER_PAGE)
+      @jobs = if result.is_a?(Array)
+        result.drop(offset).first(PER_PAGE)
+      else
+        result.limit(PER_PAGE).offset(offset).includes(:job).to_a
+      end
       @available_queues = fetch_available_queues
       @available_job_classes = fetch_available_job_classes
     end
 
     def show
-      @execution = Queries::ExecutionFinder.find_any(params[:id])
+      @execution = find_execution_for_show
       return redirect_to jobs_path, alert: "Job not found" unless @execution
 
-      presenter = ExecutionPresenter.new(@execution)
-      @job = presenter.job
-      @status = presenter.status
+      assign_show_presenter
     end
 
     def retry
@@ -50,6 +52,18 @@ module SolidObserver
     end
 
     private
+
+    def find_execution_for_show
+      id = params[:id]
+      Queries::ExecutionFinder.find_by_status(id, params[:status]) ||
+        Queries::ExecutionFinder.find_any(id)
+    end
+
+    def assign_show_presenter
+      presenter = ExecutionPresenter.new(@execution)
+      @job = presenter.job
+      @status = presenter.status
+    end
 
     def fetch_available_queues
       Rails.cache.fetch(CACHE_KEY_QUEUES, expires_in: SolidObserver.config.filter_cache_ttl) do
