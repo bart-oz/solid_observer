@@ -10,9 +10,14 @@ RSpec.describe "Jobs", type: :feature do
       connection.create_table :solid_queue_jobs do |t|
         t.string :queue_name, null: false
         t.string :class_name, null: false
+        t.integer :priority, null: false, default: 0
         t.datetime :created_at, null: false
         t.datetime :updated_at, null: false
       end
+    end
+
+    if connection.table_exists?(:solid_queue_jobs) && !connection.column_exists?(:solid_queue_jobs, :priority)
+      connection.add_column :solid_queue_jobs, :priority, :integer, null: false, default: 0
     end
 
     unless connection.table_exists?(:solid_queue_ready_executions)
@@ -189,6 +194,66 @@ RSpec.describe "Jobs", type: :feature do
       expect(claimed_href).to include("/solid_observer/jobs/77")
       expect(claimed_href).to include("status=claimed")
       expect(ready_href).not_to eq(claimed_href)
+    end
+  end
+
+  context "when showing a failed execution" do
+    before do
+      ensure_solid_queue_tables!
+      stub_solid_queue_models!
+      SolidObserver.config.storage_mode = :persistence
+
+      SolidQueue::ReadyExecution.delete_all
+      SolidQueue::ScheduledExecution.delete_all
+      SolidQueue::ClaimedExecution.delete_all
+      SolidQueue::FailedExecution.delete_all
+      SolidQueue::Job.delete_all
+
+      now = Time.current
+      failed_job = SolidQueue::Job.create!(
+        queue_name: "critical",
+        class_name: "FailedShowJob",
+        priority: 9,
+        created_at: now - 1.minute,
+        updated_at: now - 1.minute
+      )
+      @failed_execution = SolidQueue::FailedExecution.create!(job: failed_job, error: nil, created_at: now - 1.minute)
+    end
+
+    after do
+      SolidQueue::ReadyExecution.delete_all if defined?(SolidQueue::ReadyExecution)
+      SolidQueue::ScheduledExecution.delete_all if defined?(SolidQueue::ScheduledExecution)
+      SolidQueue::ClaimedExecution.delete_all if defined?(SolidQueue::ClaimedExecution)
+      SolidQueue::FailedExecution.delete_all if defined?(SolidQueue::FailedExecution)
+      SolidQueue::Job.delete_all if defined?(SolidQueue::Job)
+    end
+
+    it "renders the show page with queue and priority from the job" do
+      visit "/solid_observer/jobs/#{@failed_execution.id}?status=failed"
+
+      expect(page.status_code).to eq(200)
+
+      within("table.so-details") do
+        queue_cell = find(:xpath, ".//tr[td[normalize-space()='Queue']]/td[2]")
+        priority_cell = find(:xpath, ".//tr[td[normalize-space()='Priority']]/td[2]")
+
+        expect(queue_cell).to have_text("critical")
+        expect(priority_cell).to have_text("9")
+      end
+    end
+
+    it "renders the show page when no status param is given (find_any branch)" do
+      visit "/solid_observer/jobs/#{@failed_execution.id}"
+
+      expect(page.status_code).to eq(200)
+
+      within("table.so-details") do
+        queue_cell = find(:xpath, ".//tr[td[normalize-space()='Queue']]/td[2]")
+        priority_cell = find(:xpath, ".//tr[td[normalize-space()='Priority']]/td[2]")
+
+        expect(queue_cell).to have_text("critical")
+        expect(priority_cell).to have_text("9")
+      end
     end
   end
 end

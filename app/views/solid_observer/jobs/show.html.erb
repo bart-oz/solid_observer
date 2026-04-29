@@ -25,11 +25,11 @@
       </tr>
       <tr>
         <td>Queue</td>
-        <td><%= @job&.queue_name || @execution&.queue_name || "N/A" %></td>
+        <td><%= @presenter.queue_name || "N/A" %></td>
       </tr>
       <tr>
         <td>Priority</td>
-        <td><%= @execution&.priority || @job&.priority || "N/A" %></td>
+        <td><%= @presenter.priority || "N/A" %></td>
       </tr>
       <tr>
         <td>Created At</td>
