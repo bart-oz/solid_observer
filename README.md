@@ -68,13 +68,15 @@ That's it. You now have access to queue status, job listing, retry, and discard 
 
 Store event history, metrics, and storage snapshots in a dedicated observer database. This gives you everything in real-time mode plus long-term event tracking, buffered writes, and retention-based cleanup. The install generator defaults to SQLite; the database can use any Rails-supported adapter for record persistence, and storage-size monitoring is implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. See [Database Setup](#database-setup-persistence-mode) below.
 
+> If your host app uses a different adapter than SQLite (e.g. PostgreSQL or MySQL), see [Multi-adapter setup](#multi-adapter-setup) before running these commands.
+
 ```bash
 bin/rails solid_observer:install:migrations
 bin/rails db:create
 bin/rails db:migrate
 ```
 
-No additional configuration needed — persistence is the default `storage_mode`.
+For SQLite-default apps, no further configuration is needed — persistence is the default `storage_mode`.
 
 ## Quick Start
 
@@ -360,7 +362,42 @@ solid_observer_queue:
 
 > **Note:** SQLite is the generator default, not a requirement. The `solid_observer_queue` database can use any Rails-supported adapter for record persistence. Adapter-native **storage-size monitoring** is currently implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. On other adapters, the size query returns `nil` and the engine logs a single `[SolidObserver] Unknown adapter for DatabaseSize: …` warning — record persistence still works, but the size column on the dashboard will be empty until adapter support is added.
 
-> **Multi-database isolation:** if your `solid_observer_queue` connection declares `migrations_paths` in `config/database.yml`, `bin/rails solid_observer:install:migrations` copies migrations to that path automatically (no manual `mv` required). This prevents Rails from running SolidObserver's migrations against your other databases.
+### Multi-adapter setup
+
+If your host application uses one database adapter (e.g. PostgreSQL) and you want SolidObserver to use a different adapter (e.g. SQLite — for isolation, simpler ops, or to avoid loading observability traffic onto your primary DB), keep the `solid_observer_queue` block **self-contained** — do not rely on `<<: *default`. The generator default (shown above) uses `<<: *default` with an explicit `adapter: sqlite3` override; that is safe on SQLite-primary hosts where the anchor is also SQLite. On a PostgreSQL host, merging `<<: *default` without an explicit adapter override pulls the PG adapter into the observer connection and fails at `db:create` with `PG::SyntaxError` (PG treating a SQLite file path as a database name). For multi-adapter connections, omit the merge entirely, as shown below.
+
+```yaml
+# config/database.yml
+default: &default
+  adapter: postgresql           # host's adapter
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  primary:
+    <<: *default
+    database: my_app_development
+  # ... cache / queue / cable on PG ...
+
+  solid_observer_queue:
+    adapter: sqlite3            # explicit override — do NOT merge *default
+    pool: 5
+    timeout: 5000
+    database: storage/development_solid_observer_queue.sqlite3
+    migrations_paths: db/solid_observer_migrate
+```
+
+Apply the same pattern to `test:` and `production:`. For production with SQLite, ensure the `storage/` path is on persistent disk (not ephemeral container storage) — otherwise prefer PostgreSQL for the observer DB too.
+
+**Bundler note (PG-only hosts):** if your `Gemfile` does not already include `sqlite3`, add it:
+
+```ruby
+gem "sqlite3", "~> 2.0"
+```
+
+then `bundle install`. SolidObserver does not declare `sqlite3` as a runtime dependency — adapter choice is yours.
+
+**`migrations_paths` is recommended** to isolate SolidObserver's migrations from the host's primary `db/migrate/` folder. This prevents Rails from running SolidObserver's migrations against your primary database (which would create an unused `solid_observer_queue_events` table there). When `migrations_paths` is set on `solid_observer_queue`, `bin/rails solid_observer:install:migrations` copies migrations to that path automatically — no manual `mv` required.
 
 ## Roadmap
 
@@ -430,7 +467,9 @@ config.solid_queue.connects_to = { database: { writing: :queue } }
 
 ### Multi-database setup
 
-SolidObserver works with Rails multi-database configurations. Here's an example with PostgreSQL as your primary database:
+> **See also:** [Multi-adapter setup](#multi-adapter-setup) in the Database Setup section for the full pattern (explicit `adapter:` override, `gem "sqlite3"` Bundler note, `migrations_paths` rationale).
+
+SolidObserver works with Rails multi-database configurations. Quick-reference example with PostgreSQL as your primary database and SQLite for SolidObserver's storage:
 
 ```yaml
 development:
@@ -438,11 +477,6 @@ development:
     adapter: postgresql
     database: myapp_development
     # ... PostgreSQL settings
-  queue:
-    <<: *default
-    adapter: sqlite3
-    database: storage/development_queue.sqlite3
-    migrations_paths: db/queue_migrate
   solid_observer_queue:
     adapter: sqlite3
     database: storage/development_solid_observer_queue.sqlite3

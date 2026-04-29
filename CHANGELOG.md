@@ -27,6 +27,9 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - Web UI HTTP Basic Auth now requires **both** `ui_username` and `ui_password` to be configured. Previously, setting only `ui_username` (with `ui_password` missing or `nil`) would still trigger an auth challenge that any blank-password request would pass `secure_compare("", "")`, granting unauthenticated access. The README's "both must be set" guidance now matches the implementation; misconfigured auth now ships unauthenticated rather than allowing a bypass.
 - Boot-time `Engine.check_ui_authentication` now warns on partial misconfiguration (exactly one of `ui_username` / `ui_password` set), naming the missing credential. Previously the check exited silently as soon as `ui_username.present?`, hiding the fail-open auth misconfiguration from operators.
 
+### Documentation
+- Documented multi-adapter installation (PG host + SQLite observer DB) inline in Database Setup, with explicit `adapter:` override, `gem "sqlite3"` Bundler note, `migrations_paths` migration-isolation guidance, and cross-reference from the install steps.
+
 ### Changed
 - Web UI controllers refactored to thin actions + query/param/presenter objects; Rails built-in number helpers replace custom ones
 - Specs: `allow_any_instance_of` → `instance_double`; sleep-based timer specs use deterministic synchronisation; dead private-method `describe` blocks removed
