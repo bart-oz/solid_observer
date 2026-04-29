@@ -47,6 +47,64 @@ RSpec.describe SolidObserver::ExecutionPresenter do
     end
   end
 
+  describe "#queue_name" do
+    it "returns execution queue_name when execution exposes it" do
+      job = double("job", queue_name: "mailers")
+      execution = double("execution", job: job, queue_name: "critical")
+
+      expect(described_class.new(execution).queue_name).to eq("critical")
+    end
+
+    it "returns job queue_name when execution does not expose it" do
+      job = double("job", queue_name: "fallback")
+      execution = double("failed_execution", job: job)
+
+      expect(described_class.new(execution).queue_name).to eq("fallback")
+    end
+
+    it "returns nil when neither execution nor job exposes queue_name" do
+      execution = double("failed_execution", job: nil)
+
+      expect(described_class.new(execution).queue_name).to be_nil
+    end
+
+    it "returns nil when job is non-nil but does not expose queue_name" do
+      job_without_attr = double("job_without_queue_name")
+      execution = double("failed_execution", job: job_without_attr)
+
+      expect(described_class.new(execution).queue_name).to be_nil
+    end
+  end
+
+  describe "#priority" do
+    it "returns execution priority when execution exposes it" do
+      job = double("job", priority: 5)
+      execution = double("execution", job: job, priority: 2)
+
+      expect(described_class.new(execution).priority).to eq(2)
+    end
+
+    it "returns job priority when execution does not expose it" do
+      job = double("job", priority: 7)
+      execution = double("failed_execution", job: job)
+
+      expect(described_class.new(execution).priority).to eq(7)
+    end
+
+    it "returns nil when neither execution nor job exposes priority" do
+      execution = double("failed_execution", job: nil)
+
+      expect(described_class.new(execution).priority).to be_nil
+    end
+
+    it "returns nil when job is non-nil but does not expose priority" do
+      job_without_attr = double("job_without_priority")
+      execution = double("failed_execution", job: job_without_attr)
+
+      expect(described_class.new(execution).priority).to be_nil
+    end
+  end
+
   describe "#to_model" do
     it "returns the wrapped execution" do
       execution = double("execution")

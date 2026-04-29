@@ -60,9 +60,9 @@ module SolidObserver
     end
 
     def assign_show_presenter
-      presenter = ExecutionPresenter.new(@execution)
-      @job = presenter.job
-      @status = presenter.status
+      @presenter = ExecutionPresenter.new(@execution)
+      @job = @presenter.job
+      @status = @presenter.status
     end
 
     def fetch_available_queues
