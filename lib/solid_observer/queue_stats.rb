@@ -15,6 +15,21 @@ module SolidObserver
     def snapshot
       return unavailable_response unless self.class.solid_queue_available?
 
+      snapshot_for_mode
+    rescue => e
+      error_response(e)
+    end
+
+    private
+
+    def snapshot_for_mode
+      base = snapshot_base
+      return base unless SolidObserver.config.persistence_mode?
+
+      base.merge(throughput_stats)
+    end
+
+    def snapshot_base
       {
         ready: ready_count,
         scheduled: scheduled_count,
@@ -24,11 +39,15 @@ module SolidObserver
         queues: queue_depths,
         available: true
       }
-    rescue => e
-      error_response(e)
     end
 
-    private
+    def throughput_stats
+      {
+        performed_last_hour: QueueEvent.performed_count_last(1.hour),
+        failed_last_24h: QueueEvent.failed_count_last(24.hours),
+        enqueue_rate_per_min: QueueEvent.enqueue_rate_per_minute(window: 5.minutes)
+      }
+    end
 
     def unavailable_response
       {

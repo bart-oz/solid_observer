@@ -38,5 +38,20 @@ module SolidObserver
         .pluck(:queue_name)
         .sort
     }
+
+    def self.performed_count_last(duration)
+      by_event_type("job_completed").since(duration.ago).count
+    end
+
+    def self.failed_count_last(duration)
+      by_event_type("job_failed").since(duration.ago).count
+    end
+
+    def self.enqueue_rate_per_minute(window: 5.minutes)
+      count = by_event_type("job_enqueued").since(window.ago).count
+      return 0.0 if count.zero?
+
+      (count.to_f / (window.to_f / 60.0)).round(1)
+    end
   end
 end

@@ -3,6 +3,8 @@
 require "spec_helper"
 
 RSpec.describe SolidObserver::QueueStats do
+  after { SolidObserver.reset_configuration! }
+
   describe ".solid_queue_available?" do
     context "when SolidQueue is defined" do
       it "returns true" do
@@ -82,7 +84,7 @@ RSpec.describe SolidObserver::QueueStats do
         allow(described_class).to receive(:solid_queue_available?).and_return(true)
       end
 
-      it "returns snapshot with all statistics" do
+      before do
         allow(ready_execution).to receive(:count).and_return(10)
         allow(scheduled_execution).to receive(:count).and_return(5)
         allow(claimed_execution).to receive(:count).and_return(3)
@@ -92,22 +94,61 @@ RSpec.describe SolidObserver::QueueStats do
         group_double = double
         allow(ready_execution).to receive(:group).with(:queue_name).and_return(group_double)
         allow(group_double).to receive(:count).and_return({"default" => 8, "mailers" => 2})
+      end
 
-        result = queue_stats.snapshot
+      context "when persistence_mode? is true" do
+        before do
+          SolidObserver.config.storage_mode = :persistence
+          allow(SolidObserver::QueueEvent).to receive(:performed_count_last).with(1.hour).and_return(120)
+          allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(24.hours).and_return(7)
+          allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 5.minutes).and_return(14.2)
+        end
 
-        expect(result).to eq(
-          ready: 10,
-          scheduled: 5,
-          claimed: 3,
-          failed: 2,
-          workers: 4,
-          queues: {"default" => 8, "mailers" => 2},
-          available: true
-        )
+        it "returns snapshot with throughput statistics" do
+          result = queue_stats.snapshot
+
+          expect(result).to eq(
+            ready: 10,
+            scheduled: 5,
+            claimed: 3,
+            failed: 2,
+            workers: 4,
+            queues: {"default" => 8, "mailers" => 2},
+            available: true,
+            performed_last_hour: 120,
+            failed_last_24h: 7,
+            enqueue_rate_per_min: 14.2
+          )
+        end
+      end
+
+      context "when persistence_mode? is false (realtime)" do
+        before do
+          SolidObserver.config.storage_mode = :realtime
+        end
+
+        it "does not include throughput statistics" do
+          expect(SolidObserver::QueueEvent).not_to receive(:performed_count_last)
+          expect(SolidObserver::QueueEvent).not_to receive(:failed_count_last)
+          expect(SolidObserver::QueueEvent).not_to receive(:enqueue_rate_per_minute)
+
+          result = queue_stats.snapshot
+
+          expect(result).to eq(
+            ready: 10,
+            scheduled: 5,
+            claimed: 3,
+            failed: 2,
+            workers: 4,
+            queues: {"default" => 8, "mailers" => 2},
+            available: true
+          )
+        end
       end
 
       it "returns 0 workers when Process model is not defined" do
         hide_const("SolidQueue::Process")
+        SolidObserver.config.storage_mode = :realtime
 
         allow(ready_execution).to receive(:count).and_return(10)
         allow(scheduled_execution).to receive(:count).and_return(5)
@@ -125,7 +166,7 @@ RSpec.describe SolidObserver::QueueStats do
 
       it "returns empty hash for queues when ReadyExecution is not defined" do
         hide_const("SolidQueue::ReadyExecution")
-        stub_const("SolidQueue::ReadyExecution", nil)
+        SolidObserver.config.storage_mode = :realtime
 
         allow(queue_stats).to receive(:ready_count).and_return(0)
         allow(scheduled_execution).to receive(:count).and_return(5)

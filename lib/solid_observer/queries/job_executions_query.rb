@@ -3,6 +3,8 @@
 module SolidObserver
   module Queries
     class JobExecutionsQuery
+      ALL_ACTIVE_STATUSES = %w[ready scheduled claimed failed].freeze
+
       STATUS_SCOPES = {
         "ready" => -> { SolidQueue::ReadyExecution.all },
         "scheduled" => -> { SolidQueue::ScheduledExecution.all },
@@ -16,13 +18,38 @@ module SolidObserver
 
       def call
         status = @filter.status
-        scope = STATUS_SCOPES.fetch(status, STATUS_SCOPES["ready"]).call
-        scope = apply_queue_filter(scope, status)
-        scope = apply_job_class_filter(scope)
-        scope.order(created_at: :desc)
+        return all_active_executions if status == "all_active"
+
+        filtered_scope(status).order(created_at: :desc)
       end
 
       private
+
+      def all_active_executions
+        records = all_active_records.sort_by(&:created_at).reverse
+        preload_jobs(records)
+      end
+
+      def all_active_records
+        ALL_ACTIVE_STATUSES.flat_map do |status|
+          filtered_scope(status).order(created_at: :desc).limit(50).to_a
+        end
+      end
+
+      def preload_jobs(records)
+        ActiveRecord::Associations::Preloader.new(records:, associations: :job).call
+        records
+      end
+
+      def filtered_scope(status)
+        scope = status_scope(status)
+        scope = apply_queue_filter(scope, status)
+        apply_job_class_filter(scope)
+      end
+
+      def status_scope(status)
+        STATUS_SCOPES.fetch(status, STATUS_SCOPES["ready"]).call
+      end
 
       def apply_job_class_filter(scope)
         job_class = @filter.job_class

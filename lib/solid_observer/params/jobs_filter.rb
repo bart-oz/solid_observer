@@ -4,10 +4,11 @@ module SolidObserver
   module Params
     class JobsFilter
       ALLOWED_STATUSES = %w[ready scheduled claimed failed].freeze
+      PSEUDO_STATUSES = %w[all_active].freeze
 
       def self.from_params(params)
         new(
-          status: params[:status].presence || "ready",
+          status: params[:status].presence || "all_active",
           queue_name: params[:queue_name].presence,
           job_class: params[:job_class].presence,
           page: (params[:page].presence || 1).to_i
@@ -27,7 +28,7 @@ module SolidObserver
 
       def normalize_status(status)
         normalized = status.to_s.downcase
-        ALLOWED_STATUSES.include?(normalized) ? normalized : "ready"
+        (ALLOWED_STATUSES + PSEUDO_STATUSES).include?(normalized) ? normalized : "all_active"
       end
     end
   end
