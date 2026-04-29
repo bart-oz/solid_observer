@@ -54,10 +54,14 @@ module SolidObserver
           job_class: metadata[:job_class],
           queue_name: metadata[:queue_name],
           correlation_id: CorrelationIdResolver.resolve(@event),
-          duration: @event.duration,
+          duration: duration_in_seconds,
           metadata: metadata.except(:job_class, :queue_name).to_json,
           recorded_at: Time.current
         }
+      end
+
+      def duration_in_seconds
+        @event.duration&./(1000.0)
       end
 
       def extract_metadata

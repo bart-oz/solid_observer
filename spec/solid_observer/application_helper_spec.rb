@@ -18,12 +18,12 @@ RSpec.describe SolidObserver::ApplicationHelper do
       expect(format_duration(0)).to eq("0ms")
     end
 
-    it "formats sub-second as ms" do
-      expect(format_duration(0.003)).to eq("3ms")
+    it "formats 0.011 seconds as 11ms" do
+      expect(format_duration(0.011)).to eq("11ms")
     end
 
-    it "formats seconds" do
-      expect(format_duration(1.2)).to eq("1.2s")
+    it "formats 2.5 seconds as seconds output" do
+      expect(format_duration(2.5)).to eq("2.5s")
     end
 
     it "formats exactly 1 second" do
