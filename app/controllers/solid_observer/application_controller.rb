@@ -2,6 +2,14 @@
 
 module SolidObserver
   class ApplicationController < ActionController::Base
+    def self.runtime_db_errors
+      [
+        *([PG::ConnectionBad] if defined?(PG::ConnectionBad)),
+        *([Mysql2::Error::ConnectionError] if defined?(Mysql2::Error::ConnectionError)),
+        *([SQLite3::CantOpenException] if defined?(SQLite3::CantOpenException))
+      ]
+    end
+
     api_controller = defined?(ActionController::API) && begin
       SolidObserver.config.ui_base_controller.constantize.ancestors.include?(ActionController::API)
     rescue NameError
@@ -17,6 +25,10 @@ module SolidObserver
     before_action :authenticate
     helper_method :persistence_mode?, :realtime_mode?, :solid_queue_available?
     layout "solid_observer/application"
+    rescue_from ActiveRecord::NoDatabaseError,
+      ActiveRecord::ConnectionNotEstablished,
+      *runtime_db_errors,
+      with: :render_storage_unavailable
 
     private
 
@@ -46,6 +58,12 @@ module SolidObserver
       cfg = SolidObserver.config
       ActiveSupport::SecurityUtils.secure_compare(username.to_s, cfg.ui_username.to_s) &&
         ActiveSupport::SecurityUtils.secure_compare(password.to_s, cfg.ui_password.to_s)
+    end
+
+    def render_storage_unavailable(exception)
+      @error_class = exception.class.name
+      @error_message = exception.message
+      render "solid_observer/errors/storage_unavailable", status: :service_unavailable
     end
   end
 end
