@@ -1,0 +1,27 @@
+<% content_for :title, "Storage Unavailable" %>
+
+<div class="so-content__header">
+  <h1>SolidObserver storage is not reachable</h1>
+</div>
+
+<div class="so-card so-card--spaced so-card--error">
+  <p class="so-card__label so-card__label--danger">
+    <strong><%= @error_class %></strong>
+  </p>
+  <pre class="so-pre so-pre--error"><%= @error_message %></pre>
+</div>
+
+<div class="so-card so-card--spaced">
+  <h2>What to do next</h2>
+  <ol>
+    <li>Confirm the <code>solid_observer_queue</code> database in <code>config/database.yml</code> is reachable.</li>
+    <li>
+      Run migrations if you have not yet:
+      <pre class="so-pre">bin/rails solid_observer:install:migrations
+bin/rails db:create
+bin/rails db:migrate</pre>
+    </li>
+    <li>If the database server is temporarily down, reload this page once it recovers.</li>
+    <li>Switch to <code>storage_mode: :realtime</code> in <code>config/initializers/solid_observer.rb</code> if you want SolidObserver without a persistence database.</li>
+  </ol>
+</div>
