@@ -31,6 +31,44 @@ RSpec.describe SolidObserver::ApplicationHelper do
     end
   end
 
+  describe "#duration_with_semantic" do
+    it "wraps duration in an abbr tag with perform text for job_completed" do
+      result = duration_with_semantic(0.011, "job_completed")
+
+      expect(result).to include("<abbr")
+      expect(result).to include("11ms")
+      expect(result).to include("Time spent performing the job")
+    end
+
+    it "uses enqueue-specific text for job_enqueued" do
+      result = duration_with_semantic(0.005, "job_enqueued")
+      expect(result).to include("ActiveJob enqueue call")
+    end
+
+    it "uses failed-specific text for job_failed" do
+      result = duration_with_semantic(1.5, "job_failed")
+      expect(result).to include("before the exception was raised")
+    end
+
+    it "uses discarded-specific text for job_discarded" do
+      result = duration_with_semantic(0.2, "job_discarded")
+      expect(result).to include("discard decision was made")
+    end
+
+    it "renders an em-dash for nil duration" do
+      result = duration_with_semantic(nil, "job_completed")
+
+      expect(result).to include("—")
+      expect(result).to include("so-text-muted")
+    end
+
+    it "raises KeyError for unknown event type" do
+      expect {
+        duration_with_semantic(0.011, "job_unknown")
+      }.to raise_error(KeyError)
+    end
+  end
+
   describe "#status_badge" do
     it "uses success for completed" do
       expect(status_badge(:completed)).to include("so-badge--success")

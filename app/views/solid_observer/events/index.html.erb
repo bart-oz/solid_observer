@@ -40,7 +40,7 @@
           <td><%= link_to event.event_type.humanize, event_path(event.id) %></td>
           <td><%= event.job_class %></td>
           <td><%= event.queue_name %></td>
-          <td><%= event.duration ? format_duration(event.duration) : "—" %></td>
+          <td><%= duration_with_semantic(event.duration, event.event_type) %></td>
           <td><%= time_ago_in_words(event.recorded_at) %> ago</td>
         </tr>
       <% end %>

@@ -12,6 +12,12 @@ module SolidObserver
       "enqueued" => "info",
       "discarded" => "info"
     }.freeze
+    DURATION_SEMANTICS = {
+      "job_enqueued" => "Time spent in the ActiveJob enqueue call (Rails internal; typically sub-millisecond to single-digit ms)",
+      "job_completed" => "Time spent performing the job",
+      "job_failed" => "Time spent performing the job before the exception was raised",
+      "job_discarded" => "Time before discard decision was made"
+    }.freeze
 
     def execution_status(execution)
       ExecutionPresenter.new(execution).status
@@ -31,6 +37,12 @@ module SolidObserver
       status_str = status.to_s
       color = STATUS_COLORS.fetch(status_str, "default")
       content_tag(:span, status_str.humanize, class: "so-badge so-badge--#{color}")
+    end
+
+    def duration_with_semantic(value, event_type)
+      return content_tag(:span, "—", class: "so-text-muted") unless value
+
+      content_tag(:abbr, format_duration(value), title: DURATION_SEMANTICS.fetch(event_type.to_s))
     end
 
     def mode_badge

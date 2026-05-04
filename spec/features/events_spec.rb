@@ -27,11 +27,12 @@ RSpec.describe "Events", type: :feature do
     end
 
     context "when events exist" do
-      before do
+      let!(:event) do
         SolidObserver::QueueEvent.create!(
           event_type: "job_completed",
           job_class: "MyJob",
           queue_name: "default",
+          duration: 0.011,
           recorded_at: Time.now
         )
       end
@@ -45,6 +46,22 @@ RSpec.describe "Events", type: :feature do
       it "links to the event show page" do
         visit "/solid_observer/events"
         expect(page).to have_link("Job completed")
+      end
+
+      it "renders duration with semantic tooltip on the index page" do
+        visit "/solid_observer/events"
+        expect(page).to have_css(
+          "abbr[title='Time spent performing the job']",
+          text: "11ms"
+        )
+      end
+
+      it "renders duration with semantic tooltip on the show page" do
+        visit "/solid_observer/events/#{event.id}"
+        expect(page).to have_css(
+          "abbr[title='Time spent performing the job']",
+          text: "11ms"
+        )
       end
     end
   end
