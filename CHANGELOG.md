@@ -41,6 +41,7 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - Specs: `allow_any_instance_of` → `instance_double`; sleep-based timer specs use deterministic synchronisation; dead private-method `describe` blocks removed
 - `.reek.yml` suppressions trimmed; hot-path services/buffer/engine methods refactored to pass `TooManyStatements` without new suppressions
 - Jobs tab default filter changed from `status=ready` to `status=all_active` (ready + scheduled + claimed + failed).
+- Duration values on the Events index and detail pages now use per-event-type semantic context via `<abbr title="...">` tooltips so operators can distinguish enqueue call latency (`job_enqueued`) from perform-time duration (`job_completed` / `job_failed` / `job_discarded`).
 
 ## [0.1.1] - 2026-02-10
 

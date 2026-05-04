@@ -29,7 +29,7 @@
       </tr>
       <tr>
         <td>Duration</td>
-        <td><%= @event.duration ? format_duration(@event.duration) : "N/A" %></td>
+        <td><%= duration_with_semantic(@event.duration, @event.event_type) %></td>
       </tr>
       <tr>
         <td>Recorded At</td>
