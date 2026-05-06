@@ -46,7 +46,7 @@
 </div>
 
 <% if @execution.is_a?(SolidQueue::FailedExecution) && @execution.error %>
-  <div class="so-card so-card--error">
+  <div class="so-card so-card--accent-danger">
     <div class="so-card__label so-card__label--danger">Error Details</div>
     <table class="so-table so-details so-table--card">
       <tbody>

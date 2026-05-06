@@ -5,37 +5,27 @@
   <h1>Dashboard</h1>
 </div>
 
-<% if persistence_mode? %>
-  <div class="so-card so-card--spaced" style="background: #f1f5f9; border: 1px solid var(--so-border);">
-    <p style="font-size: 0.85rem; color: var(--so-text-muted); margin: 0;">
-      <strong>Jobs tab</strong> shows currently in-flight jobs (ready, scheduled, claimed) and failed jobs awaiting retry.
-      Successfully completed jobs are not retained as execution rows by Solid Queue —
-      see <%= link_to "Events tab", events_path %> for the full historical record.
-    </p>
-  </div>
-<% end %>
-
 <% if @stats[:available] %>
   <div class="so-stat-cards">
-    <%= render "solid_observer/shared/stat_card", label: "Ready", subtitle: "queued", value: @stats[:ready], color: "success" %>
-    <%= render "solid_observer/shared/stat_card", label: "Scheduled", subtitle: "future runs", value: @stats[:scheduled], color: "warning" %>
-    <%= render "solid_observer/shared/stat_card", label: "Claimed", subtitle: "in progress", value: @stats[:claimed], color: "info" %>
-    <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "awaiting retry", value: @stats[:failed], color: "danger" %>
-    <%= render "solid_observer/shared/stat_card", label: "Workers", subtitle: "active processes", value: @stats[:workers], color: "info" %>
+    <%= render "solid_observer/shared/stat_card", label: "Ready", subtitle: "queued", value: @stats[:ready] %>
+    <%= render "solid_observer/shared/stat_card", label: "Scheduled", subtitle: "future runs", value: @stats[:scheduled] %>
+    <%= render "solid_observer/shared/stat_card", label: "Claimed", subtitle: "in progress", value: @stats[:claimed] %>
+    <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "awaiting retry", value: @stats[:failed] %>
+    <%= render "solid_observer/shared/stat_card", label: "Workers", subtitle: "active processes", value: @stats[:workers] %>
   </div>
 
   <% if persistence_mode? %>
     <div class="so-stat-cards">
-      <%= render "solid_observer/shared/stat_card", label: "Performed", subtitle: "last hour", value: number_with_delimiter(@stats[:performed_last_hour]), color: "success" %>
-      <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "last 24h", value: number_with_delimiter(@stats[:failed_last_24h]), color: "danger" %>
-      <%= render "solid_observer/shared/stat_card", label: "Enqueue rate", subtitle: "last 5 min", value: "#{@stats[:enqueue_rate_per_min]} jobs/min", color: "info" %>
+      <%= render "solid_observer/shared/stat_card", label: "Performed", subtitle: "last hour", value: number_with_delimiter(@stats[:performed_last_hour]) %>
+      <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "last 24h", value: number_with_delimiter(@stats[:failed_last_24h]) %>
+      <%= render "solid_observer/shared/stat_card", label: "Enqueue rate", subtitle: "last 5 min", value: "#{@stats[:enqueue_rate_per_min]} jobs/min" %>
     </div>
   <% end %>
 
   <% if @stats[:queues].any? %>
-    <div class="so-card" style="margin-bottom: 2rem;">
+    <div class="so-card so-card--section">
       <div class="so-card__label">Queue Depths</div>
-      <table class="so-table" style="margin-top: 1rem;">
+      <table class="so-table so-table--card">
         <thead>
           <tr>
             <th>Queue</th>
@@ -55,39 +45,17 @@
   <% end %>
 
   <% if persistence_mode? %>
-    <% if @recent_failures.any? %>
-      <div class="so-card" style="border-left: 4px solid var(--so-danger); margin-bottom: 2rem;">
-        <div class="so-card__label" style="color: var(--so-danger);">Recent Failures</div>
-        <table class="so-table" style="margin-top: 1rem;">
-          <thead>
-            <tr>
-              <th>Job Class</th>
-              <th>Queue</th>
-              <th>Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @recent_failures.each do |event| %>
-              <tr>
-                <td><%= event.job_class %></td>
-                <td><%= event.queue_name %></td>
-                <td><%= time_ago_in_words(event.recorded_at) %> ago</td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% else %>
-      <div class="so-card" style="border-left: 4px solid var(--so-success); margin-bottom: 2rem;">
-        <div class="so-card__label" style="color: var(--so-success);">Recent Failures</div>
-        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--so-text-muted);">No recent failures.</div>
-      </div>
-    <% end %>
+    <section class="so-stability">
+      <span class="so-stability__label">Stability</span>
+      <%= stability_badge(@stats) %>
+      <span class="so-stability__detail"><%= stability_detail(@stats) %></span>
+      <%= link_to "View failures →", events_path(event_type: "job_failed"), class: "so-stability__link" %>
+    </section>
 
     <% if @recent_events.any? %>
       <div class="so-card">
         <div class="so-card__label">Recent Events</div>
-        <table class="so-table" style="margin-top: 1rem;">
+        <table class="so-table so-table--card">
           <thead>
             <tr>
               <th>Event</th>

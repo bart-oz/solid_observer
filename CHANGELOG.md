@@ -42,6 +42,9 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - `.reek.yml` suppressions trimmed; hot-path services/buffer/engine methods refactored to pass `TooManyStatements` without new suppressions
 - Jobs tab default filter changed from `status=ready` to `status=all_active` (ready + scheduled + claimed + failed).
 - Duration values on the Events index and detail pages now use per-event-type semantic context via `<abbr title="...">` tooltips so operators can distinguish enqueue call latency (`job_enqueued`) from perform-time duration (`job_completed` / `job_failed` / `job_discarded`).
+- Refreshed the engine UI to a minimalist visual language: light surfaces, near-black text, restrained semantic colour accents reserved for badges/state, hairline separators, consistent rounding. Sidebar moves from dark slate to a light surface. No external CSS dependencies, no JS, no dark mode (single light theme).
+- Dashboard: replaced the multi-line "Recent Failures" panel with a single-line **Stability** indicator (pill badge + summary + "View failures" link). Three states based on rolling failure counts: **Stable** (no failures in last 24h), **Degraded** (failures in last 24h but none in last hour), **Critical** (any failure in the last hour). Click-through targets the Events page filtered to `job_failed`.
+- Dashboard: removed the "Jobs tab / Events tab" orientation banner. The distinction is discoverable via navigation; the dashboard is reserved for signal.
 
 ## [0.1.1] - 2026-02-10
 

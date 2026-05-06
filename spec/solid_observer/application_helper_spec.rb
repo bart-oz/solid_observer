@@ -138,4 +138,78 @@ RSpec.describe SolidObserver::ApplicationHelper do
       end
     end
   end
+
+  describe "#stability_state" do
+    it "returns :stable when both windows are zero" do
+      expect(stability_state(failed_last_hour: 0, failed_last_24h: 0)).to eq(:stable)
+    end
+
+    it "returns :degraded when 24h has failures but last hour is clean" do
+      expect(stability_state(failed_last_hour: 0, failed_last_24h: 3)).to eq(:degraded)
+    end
+
+    it "returns :critical when there is any failure in the last hour" do
+      expect(stability_state(failed_last_hour: 1, failed_last_24h: 5)).to eq(:critical)
+    end
+
+    it "treats nil counts as zero" do
+      expect(stability_state(failed_last_hour: nil, failed_last_24h: nil)).to eq(:stable)
+    end
+  end
+
+  describe "#stability_badge" do
+    include ActionView::Helpers::UrlHelper
+
+    it "renders a green pill labelled Stable when stable" do
+      result = stability_badge(failed_last_hour: 0, failed_last_24h: 0)
+
+      expect(result).to include("so-badge--pill")
+      expect(result).to include("so-badge--success")
+      expect(result).to include("Stable")
+      expect(result).to include("<svg")
+      expect(result).to include('viewBox="0 0 6 6"')
+    end
+
+    it "renders an amber pill labelled Degraded for 24h failures only" do
+      result = stability_badge(failed_last_hour: 0, failed_last_24h: 4)
+
+      expect(result).to include("so-badge--warning")
+      expect(result).to include("Degraded")
+    end
+
+    it "renders a red pill labelled Critical when there is any failure in the last hour" do
+      result = stability_badge(failed_last_hour: 2, failed_last_24h: 9)
+
+      expect(result).to include("so-badge--danger")
+      expect(result).to include("Critical")
+    end
+  end
+
+  describe "#stability_detail" do
+    include ActionView::Helpers::DateHelper
+    include ActionView::Helpers::TextHelper
+
+    it "states the stable case explicitly" do
+      expect(stability_detail(failed_last_24h: 0, latest_failure_at: nil))
+        .to eq("No failures in the last 24h")
+    end
+
+    it "pluralises and includes latest-failure age" do
+      latest = 17.minutes.ago
+      result = stability_detail(failed_last_24h: 3, latest_failure_at: latest)
+
+      expect(result).to start_with("3 failures in the last 24h, latest ")
+      expect(result).to include("ago")
+    end
+
+    it "uses singular form for one failure" do
+      result = stability_detail(failed_last_24h: 1, latest_failure_at: 5.minutes.ago)
+      expect(result).to start_with("1 failure in the last 24h")
+    end
+
+    it "falls back to 'unknown' when latest timestamp is missing" do
+      result = stability_detail(failed_last_24h: 2, latest_failure_at: nil)
+      expect(result).to include("latest unknown")
+    end
+  end
 end

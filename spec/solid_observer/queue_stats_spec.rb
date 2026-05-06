@@ -101,7 +101,9 @@ RSpec.describe SolidObserver::QueueStats do
           SolidObserver.config.storage_mode = :persistence
           allow(SolidObserver::QueueEvent).to receive(:performed_count_last).with(1.hour).and_return(120)
           allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(24.hours).and_return(7)
+          allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(1.hour).and_return(0)
           allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 5.minutes).and_return(14.2)
+          allow(SolidObserver::QueueEvent).to receive(:recent_failures).with(1).and_return([])
         end
 
         it "returns snapshot with throughput statistics" do
@@ -117,6 +119,8 @@ RSpec.describe SolidObserver::QueueStats do
             available: true,
             performed_last_hour: 120,
             failed_last_24h: 7,
+            failed_last_hour: 0,
+            latest_failure_at: nil,
             enqueue_rate_per_min: 14.2
           )
         end
@@ -131,6 +135,7 @@ RSpec.describe SolidObserver::QueueStats do
           expect(SolidObserver::QueueEvent).not_to receive(:performed_count_last)
           expect(SolidObserver::QueueEvent).not_to receive(:failed_count_last)
           expect(SolidObserver::QueueEvent).not_to receive(:enqueue_rate_per_minute)
+          expect(SolidObserver::QueueEvent).not_to receive(:recent_failures)
 
           result = queue_stats.snapshot
 
