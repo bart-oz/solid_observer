@@ -30,21 +30,14 @@ RSpec.describe SolidObserver::DashboardController do
       before { SolidObserver.config.storage_mode = :persistence }
 
       let(:events_scope) { double("events_scope") }
-      let(:failures_scope) { double("failures_scope") }
 
       before do
         allow(SolidObserver::QueueEvent).to receive(:recent).with(10).and_return(events_scope)
-        allow(SolidObserver::QueueEvent).to receive(:recent_failures).with(5).and_return(failures_scope)
       end
 
       it "assigns @recent_events" do
         controller.send(:index)
         expect(controller.instance_variable_get(:@recent_events)).to eq(events_scope)
-      end
-
-      it "assigns @recent_failures" do
-        controller.send(:index)
-        expect(controller.instance_variable_get(:@recent_failures)).to eq(failures_scope)
       end
     end
 
@@ -54,11 +47,6 @@ RSpec.describe SolidObserver::DashboardController do
       it "does not assign @recent_events" do
         controller.send(:index)
         expect(controller.instance_variable_get(:@recent_events)).to be_nil
-      end
-
-      it "does not assign @recent_failures" do
-        controller.send(:index)
-        expect(controller.instance_variable_get(:@recent_failures)).to be_nil
       end
     end
   end

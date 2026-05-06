@@ -5,10 +5,7 @@ module SolidObserver
     def index
       @stats = QueueStats.snapshot
 
-      if persistence_mode?
-        @recent_events = QueueEvent.recent(10)
-        @recent_failures = QueueEvent.recent_failures(5)
-      end
+      @recent_events = QueueEvent.recent(10) if persistence_mode?
     end
   end
 end

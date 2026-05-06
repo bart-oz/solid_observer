@@ -33,10 +33,11 @@ RSpec.describe "Dashboard", type: :feature do
         available: true,
         performed_last_hour: 1200,
         failed_last_24h: 9,
+        failed_last_hour: 0,
+        latest_failure_at: nil,
         enqueue_rate_per_min: 4.6
       )
       allow(SolidObserver::QueueEvent).to receive(:recent).and_return([])
-      allow(SolidObserver::QueueEvent).to receive(:recent_failures).and_return([])
     end
 
     it "shows Events and Storage navigation links" do
@@ -50,11 +51,9 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_content("Persistence")
     end
 
-    it "shows conceptual hint and throughput cards" do
+    it "shows throughput cards" do
       visit "/solid_observer"
 
-      expect(page).to have_link("Events tab")
-      expect(page).to have_content("Jobs tab")
       expect(page).to have_content("Performed")
       expect(page).to have_content("last hour")
       expect(page).to have_content("Failed")
@@ -63,11 +62,11 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_content("4.6 jobs/min")
     end
 
-    it "shows reassurance when there are no recent failures" do
+    it "shows the Stability indicator with a click-through to failures" do
       visit "/solid_observer"
 
-      expect(page).to have_content("Recent Failures")
-      expect(page).to have_content("No recent failures.")
+      expect(page).to have_content("Stability")
+      expect(page).to have_link("View failures", href: "/solid_observer/events?event_type=job_failed")
     end
   end
 
@@ -98,9 +97,9 @@ RSpec.describe "Dashboard", type: :feature do
 
       visit "/solid_observer"
 
-      expect(page).not_to have_content("Jobs tab")
       expect(page).not_to have_content("Performed")
       expect(page).not_to have_content("Enqueue rate")
+      expect(page).not_to have_content("Stability")
     end
   end
 

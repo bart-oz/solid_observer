@@ -42,9 +42,12 @@ module SolidObserver
     end
 
     def throughput_stats
+      one_hour = 1.hour
       {
-        performed_last_hour: QueueEvent.performed_count_last(1.hour),
+        performed_last_hour: QueueEvent.performed_count_last(one_hour),
         failed_last_24h: QueueEvent.failed_count_last(24.hours),
+        failed_last_hour: QueueEvent.failed_count_last(one_hour),
+        latest_failure_at: QueueEvent.recent_failures(1).first&.recorded_at,
         enqueue_rate_per_min: QueueEvent.enqueue_rate_per_minute(window: 5.minutes)
       }
     end

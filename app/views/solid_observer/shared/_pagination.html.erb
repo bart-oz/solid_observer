@@ -3,15 +3,15 @@
     <% if page > 1 %>
       <%= link_to "Previous", url_for(request.query_parameters.merge(page: page - 1)), class: "so-btn" %>
     <% else %>
-      <span class="so-btn so-btn--disabled">Previous</span>
+      <span class="so-btn so-btn--disabled" aria-disabled="true">Previous</span>
     <% end %>
 
-    <span class="so-btn so-btn--static">Page <%= page %> of <%= total_pages %></span>
+    <span class="so-btn so-btn--static so-pagination__status">Page <%= page %> of <%= total_pages %></span>
 
     <% if page < total_pages %>
       <%= link_to "Next", url_for(request.query_parameters.merge(page: page + 1)), class: "so-btn" %>
     <% else %>
-      <span class="so-btn so-btn--disabled">Next</span>
+      <span class="so-btn so-btn--disabled" aria-disabled="true">Next</span>
     <% end %>
   </div>
 <% end %>

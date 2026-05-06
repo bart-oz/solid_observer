@@ -18,6 +18,11 @@ module SolidObserver
       "job_failed" => "Time spent performing the job before the exception was raised",
       "job_discarded" => "Time before discard decision was made"
     }.freeze
+    STABILITY_STATES = {
+      stable: {label: "Stable", tone: "success"},
+      degraded: {label: "Degraded", tone: "warning"},
+      critical: {label: "Critical", tone: "danger"}
+    }.freeze
 
     def execution_status(execution)
       ExecutionPresenter.new(execution).status
@@ -49,6 +54,33 @@ module SolidObserver
       config = SolidObserver.config
       color = config.persistence_mode? ? "info" : "warning"
       content_tag(:span, config.storage_mode.to_s.capitalize, class: "so-badge so-badge--#{color}")
+    end
+
+    def stability_state(stats)
+      return :critical if stats[:failed_last_hour].to_i.positive?
+      return :degraded if stats[:failed_last_24h].to_i.positive?
+
+      :stable
+    end
+
+    def stability_badge(stats)
+      meta = STABILITY_STATES.fetch(stability_state(stats))
+      dot = tag.svg(tag.circle(r: 3, cx: 3, cy: 3),
+        class: "so-badge__dot", viewBox: "0 0 6 6", "aria-hidden": "true")
+      tag.span(class: "so-badge so-badge--pill so-badge--#{meta[:tone]}") do
+        safe_join([dot, meta[:label]], " ")
+      end
+    end
+
+    def stability_detail(stats)
+      failures_24h = stats[:failed_last_24h].to_i
+      return "No failures in the last 24h" if failures_24h.zero?
+
+      "#{pluralize(failures_24h, "failure")} in the last 24h, latest #{latest_failure_phrase(stats[:latest_failure_at])}"
+    end
+
+    def latest_failure_phrase(timestamp)
+      timestamp ? "#{time_ago_in_words(timestamp)} ago" : "unknown"
     end
   end
 end
