@@ -139,6 +139,26 @@ RSpec.describe SolidObserver::ApplicationHelper do
     end
   end
 
+  describe "#turbo_frame_tag" do
+    it "renders a turbo frame with block content" do
+      result = turbo_frame_tag("so_right_now") { "Right now content" }
+
+      expect(result).to include("<turbo-frame")
+      expect(result).to include('id="so_right_now"')
+      expect(result).to include("Right now content")
+      expect(result).to include("</turbo-frame>")
+    end
+
+    it "renders a turbo frame with src in non-block form" do
+      result = turbo_frame_tag("so_lazy", src: "/solid_observer/scoped")
+
+      expect(result).to include("<turbo-frame")
+      expect(result).to include('id="so_lazy"')
+      expect(result).to include('src="/solid_observer/scoped"')
+      expect(result).to include("</turbo-frame>")
+    end
+  end
+
   describe "#stability_state" do
     it "returns :stable when both windows are zero" do
       expect(stability_state(failed_last_hour: 0, failed_last_24h: 0)).to eq(:stable)

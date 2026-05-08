@@ -31,13 +31,16 @@ RSpec.describe "Dashboard", type: :feature do
         workers: 3,
         queues: {},
         available: true,
-        performed_last_hour: 1200,
+        range: "1h",
+        performed_in_range: 1200,
+        failed_in_range: 9,
         failed_last_24h: 9,
         failed_last_hour: 0,
         latest_failure_at: nil,
         enqueue_rate_per_min: 4.6
       )
       allow(SolidObserver::QueueEvent).to receive(:recent).and_return([])
+      allow(SolidObserver::QueueEvent).to receive(:recent_failures).and_return([])
     end
 
     it "shows Events and Storage navigation links" do
@@ -54,12 +57,33 @@ RSpec.describe "Dashboard", type: :feature do
     it "shows throughput cards" do
       visit "/solid_observer"
 
+      expect(page).to have_content("Last 1h")
       expect(page).to have_content("Performed")
-      expect(page).to have_content("last hour")
       expect(page).to have_content("Failed")
-      expect(page).to have_content("last 24h")
+      expect(page).to have_content("in range")
       expect(page).to have_content("Enqueue rate")
       expect(page).to have_content("4.6 jobs/min")
+    end
+
+    it "renders both dashboard turbo frames" do
+      visit "/solid_observer"
+
+      expect(page).to have_css("turbo-frame#so_right_now")
+      expect(page).to have_css("turbo-frame#so_scoped")
+    end
+
+    it "keeps selected range for a valid range param" do
+      visit "/solid_observer?range=15m"
+
+      expect(page).to have_select("Range", selected: "15m")
+      expect(page).to have_content("Last 15m")
+    end
+
+    it "falls back selected range for an invalid range param" do
+      visit "/solid_observer?range=bogus"
+
+      expect(page).to have_select("Range", selected: "1h")
+      expect(page).to have_content("Last 1h")
     end
 
     it "shows the Stability indicator with a click-through to failures" do
@@ -92,7 +116,8 @@ RSpec.describe "Dashboard", type: :feature do
         failed: 0,
         workers: 1,
         queues: {},
-        available: true
+        available: true,
+        range: "15m"
       )
 
       visit "/solid_observer"
@@ -100,6 +125,25 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).not_to have_content("Performed")
       expect(page).not_to have_content("Enqueue rate")
       expect(page).not_to have_content("Stability")
+    end
+
+    it "renders only the right-now turbo frame" do
+      allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(
+        ready: 1,
+        scheduled: 0,
+        claimed: 0,
+        failed: 0,
+        workers: 1,
+        queues: {},
+        available: true,
+        range: "15m"
+      )
+
+      visit "/solid_observer?range=15m"
+
+      expect(page).to have_css("turbo-frame#so_right_now")
+      expect(page).not_to have_css("turbo-frame#so_scoped")
+      expect(page).to have_select("Range", selected: "15m")
     end
   end
 

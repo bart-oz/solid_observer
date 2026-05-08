@@ -37,7 +37,27 @@ RSpec.describe SolidObserver::QueueStats do
       instance = instance_double(described_class, snapshot: {ready: 0})
       allow(described_class).to receive(:new).and_return(instance)
 
-      expect(described_class.snapshot).to eq({ready: 0})
+      expect(described_class.snapshot(range: "15m")).to eq({ready: 0})
+      expect(instance).to have_received(:snapshot).with("15m")
+    end
+  end
+
+  describe ".parse_range" do
+    it "returns allowlisted range keys unchanged" do
+      described_class::RANGES.keys.each do |range_key|
+        expect(described_class.parse_range(range_key)).to eq(range_key)
+      end
+    end
+
+    it "falls back to the default for unknown values" do
+      expect(described_class.parse_range("999d")).to eq("1h")
+      expect(described_class.parse_range(nil)).to eq("1h")
+    end
+  end
+
+  describe ".range_duration" do
+    it "returns configured duration for known keys" do
+      expect(described_class.range_duration("15m")).to eq(15.minutes)
     end
   end
 
@@ -60,6 +80,7 @@ RSpec.describe SolidObserver::QueueStats do
           workers: 0,
           queues: {},
           available: false,
+          range: "1h",
           error: "SolidQueue not available"
         )
       end
@@ -100,13 +121,16 @@ RSpec.describe SolidObserver::QueueStats do
         before do
           SolidObserver.config.storage_mode = :persistence
           allow(SolidObserver::QueueEvent).to receive(:performed_count_last).with(1.hour).and_return(120)
-          allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(24.hours).and_return(7)
+          allow(SolidObserver::QueueEvent).to receive(:performed_count_last).with(15.minutes).and_return(34)
+          allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(15.minutes).and_return(2)
+          allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 15.minutes).and_return(9.1)
           allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(1.hour).and_return(0)
-          allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 5.minutes).and_return(14.2)
+          allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(24.hours).and_return(7)
+          allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 1.hour).and_return(14.2)
           allow(SolidObserver::QueueEvent).to receive(:recent_failures).with(1).and_return([])
         end
 
-        it "returns snapshot with throughput statistics" do
+        it "returns snapshot with throughput statistics for the default range" do
           result = queue_stats.snapshot
 
           expect(result).to eq(
@@ -117,12 +141,28 @@ RSpec.describe SolidObserver::QueueStats do
             workers: 4,
             queues: {"default" => 8, "mailers" => 2},
             available: true,
-            performed_last_hour: 120,
+            performed_in_range: 120,
+            failed_in_range: 0,
             failed_last_24h: 7,
             failed_last_hour: 0,
             latest_failure_at: nil,
-            enqueue_rate_per_min: 14.2
+            enqueue_rate_per_min: 14.2,
+            range: "1h"
           )
+        end
+
+        it "uses a requested range window for scoped throughput values" do
+          result = queue_stats.snapshot("15m")
+
+          expect(result).to include(
+            performed_in_range: 34,
+            failed_in_range: 2,
+            enqueue_rate_per_min: 9.1,
+            range: "15m"
+          )
+          expect(SolidObserver::QueueEvent).to have_received(:performed_count_last).with(15.minutes)
+          expect(SolidObserver::QueueEvent).to have_received(:failed_count_last).with(15.minutes)
+          expect(SolidObserver::QueueEvent).to have_received(:enqueue_rate_per_minute).with(window: 15.minutes)
         end
       end
 
@@ -202,6 +242,7 @@ RSpec.describe SolidObserver::QueueStats do
           workers: 0,
           queues: {},
           available: false,
+          range: "1h",
           error: "Database connection failed"
         )
       end
