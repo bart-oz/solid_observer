@@ -1,25 +1,44 @@
-<% content_for :auto_refresh, true %>
 <% content_for :title, "Dashboard" %>
 
 <div class="so-content__header">
   <h1>Dashboard</h1>
 </div>
 
+<form method="get" action="<%= root_path %>" class="so-filters" data-turbo-frame="_top">
+  <label for="so-range" class="so-card__label so-filters__label">Range</label>
+  <select id="so-range" name="range" onchange="this.form.requestSubmit()">
+    <% SolidObserver::QueueStats::RANGES.each_key do |key| %>
+      <option value="<%= key %>" <%= "selected" if key == @range %>><%= key %></option>
+    <% end %>
+  </select>
+  <noscript><button type="submit" class="so-btn">Apply</button></noscript>
+</form>
+
 <% if @stats[:available] %>
-  <div class="so-stat-cards">
-    <%= render "solid_observer/shared/stat_card", label: "Ready", subtitle: "queued", value: @stats[:ready] %>
-    <%= render "solid_observer/shared/stat_card", label: "Scheduled", subtitle: "future runs", value: @stats[:scheduled] %>
-    <%= render "solid_observer/shared/stat_card", label: "Claimed", subtitle: "in progress", value: @stats[:claimed] %>
-    <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "awaiting retry", value: @stats[:failed] %>
-    <%= render "solid_observer/shared/stat_card", label: "Workers", subtitle: "active processes", value: @stats[:workers] %>
-  </div>
+  <%= turbo_frame_tag "so_right_now" do %>
+    <section class="so-cards-section">
+      <h2 class="so-cards-section__title">Right Now</h2>
+      <div class="so-stat-cards">
+        <%= render "solid_observer/shared/stat_card", label: "Ready", subtitle: "queued", value: @stats[:ready] %>
+        <%= render "solid_observer/shared/stat_card", label: "Scheduled", subtitle: "future runs", value: @stats[:scheduled] %>
+        <%= render "solid_observer/shared/stat_card", label: "Claimed", subtitle: "in progress", value: @stats[:claimed] %>
+        <%= render "solid_observer/shared/stat_card", label: "Workers", subtitle: "active processes", value: @stats[:workers] %>
+        <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "awaiting retry", value: @stats[:failed] %>
+      </div>
+    </section>
+  <% end %>
 
   <% if persistence_mode? %>
-    <div class="so-stat-cards">
-      <%= render "solid_observer/shared/stat_card", label: "Performed", subtitle: "last hour", value: number_with_delimiter(@stats[:performed_last_hour]) %>
-      <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "last 24h", value: number_with_delimiter(@stats[:failed_last_24h]) %>
-      <%= render "solid_observer/shared/stat_card", label: "Enqueue rate", subtitle: "last 5 min", value: "#{@stats[:enqueue_rate_per_min]} jobs/min" %>
-    </div>
+    <%= turbo_frame_tag "so_scoped" do %>
+      <section class="so-cards-section">
+        <h2 class="so-cards-section__title">Last <%= @range %></h2>
+        <div class="so-stat-cards">
+          <%= render "solid_observer/shared/stat_card", label: "Performed", subtitle: "in range", value: number_with_delimiter(@stats[:performed_in_range]) %>
+          <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "in range", value: number_with_delimiter(@stats[:failed_in_range]) %>
+          <%= render "solid_observer/shared/stat_card", label: "Enqueue rate", subtitle: "per min", value: "#{@stats[:enqueue_rate_per_min]} jobs/min" %>
+        </div>
+      </section>
+    <% end %>
   <% end %>
 
   <% if @stats[:queues].any? %>

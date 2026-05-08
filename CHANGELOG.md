@@ -7,6 +7,7 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 ### Added
 - Web UI dashboard at `/solid_observer` — queue stats, jobs browser, events log, storage info; auto-refresh, responsive layout, optional HTTP Basic Auth
 - Web UI config: `ui_enabled`, `ui_username`, `ui_password`, `ui_base_controller`, `ui_refresh_interval`
+- Dashboard now supports a Time-Range selector (`15m`, `30m`, `1h`, `7h`, `1d`, `7d`, `14d`, default `1h`) that scopes the new "Last <range>" card region (Performed / Failed / Enqueue rate). The "Right Now" region (Ready / Scheduled / Claimed / Failed-awaiting-retry / Workers) is unaffected by the range and reflects current SolidQueue state.
 - Retry / discard actions with confirmation dialogs and CSRF protection
 - `QueueEventBuffer#metrics` and `#shutdown` (graceful drain on app exit)
 - Configuration: `max_buffer_size` (default 10_000), `buffer_overflow_strategy` (`:drop_old` / `:drop_new`), `filter_cache_ttl`
@@ -40,6 +41,7 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - Web UI controllers refactored to thin actions + query/param/presenter objects; Rails built-in number helpers replace custom ones
 - Specs: `allow_any_instance_of` → `instance_double`; sleep-based timer specs use deterministic synchronisation; dead private-method `describe` blocks removed
 - `.reek.yml` suppressions trimmed; hot-path services/buffer/engine methods refactored to pass `TooManyStatements` without new suppressions
+- The legacy implicit dashboard auto-refresh (driven by `SolidObserver.config.ui_refresh_interval`) is no longer enabled on the dashboard view. Explicit Live Mode replaces it in SO-060 within the same release.
 - Jobs tab default filter changed from `status=ready` to `status=all_active` (ready + scheduled + claimed + failed).
 - Duration values on the Events index and detail pages now use per-event-type semantic context via `<abbr title="...">` tooltips so operators can distinguish enqueue call latency (`job_enqueued`) from perform-time duration (`job_completed` / `job_failed` / `job_discarded`).
 - Refreshed the engine UI to a minimalist visual language: light surfaces, near-black text, restrained semantic colour accents reserved for badges/state, hairline separators, consistent rounding. Sidebar moves from dark slate to a light surface. No external CSS dependencies, no JS, no dark mode (single light theme).

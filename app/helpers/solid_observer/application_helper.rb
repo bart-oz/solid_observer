@@ -56,6 +56,15 @@ module SolidObserver
       content_tag(:span, config.storage_mode.to_s.capitalize, class: "so-badge so-badge--#{color}")
     end
 
+    def turbo_frame_tag(id, **options, &block)
+      return super if defined?(super)
+
+      content = options.delete(:content)
+      body = block_given? ? capture(&block) : content
+
+      content_tag(:"turbo-frame", body, **options.merge(id: id).compact)
+    end
+
     def stability_state(stats)
       return :critical if stats[:failed_last_hour].to_i.positive?
       return :degraded if stats[:failed_last_24h].to_i.positive?
