@@ -1,11 +1,38 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "base64"
+require_relative "../../app/helpers/solid_observer/application_helper"
 
 RSpec.describe SolidObserver::DashboardController do
   after { SolidObserver.reset_configuration! }
 
   let(:controller) { described_class.allocate }
+
+  def ensure_engine_view_path!
+    engine_views = SolidObserver::Engine.root.join("app/views").to_s
+    current_paths = described_class.view_paths.map(&:to_s)
+    return if current_paths.include?(engine_views)
+
+    described_class.prepend_view_path(engine_views)
+  end
+
+  def call_controller_action(action_name, path = "/", env_overrides = {})
+    ensure_engine_view_path!
+    described_class.helper(SolidObserver::ApplicationHelper)
+    unless described_class.method_defined?(:right_now_path)
+      described_class.define_method(:right_now_path) { "/solid_observer/right_now" }
+      described_class.helper_method(:right_now_path)
+    end
+    env = Rack::MockRequest.env_for(
+      path,
+      {"action_dispatch.routes" => SolidObserver::Engine.routes}.merge(env_overrides)
+    )
+    status, headers, body = described_class.action(action_name).call(env)
+    response_body = +""
+    body.each { |chunk| response_body << chunk }
+    [status, headers, response_body]
+  end
 
   describe "class structure" do
     it "inherits from ApplicationController" do
@@ -88,11 +115,67 @@ RSpec.describe SolidObserver::DashboardController do
       end
     end
 
+    describe "GET #index with live param" do
+      before { SolidObserver.config.storage_mode = :realtime }
+
+      context "when live=on" do
+        let(:params_hash) { {live: "on"} }
+
+        it "assigns @live as true" do
+          controller.index
+
+          expect(controller.instance_variable_get(:@live)).to be(true)
+        end
+      end
+
+      context "when live=off" do
+        let(:params_hash) { {live: "off"} }
+
+        it "assigns @live as false" do
+          controller.index
+
+          expect(controller.instance_variable_get(:@live)).to be(false)
+        end
+      end
+
+      context "when live is missing" do
+        let(:params_hash) { {} }
+
+        it "assigns @live as false" do
+          controller.index
+
+          expect(controller.instance_variable_get(:@live)).to be(false)
+        end
+      end
+
+      context "when live has a garbage value" do
+        let(:params_hash) { {live: "blah"} }
+
+        it "assigns @live as false" do
+          controller.index
+
+          expect(controller.instance_variable_get(:@live)).to be(false)
+        end
+      end
+
+      context "when range and live coexist" do
+        let(:params_hash) { {range: "15m", live: "on"} }
+        let(:stats) { super().merge(range: "15m") }
+
+        it "assigns both @range and @live from params" do
+          controller.index
+
+          expect(SolidObserver::QueueStats).to have_received(:snapshot).with(range: "15m")
+          expect(controller.instance_variable_get(:@range)).to eq("15m")
+          expect(controller.instance_variable_get(:@live)).to be(true)
+        end
+      end
+    end
+
     context "in persistence mode" do
       before { SolidObserver.config.storage_mode = :persistence }
 
       let(:events_scope) { double("events_scope") }
-      let(:failures_scope) { double("failures_scope") }
       let(:stats) do
         super().merge(
           performed_in_range: 22,
@@ -103,14 +186,12 @@ RSpec.describe SolidObserver::DashboardController do
 
       before do
         allow(SolidObserver::QueueEvent).to receive(:recent).with(10).and_return(events_scope)
-        allow(SolidObserver::QueueEvent).to receive(:recent_failures).with(5).and_return(failures_scope)
       end
 
       it "assigns persistence-only data and scoped stats" do
         controller.index
 
         expect(controller.instance_variable_get(:@recent_events)).to eq(events_scope)
-        expect(controller.instance_variable_get(:@recent_failures)).to eq(failures_scope)
         expect(controller.instance_variable_get(:@stats)).to include(
           :performed_in_range,
           :failed_in_range,
@@ -128,12 +209,178 @@ RSpec.describe SolidObserver::DashboardController do
         controller.index
 
         expect(controller.instance_variable_get(:@recent_events)).to be_nil
-        expect(controller.instance_variable_get(:@recent_failures)).to be_nil
         expect(controller.instance_variable_get(:@stats)).not_to include(
           :performed_in_range,
           :failed_in_range,
           :enqueue_rate_per_min
         )
+      end
+    end
+  end
+
+  describe "#right_now" do
+    let(:available_stats) do
+      {
+        ready: 3,
+        scheduled: 1,
+        claimed: 0,
+        failed: 2,
+        workers: 1,
+        queues: {},
+        available: true
+      }
+    end
+
+    it "returns html without layout chrome" do
+      allow(SolidObserver::QueueStats).to receive(:snapshot).with(range: nil).and_return(available_stats)
+
+      status, headers, body = call_controller_action(:right_now, "/right_now")
+
+      expect(status).to eq(200)
+      expect(headers["Content-Type"]).to include("text/html")
+      expect(body).not_to include("<html")
+      expect(body).not_to include("so-sidebar")
+    end
+
+    it "renders one right-now turbo frame wrapper" do
+      allow(SolidObserver::QueueStats).to receive(:snapshot).with(range: nil).and_return(available_stats)
+
+      status, _headers, body = call_controller_action(:right_now, "/right_now")
+
+      expect(status).to eq(200)
+      expect(body.scan(/<turbo-frame[^>]+id="so_right_now"/).size).to eq(1)
+    end
+
+    it "renders the five right-now cards when available" do
+      allow(SolidObserver::QueueStats).to receive(:snapshot).with(range: nil).and_return(available_stats)
+
+      status, _headers, body = call_controller_action(:right_now, "/right_now")
+
+      expect(status).to eq(200)
+      expect(body).to include("Right Now")
+      expect(body).to include("Ready")
+      expect(body).to include("Scheduled")
+      expect(body).to include("Claimed")
+      expect(body).to include("Workers")
+      expect(body).to include("Failed")
+    end
+
+    it "renders the unavailable branch without raising when SolidQueue is unavailable" do
+      unavailable_stats = available_stats.merge(available: false)
+      allow(SolidObserver::QueueStats).to receive(:snapshot).with(range: nil).and_return(unavailable_stats)
+
+      status, _headers, body = call_controller_action(:right_now, "/right_now")
+
+      expect(status).to eq(200)
+      expect(body).to include("SolidQueue is not available")
+    end
+
+    it "does not call QueueEvent throughput/failure queries in persistence mode" do
+      SolidObserver.config.storage_mode = :persistence
+
+      stub_const("SolidQueue", Module.new)
+      stub_const("SolidQueue::Job", Class.new)
+      stub_const("SolidQueue::ReadyExecution", Class.new do
+        def self.count
+        end
+
+        def self.group(*)
+        end
+      end)
+      stub_const("SolidQueue::ScheduledExecution", Class.new do
+        def self.count
+        end
+      end)
+      stub_const("SolidQueue::ClaimedExecution", Class.new do
+        def self.count
+        end
+      end)
+      stub_const("SolidQueue::FailedExecution", Class.new do
+        def self.count
+        end
+      end)
+      stub_const("SolidQueue::Process", Class.new do
+        def self.where(*)
+        end
+      end)
+
+      allow(SolidQueue::ReadyExecution).to receive(:count).and_return(3)
+      allow(SolidQueue::ScheduledExecution).to receive(:count).and_return(1)
+      allow(SolidQueue::ClaimedExecution).to receive(:count).and_return(0)
+      allow(SolidQueue::FailedExecution).to receive(:count).and_return(2)
+      allow(SolidQueue::Process).to receive(:where).with(kind: "Worker").and_return(double(count: 1))
+
+      queue_group = double("queue_group", count: {"default" => 3})
+      allow(SolidQueue::ReadyExecution).to receive(:group).with(:queue_name).and_return(queue_group)
+
+      expect(SolidObserver::QueueEvent).not_to receive(:performed_count_last)
+      expect(SolidObserver::QueueEvent).not_to receive(:failed_count_last)
+      expect(SolidObserver::QueueEvent).not_to receive(:enqueue_rate_per_minute)
+      expect(SolidObserver::QueueEvent).not_to receive(:recent_failures)
+
+      status, _headers, body = call_controller_action(:right_now, "/right_now")
+
+      expect(status).to eq(200)
+      expect(body).to include("Right Now")
+    end
+  end
+
+  describe "#live_poll" do
+    def basic_auth_header(username, password)
+      token = Base64.strict_encode64("#{username}:#{password}")
+      "Basic #{token}"
+    end
+
+    it "returns javascript without layout chrome" do
+      status, headers, body = call_controller_action(
+        :live_poll,
+        "/solid_observer/live_poll.js",
+        {"HTTP_X_REQUESTED_WITH" => "XMLHttpRequest"}
+      )
+
+      expect(status).to eq(200)
+      expect(headers["Content-Type"]).to include("application/javascript")
+      expect(body).to include("function init(root)")
+      expect(body).not_to include("<html")
+      expect(body).not_to include("so-sidebar")
+    end
+
+    it "returns 404 when ui is disabled" do
+      SolidObserver.config.ui_enabled = false
+
+      status, _headers, body = call_controller_action(:live_poll, "/solid_observer/live_poll.js")
+
+      expect(status).to eq(404)
+      expect(body).to include("Not Found")
+    end
+
+    context "with HTTP basic auth configured" do
+      before do
+        SolidObserver.config.ui_enabled = true
+        SolidObserver.config.ui_username = "admin"
+        SolidObserver.config.ui_password = "secret"
+      end
+
+      it "requires authentication" do
+        status, headers, _body = call_controller_action(:live_poll, "/solid_observer/live_poll.js")
+
+        expect(status).to eq(401)
+        expect(headers["WWW-Authenticate"]).to include("Basic realm=\"SolidObserver\"")
+      end
+
+      it "returns javascript when credentials are valid" do
+        status, headers, body = call_controller_action(
+          :live_poll,
+          "/solid_observer/live_poll.js",
+          {
+            "HTTP_AUTHORIZATION" => basic_auth_header("admin", "secret"),
+            "HTTP_X_REQUESTED_WITH" => "XMLHttpRequest"
+          }
+        )
+
+        expect(status).to eq(200)
+        expect(headers["Content-Type"]).to include("application/javascript")
+        expect(body).to include("window.history.replaceState")
       end
     end
   end

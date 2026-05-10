@@ -5,8 +5,9 @@
 Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 
 ### Added
-- Web UI dashboard at `/solid_observer` — queue stats, jobs browser, events log, storage info; auto-refresh, responsive layout, optional HTTP Basic Auth
+- Web UI dashboard at `/solid_observer` — queue stats, jobs browser, events log, storage info, responsive layout, optional HTTP Basic Auth
 - Web UI config: `ui_enabled`, `ui_username`, `ui_password`, `ui_base_controller`, `ui_refresh_interval`
+- Dashboard "Live" toggle: when enabled, only the Right-Now card region (`so_right_now` Turbo Frame) reloads on the configured cadence (`SolidObserver.config.ui_refresh_interval`). Scoped cards stay frozen until the range selector changes. Toggle state lives in the `?live=on` URL param so it survives range navigations.
 - Dashboard now supports a Time-Range selector (`15m`, `30m`, `1h`, `7h`, `1d`, `7d`, `14d`, default `1h`) that scopes the new "Last <range>" card region (Performed / Failed / Enqueue rate). The "Right Now" region (Ready / Scheduled / Claimed / Failed-awaiting-retry / Workers) is unaffected by the range and reflects current SolidQueue state.
 - Retry / discard actions with confirmation dialogs and CSRF protection
 - `QueueEventBuffer#metrics` and `#shutdown` (graceful drain on app exit)
@@ -37,11 +38,14 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 ### Documentation
 - Documented multi-adapter installation (PG host + SQLite observer DB) inline in Database Setup, with explicit `adapter:` override, `gem "sqlite3"` Bundler note, `migrations_paths` migration-isolation guidance, and cross-reference from the install steps.
 
+### Removed
+- Removed the legacy implicit dashboard auto-refresh (`<meta http-equiv="refresh">` plus inline fetch/DOM-swap script for `.so-content`). Replaced by explicit, opt-in Live Mode targeting only the Right-Now frame.
+
 ### Changed
 - Web UI controllers refactored to thin actions + query/param/presenter objects; Rails built-in number helpers replace custom ones
 - Specs: `allow_any_instance_of` → `instance_double`; sleep-based timer specs use deterministic synchronisation; dead private-method `describe` blocks removed
 - `.reek.yml` suppressions trimmed; hot-path services/buffer/engine methods refactored to pass `TooManyStatements` without new suppressions
-- The legacy implicit dashboard auto-refresh (driven by `SolidObserver.config.ui_refresh_interval`) is no longer enabled on the dashboard view. Explicit Live Mode replaces it in SO-060 within the same release.
+- `SolidObserver.config.ui_refresh_interval` now controls Live Mode polling cadence instead of implicit full-page dashboard refresh. Default value is unchanged.
 - Jobs tab default filter changed from `status=ready` to `status=all_active` (ready + scheduled + claimed + failed).
 - Duration values on the Events index and detail pages now use per-event-type semantic context via `<abbr title="...">` tooltips so operators can distinguish enqueue call latency (`job_enqueued`) from perform-time duration (`job_completed` / `job_failed` / `job_discarded`).
 - Refreshed the engine UI to a minimalist visual language: light surfaces, near-black text, restrained semantic colour accents reserved for badges/state, hairline separators, consistent rounding. Sidebar moves from dark slate to a light surface. No external CSS dependencies, no JS, no dark mode (single light theme).

@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SolidObserver — <%= content_for?(:title) ? yield(:title) : "Dashboard" %></title>
   <%= csrf_meta_tags %>
-  <% if content_for?(:auto_refresh) && SolidObserver.config.ui_refresh_interval.to_i > 0 %>
-    <meta http-equiv="refresh" content="<%= SolidObserver.config.ui_refresh_interval %>">
-  <% end %>
   <style>
     :root {
       /* surfaces */
@@ -275,6 +272,9 @@
       background: var(--so-card-bg);
       color: var(--so-text);
     }
+    .so-toggle { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; }
+    .so-toggle input[type=checkbox] { margin: 0; cursor: pointer; }
+    .so-toggle__hint { color: var(--so-text-subtle); font-size: 0.75rem; }
 
     .so-empty { text-align: center; padding: 3rem 1rem; color: var(--so-text-muted); }
     .so-empty__icon { font-size: 2rem; margin-bottom: 0.5rem; }
@@ -380,26 +380,6 @@
     }
   });
 </script>
-<% if content_for?(:auto_refresh) && SolidObserver.config.ui_refresh_interval.to_i > 0 %>
-<script>
-  (function() {
-    var interval = <%= SolidObserver.config.ui_refresh_interval %> * 1000;
-    var meta = document.querySelector('meta[http-equiv="refresh"]');
-    if (meta) meta.remove();
-    setInterval(function() {
-      fetch(location.href, { headers: { "X-Requested-With": "SolidObserver" } })
-        .then(function(r) { return r.text(); })
-        .then(function(html) {
-          var parser = new DOMParser();
-          var doc = parser.parseFromString(html, "text/html");
-          var newContent = doc.querySelector(".so-content");
-          var current = document.querySelector(".so-content");
-          if (newContent && current) current.innerHTML = newContent.innerHTML;
-        })
-        .catch(function() {});
-    }, interval);
-  })();
-</script>
-<% end %>
+<script src="<%= live_poll_script_path %>" defer></script>
 </body>
 </html>

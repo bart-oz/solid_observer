@@ -13,6 +13,8 @@ module SolidObserver
   #   end
   class Configuration
     # UI Settings
+    # Polling cadence in seconds for the dashboard Live toggle.
+    # 0 disables the toggle entirely.
     attr_accessor :ui_enabled,
       :ui_base_controller,
       :ui_username,

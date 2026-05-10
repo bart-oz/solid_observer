@@ -68,7 +68,7 @@ RSpec.describe "Dashboard", type: :feature do
     it "renders both dashboard turbo frames" do
       visit "/solid_observer"
 
-      expect(page).to have_css("turbo-frame#so_right_now")
+      expect(page).to have_css('turbo-frame#so_right_now[src$="/right_now"]')
       expect(page).to have_css("turbo-frame#so_scoped")
     end
 
@@ -91,6 +91,23 @@ RSpec.describe "Dashboard", type: :feature do
 
       expect(page).to have_content("Stability")
       expect(page).to have_link("View failures", href: "/solid_observer/events?event_type=job_failed")
+    end
+
+    it "hides the Live toggle when ui_refresh_interval is 0" do
+      SolidObserver.config.ui_refresh_interval = 0
+
+      visit "/solid_observer"
+
+      expect(page).not_to have_css('input[type="checkbox"][name="live"]')
+    end
+
+    it "renders checked Live toggle with frame polling data attributes when enabled in params" do
+      SolidObserver.config.ui_refresh_interval = 5
+
+      visit "/solid_observer?live=on"
+
+      expect(page).to have_css('form[data-so-live][data-so-live-frame="so_right_now"][data-so-live-interval="5"]')
+      expect(page).to have_css('input[type="checkbox"][name="live"][value="on"][checked]')
     end
   end
 
@@ -141,7 +158,7 @@ RSpec.describe "Dashboard", type: :feature do
 
       visit "/solid_observer?range=15m"
 
-      expect(page).to have_css("turbo-frame#so_right_now")
+      expect(page).to have_css('turbo-frame#so_right_now[src$="/right_now"]')
       expect(page).not_to have_css("turbo-frame#so_scoped")
       expect(page).to have_select("Range", selected: "15m")
     end

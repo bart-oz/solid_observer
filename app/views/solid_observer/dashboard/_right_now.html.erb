@@ -1,0 +1,19 @@
+<% if stats[:available] %>
+  <section class="so-cards-section">
+    <h2 class="so-cards-section__title">Right Now</h2>
+    <div class="so-stat-cards">
+      <%= render "solid_observer/shared/stat_card", label: "Ready", subtitle: "queued", value: stats[:ready] %>
+      <%= render "solid_observer/shared/stat_card", label: "Scheduled", subtitle: "future runs", value: stats[:scheduled] %>
+      <%= render "solid_observer/shared/stat_card", label: "Claimed", subtitle: "in progress", value: stats[:claimed] %>
+      <%= render "solid_observer/shared/stat_card", label: "Workers", subtitle: "active processes", value: stats[:workers] %>
+      <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "awaiting retry", value: stats[:failed] %>
+    </div>
+  </section>
+<% else %>
+  <div class="so-card">
+    <div class="so-empty">
+      <div class="so-empty__icon">⚠️</div>
+      <div>SolidQueue is not available</div>
+    </div>
+  </div>
+<% end %>
