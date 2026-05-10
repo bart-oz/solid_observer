@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/solid_logo_dark.svg">
     <source media="(prefers-color-scheme: light)" srcset=".github/solid_logo_light.svg">
-    <img alt="SolidObserver" src=".github/solid_logo_light.svg" width="400">
+    <img alt="SolidObserver" src=".github/solid_logo_light.svg" width="220">
   </picture>
 </p>
 
@@ -10,7 +10,7 @@
   <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.67%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.98%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---

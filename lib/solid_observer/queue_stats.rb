@@ -34,9 +34,9 @@ module SolidObserver
 
     def snapshot(range = DEFAULT_RANGE)
       klass = self.class
-      return error_response("SolidQueue not available") unless klass.solid_queue_available?
+      return snapshot_for_mode(range && klass.parse_range(range)) if klass.solid_queue_available?
 
-      snapshot_for_mode(klass.parse_range(range))
+      error_response("SolidQueue not available")
     rescue => e
       error_response(e.message)
     end
@@ -45,7 +45,7 @@ module SolidObserver
 
     def snapshot_for_mode(range_key)
       base = snapshot_base
-      return base unless SolidObserver.config.persistence_mode?
+      return base unless SolidObserver.config.persistence_mode? && range_key
 
       base.merge(throughput_stats(range_key)).merge(range: range_key)
     end
