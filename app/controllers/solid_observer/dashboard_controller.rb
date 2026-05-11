@@ -23,6 +23,19 @@ module SolidObserver
       )
     end
 
+    def poll_data
+      range = QueueStats.parse_range(request_range_param, fallback: QueueStats::POLL_DEFAULT_RANGE)
+      window = QueueStats.range_duration(range, fallback: QueueStats::POLL_DEFAULT_RANGE)
+
+      ChartBuffer.append(SolidQueue::ReadyExecution.count) if QueueStats.solid_queue_available?
+
+      render json: {
+        mode: persistence_mode? ? "persistence" : "realtime",
+        snapshot: QueueStats.snapshot_for_poll(range: range),
+        chart: QueueStats.chart_data(window: window)
+      }
+    end
+
     private
 
     def assign_range_and_stats

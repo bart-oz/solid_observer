@@ -53,5 +53,89 @@ module SolidObserver
 
       (count.to_f / (window.to_f / 60.0)).round(1)
     end
+
+    def self.count_by_time_bucket(event_type:, window:, bucket_seconds:)
+      context = build_bucket_context(window: window, bucket_seconds: bucket_seconds)
+      return [] unless context
+
+      counts_by_bucket = fetch_counts_by_bucket(event_type: event_type, context: context)
+      fill_missing_buckets(context: context, counts_by_bucket: counts_by_bucket)
+    end
+
+    class << self
+      private
+
+      def build_bucket_context(window:, bucket_seconds:)
+        bucket_size = bucket_seconds.to_i
+        return nil if bucket_size <= 0 || window.to_i <= 0
+
+        end_time = Time.current
+        start_time = end_time - window
+
+        {
+          bucket_size: bucket_size,
+          start_time: start_time,
+          end_time: end_time,
+          start_bucket: align_bucket(start_time.to_i, bucket_size),
+          end_bucket: align_bucket(end_time.to_i, bucket_size)
+        }
+      end
+
+      def fetch_counts_by_bucket(event_type:, context:)
+        rows = fetch_grouped_rows(event_type: event_type, context: context)
+        rows.to_h { |row| [row["bucket_time"].to_i, row["bucket_count"].to_i] }
+      end
+
+      def fetch_grouped_rows(event_type:, context:)
+        pool = BaseEvent.connection_pool
+        query_context = context.merge(
+          event_type: event_type,
+          adapter: pool.db_config.adapter.to_s.downcase
+        )
+
+        pool.with_connection do |connection|
+          connection.select_all(grouped_counts_sql(connection: connection, query_context: query_context)).to_a
+        end
+      end
+
+      def grouped_counts_sql(connection:, query_context:)
+        <<~SQL.squish
+          SELECT #{bucket_time_sql(adapter: query_context[:adapter], bucket_size: query_context[:bucket_size])} AS bucket_time, COUNT(*) AS bucket_count
+          FROM #{table_name}
+          WHERE event_type = #{connection.quote(query_context[:event_type])}
+            AND recorded_at >= #{connection.quote(query_context[:start_time])}
+            AND recorded_at <= #{connection.quote(query_context[:end_time])}
+          GROUP BY bucket_time
+          ORDER BY bucket_time ASC
+        SQL
+      end
+
+      def bucket_time_sql(adapter:, bucket_size:)
+        case adapter
+        when "sqlite3", "sqlite"
+          "(CAST(strftime('%s', recorded_at) AS INTEGER) / #{bucket_size}) * #{bucket_size}"
+        when "postgresql"
+          if bucket_size == 60
+            "EXTRACT(EPOCH FROM date_trunc('minute', recorded_at))::bigint"
+          else
+            "(EXTRACT(EPOCH FROM recorded_at)::bigint / #{bucket_size}) * #{bucket_size}"
+          end
+        when "mysql2", "trilogy", "mysql"
+          "(UNIX_TIMESTAMP(recorded_at) DIV #{bucket_size}) * #{bucket_size}"
+        else
+          raise ArgumentError, "Unsupported adapter for bucket aggregation: #{adapter.inspect}"
+        end
+      end
+
+      def fill_missing_buckets(context:, counts_by_bucket:)
+        context[:start_bucket].step(context[:end_bucket], context[:bucket_size]).map do |timestamp|
+          {t: timestamp, v: counts_by_bucket.fetch(timestamp, 0)}
+        end
+      end
+
+      def align_bucket(value, bucket_size)
+        (value / bucket_size) * bucket_size
+      end
+    end
   end
 end

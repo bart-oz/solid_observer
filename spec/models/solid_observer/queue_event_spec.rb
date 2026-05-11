@@ -151,5 +151,77 @@ RSpec.describe "SolidObserver::QueueEvent" do
         end
       end
     end
+
+    describe ".count_by_time_bucket" do
+      it "returns bucketed counts and fills missing buckets with zero" do
+        travel_to(Time.utc(2026, 1, 21, 12, 5, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", recorded_at: Time.utc(2026, 1, 21, 12, 0, 5))
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", recorded_at: Time.utc(2026, 1, 21, 12, 1, 10))
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", recorded_at: Time.utc(2026, 1, 21, 12, 1, 45))
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", recorded_at: Time.utc(2026, 1, 21, 12, 3, 20))
+          SolidObserver::QueueEvent.create!(event_type: "job_failed", recorded_at: Time.utc(2026, 1, 21, 12, 1, 20))
+
+          result = SolidObserver::QueueEvent.count_by_time_bucket(
+            event_type: "job_completed",
+            window: 5.minutes,
+            bucket_seconds: 60
+          )
+
+          expect(result).to eq(
+            [
+              {t: Time.utc(2026, 1, 21, 12, 0, 0).to_i, v: 1},
+              {t: Time.utc(2026, 1, 21, 12, 1, 0).to_i, v: 2},
+              {t: Time.utc(2026, 1, 21, 12, 2, 0).to_i, v: 0},
+              {t: Time.utc(2026, 1, 21, 12, 3, 0).to_i, v: 1},
+              {t: Time.utc(2026, 1, 21, 12, 4, 0).to_i, v: 0},
+              {t: Time.utc(2026, 1, 21, 12, 5, 0).to_i, v: 0}
+            ]
+          )
+        end
+      end
+
+      context "with stubbed adapter branches" do
+        let(:db_config) { instance_double("DbConfig", adapter: adapter_name) }
+        let(:pool) { instance_double("ConnectionPool", db_config: db_config) }
+        let(:connection) { instance_double("Connection") }
+        let(:adapter_name) { "postgresql" }
+
+        before do
+          allow(SolidObserver::BaseEvent).to receive(:connection_pool).and_return(pool)
+          allow(pool).to receive(:with_connection).and_yield(connection)
+          allow(connection).to receive(:quote) { |value| "'#{value}'" }
+        end
+
+        it "dispatches to the postgresql SQL branch" do
+          expect(connection).to receive(:select_all) do |sql|
+            expect(sql).to include("EXTRACT(EPOCH FROM date_trunc('minute', recorded_at))::bigint")
+            []
+          end
+
+          SolidObserver::QueueEvent.count_by_time_bucket(
+            event_type: "job_completed",
+            window: 1.minute,
+            bucket_seconds: 60
+          )
+        end
+
+        context "when adapter is mysql" do
+          let(:adapter_name) { "mysql" }
+
+          it "dispatches to the mysql SQL branch" do
+            expect(connection).to receive(:select_all) do |sql|
+              expect(sql).to include("(UNIX_TIMESTAMP(recorded_at) DIV 60) * 60")
+              []
+            end
+
+            SolidObserver::QueueEvent.count_by_time_bucket(
+              event_type: "job_completed",
+              window: 1.minute,
+              bucket_seconds: 60
+            )
+          end
+        end
+      end
+    end
   end
 end

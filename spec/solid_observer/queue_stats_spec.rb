@@ -3,7 +3,10 @@
 require "spec_helper"
 
 RSpec.describe SolidObserver::QueueStats do
-  after { SolidObserver.reset_configuration! }
+  after do
+    SolidObserver::ChartBuffer.clear
+    SolidObserver.reset_configuration!
+  end
 
   describe ".solid_queue_available?" do
     context "when SolidQueue is defined" do
@@ -58,6 +61,26 @@ RSpec.describe SolidObserver::QueueStats do
   describe ".range_duration" do
     it "returns configured duration for known keys" do
       expect(described_class.range_duration("15m")).to eq(15.minutes)
+    end
+  end
+
+  describe ".snapshot_for_poll" do
+    it "delegates to a new instance with poll fallback range parsing" do
+      instance = instance_double(described_class, snapshot_for_poll: {ready: 1})
+      allow(described_class).to receive(:new).and_return(instance)
+
+      expect(described_class.snapshot_for_poll(range: "unknown")).to eq({ready: 1})
+      expect(instance).to have_received(:snapshot_for_poll).with("15m")
+    end
+  end
+
+  describe ".chart_data" do
+    it "delegates to a new instance" do
+      instance = instance_double(described_class, chart_data: {ready: []})
+      allow(described_class).to receive(:new).and_return(instance)
+
+      expect(described_class.chart_data(window: 15.minutes)).to eq({ready: []})
+      expect(instance).to have_received(:chart_data).with(15.minutes)
     end
   end
 
@@ -244,6 +267,145 @@ RSpec.describe SolidObserver::QueueStats do
           available: false,
           range: "1h",
           error: "Database connection failed"
+        )
+      end
+    end
+  end
+
+  describe "#snapshot_for_poll" do
+    let(:queue_stats) { described_class.new }
+    let(:ready_execution) { double("ReadyExecution") }
+    let(:scheduled_execution) { double("ScheduledExecution") }
+    let(:claimed_execution) { double("ClaimedExecution") }
+    let(:failed_execution) { double("FailedExecution") }
+    let(:process_model) { double("Process") }
+
+    before do
+      stub_const("SolidQueue", Module.new)
+      stub_const("SolidQueue::Job", Class.new)
+      stub_const("SolidQueue::ReadyExecution", ready_execution)
+      stub_const("SolidQueue::ScheduledExecution", scheduled_execution)
+      stub_const("SolidQueue::ClaimedExecution", claimed_execution)
+      stub_const("SolidQueue::FailedExecution", failed_execution)
+      stub_const("SolidQueue::Process", process_model)
+      allow(described_class).to receive(:solid_queue_available?).and_return(true)
+
+      allow(ready_execution).to receive(:count).and_return(6)
+      allow(scheduled_execution).to receive(:count).and_return(2)
+      allow(claimed_execution).to receive(:count).and_return(1)
+      allow(failed_execution).to receive(:count).and_return(3)
+      allow(process_model).to receive(:where).with(kind: "Worker").and_return(double(count: 4))
+    end
+
+    context "in persistence mode" do
+      before { SolidObserver.config.storage_mode = :persistence }
+
+      it "returns six-key snapshot including enqueue rate" do
+        allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 15.minutes).and_return(1.6)
+
+        result = queue_stats.snapshot_for_poll("15m")
+
+        expect(result).to eq(
+          ready: 6,
+          scheduled: 2,
+          claimed: 1,
+          workers: 4,
+          failed: 3,
+          enqueue_rate_per_min: 1.6
+        )
+      end
+    end
+
+    context "in realtime mode" do
+      before { SolidObserver.config.storage_mode = :realtime }
+
+      it "returns nil enqueue rate and skips QueueEvent query" do
+        expect(SolidObserver::QueueEvent).not_to receive(:enqueue_rate_per_minute)
+
+        result = queue_stats.snapshot_for_poll("15m")
+
+        expect(result).to eq(
+          ready: 6,
+          scheduled: 2,
+          claimed: 1,
+          workers: 4,
+          failed: 3,
+          enqueue_rate_per_min: nil
+        )
+      end
+    end
+  end
+
+  describe "#chart_data" do
+    let(:queue_stats) { described_class.new }
+    let(:ready_series) { [{t: 1, v: 5}] }
+
+    before do
+      allow(SolidObserver::ChartBuffer).to receive(:recent).with(15.minutes.to_i).and_return(ready_series)
+    end
+
+    context "in persistence mode" do
+      before { SolidObserver.config.storage_mode = :persistence }
+
+      it "returns performed, failed and ready series" do
+        allow(SolidObserver::QueueEvent).to receive(:count_by_time_bucket).with(
+          event_type: "job_completed",
+          window: 15.minutes,
+          bucket_seconds: 30
+        ).and_return([{t: 10, v: 2}])
+        allow(SolidObserver::QueueEvent).to receive(:count_by_time_bucket).with(
+          event_type: "job_failed",
+          window: 15.minutes,
+          bucket_seconds: 30
+        ).and_return([{t: 10, v: 1}])
+
+        result = queue_stats.chart_data(15.minutes)
+
+        expect(result).to eq(
+          performed: [{t: 10, v: 2}],
+          failed: [{t: 10, v: 1}],
+          ready: ready_series
+        )
+      end
+
+      it "uses bucket sizes by window band" do
+        windows_and_buckets = {
+          30.minutes => 30,
+          2.hours => 60,
+          1.day => 5.minutes.to_i,
+          2.days => 30.minutes.to_i
+        }
+
+        windows_and_buckets.each do |window, expected_bucket|
+          allow(SolidObserver::ChartBuffer).to receive(:recent).with(window.to_i).and_return([])
+          allow(SolidObserver::QueueEvent).to receive(:count_by_time_bucket).with(
+            event_type: "job_completed",
+            window: window,
+            bucket_seconds: expected_bucket
+          ).and_return([])
+          allow(SolidObserver::QueueEvent).to receive(:count_by_time_bucket).with(
+            event_type: "job_failed",
+            window: window,
+            bucket_seconds: expected_bucket
+          ).and_return([])
+
+          queue_stats.chart_data(window)
+        end
+      end
+    end
+
+    context "in realtime mode" do
+      before { SolidObserver.config.storage_mode = :realtime }
+
+      it "returns empty throughput series and keeps ready samples" do
+        expect(SolidObserver::QueueEvent).not_to receive(:count_by_time_bucket)
+
+        result = queue_stats.chart_data(15.minutes)
+
+        expect(result).to eq(
+          performed: [],
+          failed: [],
+          ready: ready_series
         )
       end
     end
