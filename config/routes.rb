@@ -2,6 +2,7 @@
 
 SolidObserver::Engine.routes.draw do
   root "dashboard#index"
+  get "poll_data", to: "dashboard#poll_data", as: :poll_data
   get "right_now", to: "dashboard#right_now", as: :right_now
   get "live_poll.js", to: "dashboard#live_poll", as: :live_poll_script
 

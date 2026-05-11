@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require_relative "chart_buffer"
+
 module SolidObserver
+  # :reek:TooManyMethods
   class QueueStats
     RANGES = {
       "15m" => 15.minutes,
@@ -12,23 +15,45 @@ module SolidObserver
       "14d" => 14.days
     }.freeze
     DEFAULT_RANGE = "1h"
+    POLL_DEFAULT_RANGE = "15m"
+    POLL_EMPTY_SNAPSHOT = {
+      ready: 0,
+      scheduled: 0,
+      claimed: 0,
+      workers: 0,
+      failed: 0,
+      enqueue_rate_per_min: nil
+    }.freeze
+    BUCKET_RULES = [
+      [30.minutes.to_i, 30],
+      [2.hours.to_i, 60],
+      [1.day.to_i, 5.minutes.to_i]
+    ].freeze
 
     class << self
       def snapshot(range: DEFAULT_RANGE)
         new.snapshot(range)
       end
 
+      def snapshot_for_poll(range:)
+        new.snapshot_for_poll(parse_range(range, fallback: POLL_DEFAULT_RANGE))
+      end
+
+      def chart_data(window: 15.minutes)
+        new.chart_data(window)
+      end
+
       def solid_queue_available?
         !!(defined?(SolidQueue) && defined?(SolidQueue::Job))
       end
 
-      def parse_range(value)
+      def parse_range(value, fallback: DEFAULT_RANGE)
         range_key = value.to_s
-        RANGES.key?(range_key) ? range_key : DEFAULT_RANGE
+        RANGES.key?(range_key) ? range_key : fallback
       end
 
-      def range_duration(value)
-        RANGES.fetch(parse_range(value))
+      def range_duration(value, fallback: DEFAULT_RANGE)
+        RANGES.fetch(parse_range(value, fallback: fallback))
       end
     end
 
@@ -41,7 +66,53 @@ module SolidObserver
       error_response(e.message)
     end
 
+    # :reek:TooManyStatements
+    def snapshot_for_poll(range)
+      empty_snapshot = POLL_EMPTY_SNAPSHOT.dup
+      klass = self.class
+      return empty_snapshot unless klass.solid_queue_available?
+
+      window = klass.range_duration(range, fallback: POLL_DEFAULT_RANGE)
+      {
+        ready: ready_count,
+        scheduled: scheduled_count,
+        claimed: claimed_count,
+        workers: active_workers_count,
+        failed: failed_count,
+        enqueue_rate_per_min: SolidObserver.config.persistence_mode? ? QueueEvent.enqueue_rate_per_minute(window: window) : nil
+      }
+    rescue
+      empty_snapshot
+    end
+
+    # :reek:TooManyStatements
+    def chart_data(window)
+      seconds = window.to_i
+      ready = ChartBuffer.recent(seconds)
+      return {performed: [], failed: [], ready: ready} unless SolidObserver.config.persistence_mode?
+
+      bucket_seconds = derive_bucket_seconds(window)
+      {
+        performed: QueueEvent.count_by_time_bucket(
+          event_type: "job_completed",
+          window: window,
+          bucket_seconds: bucket_seconds
+        ),
+        failed: QueueEvent.count_by_time_bucket(
+          event_type: "job_failed",
+          window: window,
+          bucket_seconds: bucket_seconds
+        ),
+        ready: ready
+      }
+    end
+
     private
+
+    def derive_bucket_seconds(window)
+      seconds = window.to_i
+      BUCKET_RULES.find { |limit, _bucket| seconds <= limit }&.last || 30.minutes.to_i
+    end
 
     def snapshot_for_mode(range_key)
       base = snapshot_base

@@ -5,7 +5,10 @@ require "base64"
 require_relative "../../app/helpers/solid_observer/application_helper"
 
 RSpec.describe SolidObserver::DashboardController do
-  after { SolidObserver.reset_configuration! }
+  after do
+    SolidObserver::ChartBuffer.clear
+    SolidObserver.reset_configuration!
+  end
 
   let(:controller) { described_class.allocate }
 
@@ -381,6 +384,169 @@ RSpec.describe SolidObserver::DashboardController do
         expect(status).to eq(200)
         expect(headers["Content-Type"]).to include("application/javascript")
         expect(body).to include("window.history.replaceState")
+      end
+    end
+  end
+
+  describe "#poll_data" do
+    def basic_auth_header(username, password)
+      token = Base64.strict_encode64("#{username}:#{password}")
+      "Basic #{token}"
+    end
+
+    def parse_json(body)
+      JSON.parse(body).deep_symbolize_keys
+    end
+
+    before do
+      stub_const("SolidQueue", Module.new)
+      stub_const("SolidQueue::Job", Class.new)
+      stub_const("SolidQueue::ReadyExecution", Class.new do
+        def self.count
+          0
+        end
+      end)
+      allow(SolidQueue::ReadyExecution).to receive(:count).and_return(3)
+      allow(SolidObserver::QueueStats).to receive(:solid_queue_available?).and_return(true)
+    end
+
+    it "returns 200 json payload with locked key shape" do
+      SolidObserver.config.storage_mode = :persistence
+      allow(SolidObserver::QueueStats).to receive(:snapshot_for_poll).with(range: "15m").and_return(
+        {
+          ready: 3,
+          scheduled: 1,
+          claimed: 0,
+          workers: 1,
+          failed: 2,
+          enqueue_rate_per_min: 1.2
+        }
+      )
+      allow(SolidObserver::QueueStats).to receive(:chart_data).with(window: 15.minutes).and_return(
+        {
+          performed: [{t: 1, v: 2}],
+          failed: [{t: 1, v: 1}],
+          ready: [{t: 1, v: 3}]
+        }
+      )
+
+      status, headers, body = call_controller_action(:poll_data, "/solid_observer/poll_data?range=15m")
+      payload = parse_json(body)
+
+      expect(status).to eq(200)
+      expect(headers["Content-Type"]).to include("application/json")
+      expect(payload.keys.sort).to eq(%i[chart mode snapshot])
+      expect(payload[:mode]).to eq("persistence")
+      expect(payload[:snapshot].keys.sort).to eq(%i[claimed enqueue_rate_per_min failed ready scheduled workers])
+      expect(payload[:chart].keys.sort).to eq(%i[failed performed ready])
+    end
+
+    it "falls back unknown range to 15m" do
+      allow(SolidObserver::QueueStats).to receive(:snapshot_for_poll).with(range: "15m").and_return(
+        {
+          ready: 0,
+          scheduled: 0,
+          claimed: 0,
+          workers: 0,
+          failed: 0,
+          enqueue_rate_per_min: nil
+        }
+      )
+      allow(SolidObserver::QueueStats).to receive(:chart_data).with(window: 15.minutes).and_return(
+        {
+          performed: [],
+          failed: [],
+          ready: []
+        }
+      )
+
+      status, _headers, _body = call_controller_action(:poll_data, "/solid_observer/poll_data?range=unknown")
+
+      expect(status).to eq(200)
+    end
+
+    it "uses realtime response semantics and does not query QueueEvent throughput" do
+      SolidObserver.config.storage_mode = :realtime
+      allow(SolidObserver::QueueStats).to receive(:snapshot_for_poll).and_call_original
+      allow(SolidObserver::QueueStats).to receive(:chart_data).and_call_original
+      expect(SolidObserver::QueueEvent).not_to receive(:count_by_time_bucket)
+      expect(SolidObserver::QueueEvent).not_to receive(:enqueue_rate_per_minute)
+
+      status, _headers, body = call_controller_action(:poll_data, "/solid_observer/poll_data?range=15m")
+      payload = parse_json(body)
+
+      expect(status).to eq(200)
+      expect(payload[:mode]).to eq("realtime")
+      expect(payload[:chart][:performed]).to eq([])
+      expect(payload[:chart][:failed]).to eq([])
+      expect(payload[:chart][:ready]).to be_a(Array)
+      expect(payload[:snapshot][:enqueue_rate_per_min]).to be_nil
+    end
+
+    it "appends to ChartBuffer and deduplicates samples in the same second" do
+      SolidObserver.config.storage_mode = :realtime
+      fixed_time = Time.utc(2026, 5, 10, 13, 0, 0)
+
+      travel_to(fixed_time) do
+        call_controller_action(:poll_data, "/solid_observer/poll_data?range=15m")
+        call_controller_action(:poll_data, "/solid_observer/poll_data?range=15m")
+      end
+
+      samples = SolidObserver::ChartBuffer.recent(10.years.to_i)
+      expect(samples.count).to eq(1)
+      expect(samples.first).to eq({t: fixed_time.to_i, v: 3})
+    end
+
+    it "returns 404 when ui is disabled" do
+      SolidObserver.config.ui_enabled = false
+
+      status, _headers, body = call_controller_action(:poll_data, "/solid_observer/poll_data")
+
+      expect(status).to eq(404)
+      expect(body).to include("Not Found")
+    end
+
+    context "with HTTP basic auth configured" do
+      before do
+        SolidObserver.config.ui_enabled = true
+        SolidObserver.config.ui_username = "admin"
+        SolidObserver.config.ui_password = "secret"
+      end
+
+      it "requires authentication" do
+        status, headers, _body = call_controller_action(:poll_data, "/solid_observer/poll_data")
+
+        expect(status).to eq(401)
+        expect(headers["WWW-Authenticate"]).to include("Basic realm=\"SolidObserver\"")
+      end
+
+      it "returns json when credentials are valid" do
+        allow(SolidObserver::QueueStats).to receive(:snapshot_for_poll).and_return(
+          {
+            ready: 0,
+            scheduled: 0,
+            claimed: 0,
+            workers: 0,
+            failed: 0,
+            enqueue_rate_per_min: nil
+          }
+        )
+        allow(SolidObserver::QueueStats).to receive(:chart_data).and_return(
+          {
+            performed: [],
+            failed: [],
+            ready: []
+          }
+        )
+
+        status, headers, _body = call_controller_action(
+          :poll_data,
+          "/solid_observer/poll_data",
+          {"HTTP_AUTHORIZATION" => basic_auth_header("admin", "secret")}
+        )
+
+        expect(status).to eq(200)
+        expect(headers["Content-Type"]).to include("application/json")
       end
     end
   end
