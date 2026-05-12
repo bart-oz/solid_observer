@@ -343,7 +343,7 @@ RSpec.describe SolidObserver::DashboardController do
 
       expect(status).to eq(200)
       expect(headers["Content-Type"]).to include("application/javascript")
-      expect(body).to include("function init(root)")
+      expect(body).to include("function init()")
       expect(body).not_to include("<html")
       expect(body).not_to include("so-sidebar")
     end

@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# SolidObserver Quality Gate Suite
+# Runs all non-negotiable gates in sequence.
+# Usage: bin/quality_gate [--skip-appraisal]
+#
+# Individual gates can be run via:
+#   bin/quality_gate rspec
+#   bin/quality_gate standardrb
+#   bin/quality_gate reek
+#   bin/quality_gate appraisal
+#   bin/quality_gate audit
+
+SKIP_APPRAISAL=false
+SINGLE_GATE=""
+
+for arg in "$@"; do
+  case "$arg" in
+    --skip-appraisal) SKIP_APPRAISAL=true ;;
+    rspec|standardrb|reek|appraisal|audit) SINGLE_GATE="$arg" ;;
+  esac
+done
+
+red()   { printf '\033[31m%s\033[0m\n' "$*" >&2; }
+green() { printf '\033[32m%s\033[0m\n' "$*"; }
+dim()   { printf '\033[2m%s\033[0m\n' "$*"; }
+
+run_gate() {
+  local label="$1"; shift
+  dim "⏳ ${label}..."
+  if "$@" > /dev/null 2>&1; then
+    green "✅ ${label}"
+    return 0
+  else
+    red "❌ ${label} FAILED — check output above"
+    return 1
+  fi
+}
+
+gate_rspec() {
+  run_gate "RSpec" bundle exec rspec
+}
+
+gate_standardrb() {
+  run_gate "StandardRB" bundle exec standardrb
+}
+
+gate_reek() {
+  run_gate "Reek" bundle exec reek lib/ app/ db/
+}
+
+gate_appraisal() {
+  run_gate "Rails 8.0 appraisal" bundle exec appraisal rails-8.0 rspec \
+    && run_gate "Rails 8.1 appraisal" bundle exec appraisal rails-8.1 rspec
+}
+
+gate_audit() {
+  dim "⏳ bundler-audit: updating advisory DB..."
+  bundle exec bundler-audit update > /dev/null 2>&1 || true
+  run_gate "bundler-audit" bundle exec bundler-audit check
+}
+
+run_all() {
+  local failed=0
+
+  gate_rspec      || failed=$((failed + 1))
+  gate_standardrb || failed=$((failed + 1))
+  gate_reek       || failed=$((failed + 1))
+
+  if [ "$SKIP_APPRAISAL" = false ]; then
+    gate_appraisal || failed=$((failed + 1))
+  else
+    dim "⏭️  Skipping appraisal (--skip-appraisal)"
+  fi
+
+  gate_audit      || failed=$((failed + 1))
+
+  echo ""
+  if [ "$failed" -eq 0 ]; then
+    green "All quality gates passed"
+  else
+    red "${failed} gate(s) failed"
+    return 1
+  fi
+}
+
+case "$SINGLE_GATE" in
+  rspec)      gate_rspec ;;
+  standardrb) gate_standardrb ;;
+  reek)       gate_reek ;;
+  appraisal)  gate_appraisal ;;
+  audit)      gate_audit ;;
+  "")         run_all ;;
+esac

@@ -62,7 +62,8 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_content("Failed")
       expect(page).to have_content("in range")
       expect(page).to have_content("Enqueue rate")
-      expect(page).to have_content("4.6 jobs/min")
+      expect(page).to have_css('[data-so-card-value="enqueue_rate_per_min"]', text: "4.6")
+      expect(page).to have_content("jobs/min")
     end
 
     it "renders both dashboard turbo frames" do
@@ -108,6 +109,42 @@ RSpec.describe "Dashboard", type: :feature do
 
       expect(page).to have_css('form[data-so-live][data-so-live-frame="so_right_now"][data-so-live-interval="5"]')
       expect(page).to have_css('input[type="checkbox"][name="live"][value="on"][checked]')
+    end
+
+    it "renders the chart strip with three sparkline figures" do
+      visit "/solid_observer"
+
+      expect(page).to have_css('[data-so-spark="performed"]')
+      expect(page).to have_css('[data-so-spark="failed"]')
+      expect(page).to have_css('[data-so-spark="ready"]')
+    end
+
+    it "renders each sparkline figure with baseline and polyline" do
+      visit "/solid_observer"
+
+      within('[data-so-spark="performed"]') do
+        expect(page).to have_css(".so-spark__baseline")
+        expect(page).to have_css(".so-spark__line")
+      end
+      within('[data-so-spark="failed"]') do
+        expect(page).to have_css(".so-spark__baseline")
+        expect(page).to have_css(".so-spark__line")
+      end
+      within('[data-so-spark="ready"]') do
+        expect(page).to have_css(".so-spark__baseline")
+        expect(page).to have_css(".so-spark__line")
+      end
+    end
+
+    it "renders card value elements with data-so-card-value attributes" do
+      visit "/solid_observer"
+
+      expect(page).to have_css('[data-so-card-value="ready"]')
+      expect(page).to have_css('[data-so-card-value="scheduled"]')
+      expect(page).to have_css('[data-so-card-value="claimed"]')
+      expect(page).to have_css('[data-so-card-value="workers"]')
+      expect(page).to have_css('[data-so-card-value="failed"]')
+      expect(page).to have_css('[data-so-card-value="enqueue_rate_per_min"]')
     end
   end
 
@@ -161,6 +198,46 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_css('turbo-frame#so_right_now[src$="/right_now"]')
       expect(page).not_to have_css("turbo-frame#so_scoped")
       expect(page).to have_select("Range", selected: "15m")
+    end
+
+    it "renders only the ready sparkline figure" do
+      allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(
+        ready: 1,
+        scheduled: 0,
+        claimed: 0,
+        failed: 0,
+        workers: 1,
+        queues: {},
+        available: true,
+        range: "15m"
+      )
+
+      visit "/solid_observer"
+
+      expect(page).to have_css('[data-so-spark="ready"]')
+      expect(page).not_to have_css('[data-so-spark="performed"]')
+      expect(page).not_to have_css('[data-so-spark="failed"]')
+    end
+
+    it "renders card value elements with data-so-card-value attributes in realtime mode" do
+      allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(
+        ready: 1,
+        scheduled: 0,
+        claimed: 0,
+        failed: 0,
+        workers: 1,
+        queues: {},
+        available: true,
+        range: "15m"
+      )
+
+      visit "/solid_observer"
+
+      expect(page).to have_css('[data-so-card-value="ready"]')
+      expect(page).to have_css('[data-so-card-value="scheduled"]')
+      expect(page).to have_css('[data-so-card-value="claimed"]')
+      expect(page).to have_css('[data-so-card-value="workers"]')
+      expect(page).to have_css('[data-so-card-value="failed"]')
     end
   end
 

@@ -1,8 +1,9 @@
 <% subtitle = local_assigns[:subtitle] %>
+<% data_key = local_assigns[:data_key] %>
 <div class="so-card">
   <div class="so-card__label"><%= label %></div>
   <% if subtitle.present? %>
     <div class="so-card__subtitle"><%= subtitle %></div>
   <% end %>
-  <div class="so-card__value"><%= value || 0 %></div>
+  <div class="so-card__value"<%= data_key ? " data-so-card-value=\"#{data_key}\"".html_safe : "".html_safe %>><%= value || 0 %></div>
 </div>

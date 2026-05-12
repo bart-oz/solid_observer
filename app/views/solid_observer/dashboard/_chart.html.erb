@@ -1,0 +1,28 @@
+<div class="so-chart-strip" data-so-chart>
+  <% if SolidObserver.config.persistence_mode? %>
+    <figure class="so-spark" data-so-spark="performed">
+      <figcaption class="so-spark__label">Performed/min</figcaption>
+      <svg class="so-spark__svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+        <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
+        <polyline class="so-spark__line" points=""/>
+      </svg>
+      <span class="so-spark__value" data-so-spark-value>—</span>
+    </figure>
+    <figure class="so-spark" data-so-spark="failed">
+      <figcaption class="so-spark__label">Failed/min</figcaption>
+      <svg class="so-spark__svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+        <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
+        <polyline class="so-spark__line" points=""/>
+      </svg>
+      <span class="so-spark__value" data-so-spark-value>—</span>
+    </figure>
+  <% end %>
+  <figure class="so-spark" data-so-spark="ready">
+    <figcaption class="so-spark__label">Ready depth</figcaption>
+    <svg class="so-spark__svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+      <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
+      <polyline class="so-spark__line" points=""/>
+    </svg>
+    <span class="so-spark__value" data-so-spark-value>—</span>
+  </figure>
+</div>
