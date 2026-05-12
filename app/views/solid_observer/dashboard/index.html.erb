@@ -22,6 +22,10 @@
   <noscript><button type="submit" class="so-btn">Apply</button></noscript>
 </form>
 
+<% if @stats[:available] %>
+  <%= render "chart" %>
+<% end %>
+
 <%= turbo_frame_tag "so_right_now", src: right_now_path do %>
   <%= render "right_now", stats: @stats %>
 <% end %>
@@ -33,7 +37,7 @@
       <div class="so-stat-cards">
         <%= render "solid_observer/shared/stat_card", label: "Performed", subtitle: "in range", value: number_with_delimiter(@stats[:performed_in_range]) %>
         <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "in range", value: number_with_delimiter(@stats[:failed_in_range]) %>
-        <%= render "solid_observer/shared/stat_card", label: "Enqueue rate", subtitle: "per min", value: "#{@stats[:enqueue_rate_per_min]} jobs/min" %>
+        <%= render "solid_observer/shared/stat_card", label: "Enqueue rate", subtitle: "jobs/min", value: @stats[:enqueue_rate_per_min], data_key: "enqueue_rate_per_min" %>
       </div>
     </section>
   <% end %>

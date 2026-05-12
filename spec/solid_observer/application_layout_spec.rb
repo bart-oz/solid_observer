@@ -138,6 +138,17 @@ RSpec.describe "SolidObserver application layout" do
       expect(template_source).to include("events_path")
       expect(template_source).to include("storage_path")
     end
+
+    it "includes sparkline CSS rules for chart strip and spark components" do
+      expect(template_source).to include(".so-chart-strip")
+      expect(template_source).to include(".so-chart-strip:has(> .so-spark:only-child)")
+      expect(template_source).to include(".so-spark")
+      expect(template_source).to include(".so-spark__svg")
+      expect(template_source).to include(".so-spark__baseline")
+      expect(template_source).to include(".so-spark__line")
+      expect(template_source).to include(".so-spark__label")
+      expect(template_source).to include(".so-spark__value")
+    end
   end
 
   describe "rendering" do
