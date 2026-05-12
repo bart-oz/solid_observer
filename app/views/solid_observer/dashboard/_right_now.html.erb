@@ -1,14 +1,14 @@
 <% if stats[:available] %>
-  <section class="so-cards-section">
-    <h2 class="so-cards-section__title">Right Now</h2>
-    <div class="so-stat-cards">
-      <%= render "solid_observer/shared/stat_card", label: "Ready", subtitle: "queued", value: stats[:ready], data_key: "ready" %>
-      <%= render "solid_observer/shared/stat_card", label: "Scheduled", subtitle: "future runs", value: stats[:scheduled], data_key: "scheduled" %>
-      <%= render "solid_observer/shared/stat_card", label: "Claimed", subtitle: "in progress", value: stats[:claimed], data_key: "claimed" %>
-      <%= render "solid_observer/shared/stat_card", label: "Workers", subtitle: "active processes", value: stats[:workers], data_key: "workers" %>
-      <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "awaiting retry", value: stats[:failed], data_key: "failed" %>
-    </div>
-  </section>
+  <div class="so-stat-cards">
+    <%= render "solid_observer/shared/stat_card", label: "Ready", subtitle: "queued", value: stats[:ready], data_key: "ready" %>
+    <%= render "solid_observer/shared/stat_card", label: "Scheduled", subtitle: "future runs", value: stats[:scheduled], data_key: "scheduled" %>
+    <%= render "solid_observer/shared/stat_card", label: "Claimed", subtitle: "in progress", value: stats[:claimed], data_key: "claimed" %>
+    <%= render "solid_observer/shared/stat_card", label: "Workers", subtitle: "active processes", value: stats[:workers], data_key: "workers" %>
+    <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "awaiting retry", value: stats[:failed], data_key: "failed" %>
+    <% if SolidObserver.config.persistence_mode? %>
+      <%= render "solid_observer/shared/stat_card", label: "Enqueue rate", subtitle: "jobs/min", value: stats[:enqueue_rate_per_min], data_key: "enqueue_rate_per_min" %>
+    <% end %>
+  </div>
 <% else %>
   <div class="so-card">
     <div class="so-empty">

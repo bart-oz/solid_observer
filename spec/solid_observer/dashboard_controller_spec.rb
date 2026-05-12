@@ -23,10 +23,6 @@ RSpec.describe SolidObserver::DashboardController do
   def call_controller_action(action_name, path = "/", env_overrides = {})
     ensure_engine_view_path!
     described_class.helper(SolidObserver::ApplicationHelper)
-    unless described_class.method_defined?(:right_now_path)
-      described_class.define_method(:right_now_path) { "/solid_observer/right_now" }
-      described_class.helper_method(:right_now_path)
-    end
     env = Rack::MockRequest.env_for(
       path,
       {"action_dispatch.routes" => SolidObserver::Engine.routes}.merge(env_overrides)
@@ -218,113 +214,6 @@ RSpec.describe SolidObserver::DashboardController do
           :enqueue_rate_per_min
         )
       end
-    end
-  end
-
-  describe "#right_now" do
-    let(:available_stats) do
-      {
-        ready: 3,
-        scheduled: 1,
-        claimed: 0,
-        failed: 2,
-        workers: 1,
-        queues: {},
-        available: true
-      }
-    end
-
-    it "returns html without layout chrome" do
-      allow(SolidObserver::QueueStats).to receive(:snapshot).with(range: nil).and_return(available_stats)
-
-      status, headers, body = call_controller_action(:right_now, "/right_now")
-
-      expect(status).to eq(200)
-      expect(headers["Content-Type"]).to include("text/html")
-      expect(body).not_to include("<html")
-      expect(body).not_to include("so-sidebar")
-    end
-
-    it "renders one right-now turbo frame wrapper" do
-      allow(SolidObserver::QueueStats).to receive(:snapshot).with(range: nil).and_return(available_stats)
-
-      status, _headers, body = call_controller_action(:right_now, "/right_now")
-
-      expect(status).to eq(200)
-      expect(body.scan(/<turbo-frame[^>]+id="so_right_now"/).size).to eq(1)
-    end
-
-    it "renders the five right-now cards when available" do
-      allow(SolidObserver::QueueStats).to receive(:snapshot).with(range: nil).and_return(available_stats)
-
-      status, _headers, body = call_controller_action(:right_now, "/right_now")
-
-      expect(status).to eq(200)
-      expect(body).to include("Right Now")
-      expect(body).to include("Ready")
-      expect(body).to include("Scheduled")
-      expect(body).to include("Claimed")
-      expect(body).to include("Workers")
-      expect(body).to include("Failed")
-    end
-
-    it "renders the unavailable branch without raising when SolidQueue is unavailable" do
-      unavailable_stats = available_stats.merge(available: false)
-      allow(SolidObserver::QueueStats).to receive(:snapshot).with(range: nil).and_return(unavailable_stats)
-
-      status, _headers, body = call_controller_action(:right_now, "/right_now")
-
-      expect(status).to eq(200)
-      expect(body).to include("SolidQueue is not available")
-    end
-
-    it "does not call QueueEvent throughput/failure queries in persistence mode" do
-      SolidObserver.config.storage_mode = :persistence
-
-      stub_const("SolidQueue", Module.new)
-      stub_const("SolidQueue::Job", Class.new)
-      stub_const("SolidQueue::ReadyExecution", Class.new do
-        def self.count
-        end
-
-        def self.group(*)
-        end
-      end)
-      stub_const("SolidQueue::ScheduledExecution", Class.new do
-        def self.count
-        end
-      end)
-      stub_const("SolidQueue::ClaimedExecution", Class.new do
-        def self.count
-        end
-      end)
-      stub_const("SolidQueue::FailedExecution", Class.new do
-        def self.count
-        end
-      end)
-      stub_const("SolidQueue::Process", Class.new do
-        def self.where(*)
-        end
-      end)
-
-      allow(SolidQueue::ReadyExecution).to receive(:count).and_return(3)
-      allow(SolidQueue::ScheduledExecution).to receive(:count).and_return(1)
-      allow(SolidQueue::ClaimedExecution).to receive(:count).and_return(0)
-      allow(SolidQueue::FailedExecution).to receive(:count).and_return(2)
-      allow(SolidQueue::Process).to receive(:where).with(kind: "Worker").and_return(double(count: 1))
-
-      queue_group = double("queue_group", count: {"default" => 3})
-      allow(SolidQueue::ReadyExecution).to receive(:group).with(:queue_name).and_return(queue_group)
-
-      expect(SolidObserver::QueueEvent).not_to receive(:performed_count_last)
-      expect(SolidObserver::QueueEvent).not_to receive(:failed_count_last)
-      expect(SolidObserver::QueueEvent).not_to receive(:enqueue_rate_per_minute)
-      expect(SolidObserver::QueueEvent).not_to receive(:recent_failures)
-
-      status, _headers, body = call_controller_action(:right_now, "/right_now")
-
-      expect(status).to eq(200)
-      expect(body).to include("Right Now")
     end
   end
 

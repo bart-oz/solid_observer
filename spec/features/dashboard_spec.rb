@@ -54,37 +54,29 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_content("Persistence")
     end
 
-    it "shows throughput cards" do
+    it "shows Enqueue rate card in persistence mode" do
       visit "/solid_observer"
 
-      expect(page).to have_content("Last 1h")
-      expect(page).to have_content("Performed")
-      expect(page).to have_content("Failed")
-      expect(page).to have_content("in range")
-      expect(page).to have_content("Enqueue rate")
       expect(page).to have_css('[data-so-card-value="enqueue_rate_per_min"]', text: "4.6")
       expect(page).to have_content("jobs/min")
     end
 
-    it "renders both dashboard turbo frames" do
+    it "does not render turbo frame wrappers" do
       visit "/solid_observer"
 
-      expect(page).to have_css('turbo-frame#so_right_now[src$="/right_now"]')
-      expect(page).to have_css("turbo-frame#so_scoped")
+      expect(page).not_to have_css("turbo-frame")
     end
 
     it "keeps selected range for a valid range param" do
       visit "/solid_observer?range=15m"
 
       expect(page).to have_select("Range", selected: "15m")
-      expect(page).to have_content("Last 15m")
     end
 
     it "falls back selected range for an invalid range param" do
       visit "/solid_observer?range=bogus"
 
       expect(page).to have_select("Range", selected: "1h")
-      expect(page).to have_content("Last 1h")
     end
 
     it "shows the Stability indicator with a click-through to failures" do
@@ -102,13 +94,32 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).not_to have_css('input[type="checkbox"][name="live"]')
     end
 
-    it "renders checked Live toggle with frame polling data attributes when enabled in params" do
+    it "renders checked Live toggle as pill switch when enabled in params" do
       SolidObserver.config.ui_refresh_interval = 5
 
       visit "/solid_observer?live=on"
 
-      expect(page).to have_css('form[data-so-live][data-so-live-frame="so_right_now"][data-so-live-interval="5"]')
+      expect(page).to have_css('form[data-so-live][data-so-live-interval="5"]')
       expect(page).to have_css('input[type="checkbox"][name="live"][value="on"][checked]')
+      expect(page).to have_css("label.so-toggle.so-toggle--pill.so-toggle--on")
+      expect(page).to have_css(".so-toggle__label", text: "Live")
+      expect(page).to have_css(".so-toggle__cadence", text: "5s")
+      expect(page).to have_css(".so-toggle__dot")
+    end
+
+    it "renders pill toggle with correct markup and a11y attributes" do
+      SolidObserver.config.ui_refresh_interval = 2
+
+      visit "/solid_observer"
+
+      expect(page).to have_css("label.so-toggle.so-toggle--pill")
+      expect(page).not_to have_css("label.so-toggle--on")
+      expect(page).to have_css(".so-toggle__label", text: "Live")
+      expect(page).to have_css(".so-toggle__sep", text: "·")
+      expect(page).to have_css(".so-toggle__cadence", text: "off")
+      expect(page).to have_css('.so-toggle__track[aria-hidden="true"]')
+      expect(page).to have_css('.so-toggle__sep[aria-hidden="true"]')
+      expect(page).to have_css('.so-toggle__dot[aria-hidden="true"]')
     end
 
     it "renders the chart strip with three sparkline figures" do
@@ -162,7 +173,7 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_content("Real-time")
     end
 
-    it "does not show persistence-only hint and throughput cards" do
+    it "does not show Enqueue rate card or Stability in realtime mode" do
       allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(
         ready: 1,
         scheduled: 0,
@@ -176,12 +187,11 @@ RSpec.describe "Dashboard", type: :feature do
 
       visit "/solid_observer"
 
-      expect(page).not_to have_content("Performed")
-      expect(page).not_to have_content("Enqueue rate")
+      expect(page).not_to have_css('[data-so-card-value="enqueue_rate_per_min"]')
       expect(page).not_to have_content("Stability")
     end
 
-    it "renders only the right-now turbo frame" do
+    it "renders five-card grid without turbo frames in realtime mode" do
       allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(
         ready: 1,
         scheduled: 0,
@@ -195,8 +205,13 @@ RSpec.describe "Dashboard", type: :feature do
 
       visit "/solid_observer?range=15m"
 
-      expect(page).to have_css('turbo-frame#so_right_now[src$="/right_now"]')
-      expect(page).not_to have_css("turbo-frame#so_scoped")
+      expect(page).not_to have_css("turbo-frame")
+      expect(page).to have_css('[data-so-card-value="ready"]')
+      expect(page).to have_css('[data-so-card-value="scheduled"]')
+      expect(page).to have_css('[data-so-card-value="claimed"]')
+      expect(page).to have_css('[data-so-card-value="workers"]')
+      expect(page).to have_css('[data-so-card-value="failed"]')
+      expect(page).not_to have_css('[data-so-card-value="enqueue_rate_per_min"]')
       expect(page).to have_select("Range", selected: "15m")
     end
 

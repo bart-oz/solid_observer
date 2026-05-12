@@ -10,11 +10,6 @@ module SolidObserver
       load_persistence_data if persistence_mode?
     end
 
-    def right_now
-      @stats = QueueStats.snapshot(range: nil)
-      render layout: false
-    end
-
     def live_poll
       send_file(
         SolidObserver::Engine.root.join("app/assets/javascripts/solid_observer/live_poll.js"),

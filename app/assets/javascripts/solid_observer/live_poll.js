@@ -83,6 +83,9 @@
 
     checkbox.addEventListener("change", function () {
       syncUrl();
+      checkbox
+        .closest("label")
+        .classList.toggle("so-toggle--on", checkbox.checked);
       if (checkbox.checked) {
         start();
       } else {
@@ -91,6 +94,9 @@
     });
 
     if (checkbox.checked) start();
+    checkbox
+      .closest("label")
+      .classList.toggle("so-toggle--on", checkbox.checked);
 
     window.addEventListener("beforeunload", stop);
   }

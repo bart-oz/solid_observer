@@ -5,7 +5,7 @@
 </div>
 
 <form method="get" action="<%= root_path %>" class="so-filters" data-turbo-frame="_top"
-      data-so-live data-so-live-interval="<%= SolidObserver.config.ui_refresh_interval.to_i %>" data-so-live-frame="so_right_now">
+      data-so-live data-so-live-interval="<%= SolidObserver.config.ui_refresh_interval.to_i %>">
   <label for="so-range" class="so-card__label so-filters__label">Range</label>
   <select id="so-range" name="range" onchange="this.form.requestSubmit()">
     <% SolidObserver::QueueStats::RANGES.each_key do |key| %>
@@ -13,10 +13,15 @@
     <% end %>
   </select>
   <% if SolidObserver.config.ui_refresh_interval.to_i > 0 %>
-    <label class="so-filters__label so-toggle">
+    <label class="so-toggle so-toggle--pill <%= "so-toggle--on" if @live %>">
       <input type="checkbox" name="live" value="on" <%= "checked" if @live %>>
-      <span>Live</span>
-      <span class="so-toggle__hint">every <%= SolidObserver.config.ui_refresh_interval %>s</span>
+      <span class="so-toggle__track" aria-hidden="true">
+        <span class="so-toggle__thumb"></span>
+      </span>
+      <span class="so-toggle__label">Live</span>
+      <span class="so-toggle__sep" aria-hidden="true"> · </span>
+      <span class="so-toggle__cadence"><%= @live ? "#{SolidObserver.config.ui_refresh_interval}s" : "off" %></span>
+      <span class="so-toggle__dot" aria-hidden="true"></span>
     </label>
   <% end %>
   <noscript><button type="submit" class="so-btn">Apply</button></noscript>
@@ -26,22 +31,7 @@
   <%= render "chart" %>
 <% end %>
 
-<%= turbo_frame_tag "so_right_now", src: right_now_path do %>
-  <%= render "right_now", stats: @stats %>
-<% end %>
-
-<% if @stats[:available] && persistence_mode? %>
-  <%= turbo_frame_tag "so_scoped" do %>
-    <section class="so-cards-section">
-      <h2 class="so-cards-section__title">Last <%= @range %></h2>
-      <div class="so-stat-cards">
-        <%= render "solid_observer/shared/stat_card", label: "Performed", subtitle: "in range", value: number_with_delimiter(@stats[:performed_in_range]) %>
-        <%= render "solid_observer/shared/stat_card", label: "Failed", subtitle: "in range", value: number_with_delimiter(@stats[:failed_in_range]) %>
-        <%= render "solid_observer/shared/stat_card", label: "Enqueue rate", subtitle: "jobs/min", value: @stats[:enqueue_rate_per_min], data_key: "enqueue_rate_per_min" %>
-      </div>
-    </section>
-  <% end %>
-<% end %>
+<%= render "right_now", stats: @stats %>
 
 <% if @stats[:available] && @stats[:queues].any? %>
   <div class="so-card so-card--section">
