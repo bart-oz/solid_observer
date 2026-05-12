@@ -280,9 +280,22 @@
       background: var(--so-card-bg);
       color: var(--so-text);
     }
-    .so-toggle { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; }
-    .so-toggle input[type=checkbox] { margin: 0; cursor: pointer; }
-    .so-toggle__hint { color: var(--so-text-subtle); font-size: 0.75rem; }
+    .so-toggle--pill { position: relative; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 32px; cursor: pointer; user-select: none; }
+    .so-toggle--pill input[type=checkbox] { position: absolute; opacity: 0; pointer-events: none; }
+    .so-toggle__track { position: relative; width: 32px; height: 18px; background: var(--so-border); border-radius: 9999px; transition: background 150ms ease; }
+    .so-toggle__thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--so-card-bg); border: 1px solid var(--so-border-strong); border-radius: 9999px; transition: transform 150ms ease; box-sizing: border-box; }
+    .so-toggle--on .so-toggle__track { background: var(--so-success); }
+    .so-toggle--on .so-toggle__thumb { transform: translateX(14px); }
+    .so-toggle--pill input:focus-visible + .so-toggle__track { outline: 2px solid var(--so-info); outline-offset: 2px; }
+    .so-toggle__label, .so-toggle__sep, .so-toggle__cadence { font-size: 0.85rem; color: var(--so-text-muted); }
+    .so-toggle--on .so-toggle__label, .so-toggle--on .so-toggle__cadence { color: var(--so-text); }
+    .so-toggle__dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--so-success); opacity: 0; }
+    .so-toggle--on .so-toggle__dot { opacity: 1; animation: so-pulse 1.5s ease-in-out infinite; }
+    @keyframes so-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .so-toggle--on .so-toggle__dot { animation: none; opacity: 1; }
+      .so-toggle__track, .so-toggle__thumb { transition: none; }
+    }
 
     .so-empty { text-align: center; padding: 3rem 1rem; color: var(--so-text-muted); }
     .so-empty__icon { font-size: 2rem; margin-bottom: 0.5rem; }

@@ -149,6 +149,40 @@ RSpec.describe "SolidObserver application layout" do
       expect(template_source).to include(".so-spark__label")
       expect(template_source).to include(".so-spark__value")
     end
+
+    it "includes pill toggle CSS rules for the restyled Live switch" do
+      expect(template_source).to include(".so-toggle--pill")
+      expect(template_source).to include(".so-toggle__track")
+      expect(template_source).to include(".so-toggle__thumb")
+      expect(template_source).to include(".so-toggle--on .so-toggle__track")
+      expect(template_source).to include(".so-toggle--on .so-toggle__thumb")
+      expect(template_source).to include("input:focus-visible + .so-toggle__track")
+      expect(template_source).to include(".so-toggle__label")
+      expect(template_source).to include(".so-toggle__sep")
+      expect(template_source).to include(".so-toggle__cadence")
+      expect(template_source).to include(".so-toggle__dot")
+      expect(template_source).to include(".so-toggle--on .so-toggle__dot")
+    end
+
+    it "includes so-pulse keyframe animation for the toggle dot" do
+      expect(template_source).to include("@keyframes so-pulse")
+    end
+
+    it "includes prefers-reduced-motion media query for toggle animations" do
+      expect(template_source).to include("@media (prefers-reduced-motion: reduce)")
+      expect(template_source).to include("animation: none")
+      expect(template_source).to include("transition: none")
+    end
+
+    it "does not use box-shadow inside any .so-toggle CSS rule" do
+      # Extract the toggle-related CSS block and assert no box-shadow
+      toggle_block = template_source[/\.so-toggle--pill.*?(?=\n\s*\.[a-z]|\n\s+\.so-empty)/m, 0] || ""
+      expect(toggle_block).not_to include("box-shadow")
+    end
+
+    it "does not include legacy toggle hint rule" do
+      expect(template_source).not_to include(".so-toggle__hint")
+    end
   end
 
   describe "rendering" do

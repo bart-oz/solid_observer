@@ -17,6 +17,7 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - Stat counter subtitles ("queued" / "future runs" / "in progress" / "awaiting retry" / "active processes") clarify SolidQueue lifecycle terminology.
 - Conceptual hint banner on the dashboard explains the difference between Jobs tab (in-flight + failed) and Events tab (historical record).
 - Jobs tab now has an empty state with a hint pointing to Events tab for completed-job history.
+- Dashboard polled chart strip and unified card grid: a JSON-fed polling client refreshes six stat cards (Ready, Scheduled, Claimed, Workers, Failed, Enqueue Rate) and three sparklines (Performed/min, Ready depth, Failed/min) every `SolidObserver.config.ui_refresh_interval` seconds (default `30`, `0` disables polling). In realtime mode only the Ready sparkline renders and the Enqueue Rate card is omitted. Toggle in the dashboard top bar enables/disables polling; state lives in `?live=on` URL param. Hand-rolled inline-SVG sparklines, no JS framework, no external chart library.
 
 ### Fixed
 - **Duration was displayed off by 1000x.** `RecordEvent` stored `ActiveSupport::Notifications::Event#duration` (milliseconds) directly; `format_duration` interpreted it as seconds. Fixed by converting ms → seconds at write time. No data migration needed (v0.3.0 unreleased); run `bin/rails solid_observer:storage:purge` to clear pre-fix local data.
@@ -40,6 +41,7 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 
 ### Removed
 - Removed the legacy implicit dashboard auto-refresh (`<meta http-equiv="refresh">` plus inline fetch/DOM-swap script for `.so-content`). Replaced by explicit, opt-in Live Mode targeting only the Right-Now frame.
+- Removed the legacy `GET /solid_observer/right_now` HTML endpoint and its action template (it was the SO-060-era polling target that returned a partial-only HTML response wrapped in a turbo-frame). Replaced by `GET /solid_observer/poll_data` which returns JSON for the polling client. The `live_poll.js` script-delivery route is unchanged.
 
 ### Changed
 - Web UI controllers refactored to thin actions + query/param/presenter objects; Rails built-in number helpers replace custom ones
@@ -51,6 +53,8 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - Refreshed the engine UI to a minimalist visual language: light surfaces, near-black text, restrained semantic colour accents reserved for badges/state, hairline separators, consistent rounding. Sidebar moves from dark slate to a light surface. No external CSS dependencies, no JS, no dark mode (single light theme).
 - Dashboard: replaced the multi-line "Recent Failures" panel with a single-line **Stability** indicator (pill badge + summary + "View failures" link). Three states based on rolling failure counts: **Stable** (no failures in last 24h), **Degraded** (failures in last 24h but none in last hour), **Critical** (any failure in the last hour). Click-through targets the Events page filtered to `job_failed`.
 - Dashboard: removed the "Jobs tab / Events tab" orientation banner. The distinction is discoverable via navigation; the dashboard is reserved for signal.
+- Dashboard layout consolidated: dropped the previous two-frame split (Right-Now + Scoped) and the redundant Performed-in-range / Failed-in-range cards (those metrics now live in the polled sparkline strip).
+- Live toggle restyled as a pill switch with cadence visible in-line ("Live · 2s" / "Live · off") and a pulsing dot when active.
 
 ## [0.1.1] - 2026-02-10
 
