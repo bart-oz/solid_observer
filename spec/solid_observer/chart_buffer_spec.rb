@@ -25,18 +25,17 @@ RSpec.describe SolidObserver::ChartBuffer do
   end
 
   describe ".append" do
-    it "enforces cap derived from ui_refresh_interval" do
-      SolidObserver.config.ui_refresh_interval = 60
+    it "enforces cap of 720 samples (1h at 5s cadence)" do
       start_time = Time.utc(2026, 5, 10, 12, 0, 0)
 
-      65.times do |index|
+      725.times do |index|
         described_class.append(index, at: start_time + index.seconds)
       end
 
       samples = described_class.recent(10.years.to_i)
-      expect(samples.size).to eq(60)
+      expect(samples.size).to eq(720)
       expect(samples.first).to eq({t: (start_time + 5.seconds).to_i, v: 5})
-      expect(samples.last).to eq({t: (start_time + 64.seconds).to_i, v: 64})
+      expect(samples.last).to eq({t: (start_time + 724.seconds).to_i, v: 724})
     end
 
     it "deduplicates same-second samples by replacing the latest value" do
@@ -53,7 +52,6 @@ RSpec.describe SolidObserver::ChartBuffer do
     end
 
     it "is safe under concurrent appends" do
-      SolidObserver.config.ui_refresh_interval = 10
       start_time = Time.utc(2026, 5, 10, 12, 0, 0)
 
       threads = 4.times.map do |thread_index|
@@ -67,7 +65,7 @@ RSpec.describe SolidObserver::ChartBuffer do
       threads.each(&:value)
 
       samples = described_class.recent(10.years.to_i)
-      expect(samples.size).to eq(360)
+      expect(samples.size).to eq(400)
       expect(samples).to all(include(:t, :v))
     end
   end

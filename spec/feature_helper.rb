@@ -12,6 +12,7 @@ Capybara.app = Rails.application
 SolidObserver::ApplicationController.include SolidObserver::Engine.routes.url_helpers
 SolidObserver::ApplicationController.helper SolidObserver::Engine.routes.url_helpers
 SolidObserver::ApplicationController.helper SolidObserver::ApplicationHelper
+SolidObserver::ApplicationController.helper SolidObserver::DashboardHelper
 
 RSpec.configure do |config|
   config.include Capybara::DSL, type: :feature

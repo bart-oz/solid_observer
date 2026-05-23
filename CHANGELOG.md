@@ -21,6 +21,8 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 
 ### Fixed
 - **Duration was displayed off by 1000x.** `RecordEvent` stored `ActiveSupport::Notifications::Event#duration` (milliseconds) directly; `format_duration` interpreted it as seconds. Fixed by converting ms → seconds at write time. No data migration needed (v0.3.0 unreleased); run `bin/rails solid_observer:storage:purge` to clear pre-fix local data.
+- **Dashboard chart strip renders populated polylines on first paint** instead of empty placeholders. Server-side `spark_points` helper mirrors the JS `Sparkline.render` projection formula so the first HTML response ships with real data; the first JS poll appends one additional segment with no visible "empty → full" transition.
+- **Live toggle cadence label stays in sync with toggle state.** The `.so-toggle__cadence` span now carries `aria-live="polite"` and is updated in the same synchronous tick as the `--on` class toggle. Server-side ERB hardcodes `"5s"` / `"off"` matching the JS literals.
 - Jobs details page no longer crashes for `SolidQueue::FailedExecution`; Queue and Priority now fall back to underlying `SolidQueue::Job` values and show `N/A` when unavailable.
 - Web UI now works on API-only Rails hosts. The engine ships its own Cookies / Session::CookieStore (`key: "_solid_observer_session"`) / Flash middleware stack, so requests routed to `/solid_observer/*` get the middleware they need regardless of whether the host app strips them via `config.api_only = true`. Previously, API-only hosts hit `NoMethodError: undefined method 'flash' for an instance of ActionDispatch::Request` rendering the dashboard layout.
 - `bin/rails solid_observer:install:migrations` now respects `migrations_paths` from the `solid_observer_queue` connection in `config/database.yml`. When the host configures a dedicated migration folder (e.g. `db/solid_observer_migrate`), the install task copies migrations directly there instead of `db/migrate/`. Previously, operators in multi-database setups had to manually move the files after install to prevent cross-database migration contamination.
@@ -42,12 +44,15 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 ### Removed
 - Removed the legacy implicit dashboard auto-refresh (`<meta http-equiv="refresh">` plus inline fetch/DOM-swap script for `.so-content`). Replaced by explicit, opt-in Live Mode targeting only the Right-Now frame.
 - Removed the legacy `GET /solid_observer/right_now` HTML endpoint and its action template (it was the SO-060-era polling target that returned a partial-only HTML response wrapped in a turbo-frame). Replaced by `GET /solid_observer/poll_data` which returns JSON for the polling client. The `live_poll.js` script-delivery route is unchanged.
+- **Removed `SolidObserver.config.ui_refresh_interval`** (was unreliable; cadence is now hardcoded at 5s). Upgrade note: remove the line from your initializer or boot will raise `NoMethodError`.
 
 ### Changed
 - Web UI controllers refactored to thin actions + query/param/presenter objects; Rails built-in number helpers replace custom ones
 - Specs: `allow_any_instance_of` → `instance_double`; sleep-based timer specs use deterministic synchronisation; dead private-method `describe` blocks removed
 - `.reek.yml` suppressions trimmed; hot-path services/buffer/engine methods refactored to pass `TooManyStatements` without new suppressions
 - `SolidObserver.config.ui_refresh_interval` now controls Live Mode polling cadence instead of implicit full-page dashboard refresh. Default value is unchanged.
+- Dashboard default range is `15m` (was `1h`); aligns with poll default.
+- Live polling pauses while the tab is hidden and resumes on return (one immediate tick on visibility return so the user doesn't wait up to 5s for fresh data).
 - Jobs tab default filter changed from `status=ready` to `status=all_active` (ready + scheduled + claimed + failed).
 - Duration values on the Events index and detail pages now use per-event-type semantic context via `<abbr title="...">` tooltips so operators can distinguish enqueue call latency (`job_enqueued`) from perform-time duration (`job_completed` / `job_failed` / `job_discarded`).
 - Refreshed the engine UI to a minimalist visual language: light surfaces, near-black text, restrained semantic colour accents reserved for badges/state, hairline separators, consistent rounding. Sidebar moves from dark slate to a light surface. No external CSS dependencies, no JS, no dark mode (single light theme).

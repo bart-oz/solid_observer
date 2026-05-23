@@ -77,9 +77,7 @@ module SolidObserver
     end
 
     def compute_cap
-      interval = SolidObserver.config.ui_refresh_interval.to_i
-      interval = 1 if interval < 1
-      (3600 / interval).to_i
+      (3600 / 5).to_i # 720 samples — 1h at the 5s cadence
     end
   end
 end

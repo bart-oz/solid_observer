@@ -13,13 +13,10 @@ module SolidObserver
   #   end
   class Configuration
     # UI Settings
-    # Polling cadence in seconds for the dashboard Live toggle.
-    # 0 disables the toggle entirely.
     attr_accessor :ui_enabled,
       :ui_base_controller,
       :ui_username,
-      :ui_password,
-      :ui_refresh_interval
+      :ui_password
 
     # Observer Settings
     attr_accessor :observe_queue
@@ -56,12 +53,12 @@ module SolidObserver
     attr_accessor :correlation_id_generator
 
     def initialize
-      @ui_enabled, @ui_base_controller, @ui_username, @ui_password, @ui_refresh_interval,
+      @ui_enabled, @ui_base_controller, @ui_username, @ui_password,
         @storage_mode, @observe_queue, @observe_cache, @observe_cable,
         @event_retention, @metrics_retention, @max_db_size, @warning_threshold,
         @sampling_rate, @cache_sampling_rate, @buffer_size, @flush_interval,
         @max_buffer_size, @buffer_overflow_strategy, @filter_cache_ttl,
-        @correlation_id_generator = !production?, "::ApplicationController", nil, nil, 30,
+        @correlation_id_generator = !production?, "::ApplicationController", nil, nil,
           :persistence, true, false, false,
           30.days, 90.days, 1.gigabyte, 0.8,
           1.0, 0.1, 1000, 10.seconds,

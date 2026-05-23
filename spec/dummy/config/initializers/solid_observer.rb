@@ -8,7 +8,4 @@ SolidObserver.configure do |config|
   # Uncomment to enable HTTP Basic Auth:
   # config.ui_username = "admin"
   # config.ui_password = "secret"
-
-  # Auto-refresh interval in seconds (0 = disabled)
-  config.ui_refresh_interval = 0
 end
