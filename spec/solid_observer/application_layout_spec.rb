@@ -195,7 +195,6 @@ RSpec.describe "SolidObserver application layout" do
 
     describe "live polling script" do
       it "does not emit a refresh meta tag" do
-        SolidObserver.config.ui_refresh_interval = 30
         expect(render_layout).not_to include('http-equiv="refresh"')
       end
 

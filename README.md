@@ -182,7 +182,6 @@ SolidObserver.configure do |config|
   config.ui_enabled          = !Rails.env.production?  # default: true outside production
   config.ui_username         = "admin"                 # HTTP Basic Auth: BOTH username AND password must be set
   config.ui_password         = ENV["SOLID_OBSERVER_PASSWORD"]
-  config.ui_refresh_interval = 30                      # seconds; 0 disables auto-refresh
   config.ui_base_controller  = "ApplicationController" # name of your host app's base controller (used for API-only detection)
 end
 ```
@@ -191,8 +190,9 @@ end
 |---|---|---|
 | `ui_enabled` | `!Rails.env.production?` | Master switch for the Web UI |
 | `ui_username` / `ui_password` | `nil` | HTTP Basic Auth credentials. Auth is enabled only when **both** are set; if either is missing or `nil`, the UI is unauthenticated |
-| `ui_refresh_interval` | `30` | Dashboard auto-refresh interval in seconds |
 | `ui_base_controller` | `"ApplicationController"` | Name of your host app's base controller. SolidObserver does **not** inherit from it; the value is used to detect API-only apps so the engine can include the rendering modules its dashboard needs |
+
+Live polling cadence is hardcoded at 5s.
 
 ### Production hardening (recommended)
 

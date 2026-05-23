@@ -5,25 +5,23 @@
 </div>
 
 <form method="get" action="<%= root_path %>" class="so-filters" data-turbo-frame="_top"
-      data-so-live data-so-live-interval="<%= SolidObserver.config.ui_refresh_interval.to_i %>">
+      data-so-live>
   <label for="so-range" class="so-card__label so-filters__label">Range</label>
   <select id="so-range" name="range" onchange="this.form.requestSubmit()">
     <% SolidObserver::QueueStats::RANGES.each_key do |key| %>
       <option value="<%= key %>" <%= "selected" if key == @range %>><%= key %></option>
     <% end %>
   </select>
-  <% if SolidObserver.config.ui_refresh_interval.to_i > 0 %>
-    <label class="so-toggle so-toggle--pill <%= "so-toggle--on" if @live %>">
-      <input type="checkbox" name="live" value="on" <%= "checked" if @live %>>
-      <span class="so-toggle__track" aria-hidden="true">
-        <span class="so-toggle__thumb"></span>
-      </span>
-      <span class="so-toggle__label">Live</span>
-      <span class="so-toggle__sep" aria-hidden="true"> · </span>
-      <span class="so-toggle__cadence"><%= @live ? "#{SolidObserver.config.ui_refresh_interval}s" : "off" %></span>
-      <span class="so-toggle__dot" aria-hidden="true"></span>
-    </label>
-  <% end %>
+  <label class="so-toggle so-toggle--pill <%= "so-toggle--on" if @live %>">
+    <input type="checkbox" name="live" value="on" <%= "checked" if @live %>>
+    <span class="so-toggle__track" aria-hidden="true">
+      <span class="so-toggle__thumb"></span>
+    </span>
+    <span class="so-toggle__label">Live</span>
+    <span class="so-toggle__sep" aria-hidden="true"> · </span>
+    <span class="so-toggle__cadence" aria-live="polite"><%= @live ? "5s" : "off" %></span>
+    <span class="so-toggle__dot" aria-hidden="true"></span>
+  </label>
   <noscript><button type="submit" class="so-btn">Apply</button></noscript>
 </form>
 

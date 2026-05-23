@@ -13,9 +13,6 @@ SolidObserver.configure do |config|
   # config.ui_username = "admin"
   # config.ui_password = "secret"
 
-  # Auto-refresh interval in seconds for the web UI (0 = disabled)
-  # config.ui_refresh_interval = 30
-
   # Base controller for UI (customize authorization)
   # config.ui_base_controller = "ApplicationController"
 

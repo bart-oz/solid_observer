@@ -4,16 +4,11 @@
   var MAX_POINTS = 60;
   var SVG_W = 120,
     SVG_H = 32;
+  var INTERVAL_SEC = 5;
 
   function init() {
     var wrapper = document.querySelector("[data-so-live]");
     if (!wrapper) return;
-
-    var intervalSec = parseInt(
-      wrapper.getAttribute("data-so-live-interval"),
-      10,
-    );
-    if (!intervalSec || intervalSec <= 0) return;
 
     var checkbox = wrapper.querySelector("input[type=checkbox][name=live]");
     if (!checkbox) return;
@@ -60,7 +55,7 @@
 
     function start() {
       stop();
-      timerId = window.setInterval(tick, intervalSec * 1000);
+      timerId = window.setInterval(tick, INTERVAL_SEC * 1000);
     }
 
     function stop() {
@@ -83,9 +78,11 @@
 
     checkbox.addEventListener("change", function () {
       syncUrl();
-      checkbox
-        .closest("label")
-        .classList.toggle("so-toggle--on", checkbox.checked);
+      var label = checkbox.closest("label");
+      label.classList.toggle("so-toggle--on", checkbox.checked);
+      label.querySelector(".so-toggle__cadence").textContent = checkbox.checked
+        ? "5s"
+        : "off";
       if (checkbox.checked) {
         start();
       } else {
@@ -93,12 +90,19 @@
       }
     });
 
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) {
+        stop();
+      } else if (checkbox.checked) {
+        tick();
+        start();
+      }
+    });
+
     if (checkbox.checked) start();
     checkbox
       .closest("label")
       .classList.toggle("so-toggle--on", checkbox.checked);
-
-    window.addEventListener("beforeunload", stop);
   }
 
   function collectSparks() {

@@ -38,6 +38,7 @@ module SolidObserver
       @range = range
       @live = request_live_param == "on"
       @stats = QueueStats.snapshot(range: range)
+      @chart = QueueStats.chart_data(window: QueueStats.range_duration(@range))
     end
 
     def load_persistence_data

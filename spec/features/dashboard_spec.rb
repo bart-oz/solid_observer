@@ -31,7 +31,7 @@ RSpec.describe "Dashboard", type: :feature do
         workers: 3,
         queues: {},
         available: true,
-        range: "1h",
+        range: "15m",
         performed_in_range: 1200,
         failed_in_range: 9,
         failed_last_24h: 9,
@@ -41,6 +41,13 @@ RSpec.describe "Dashboard", type: :feature do
       )
       allow(SolidObserver::QueueEvent).to receive(:recent).and_return([])
       allow(SolidObserver::QueueEvent).to receive(:recent_failures).and_return([])
+      allow(SolidObserver::QueueStats).to receive(:chart_data).and_return(
+        {
+          performed: [{t: 100, v: 5}, {t: 200, v: 10}],
+          failed: [{t: 100, v: 1}],
+          ready: [{t: 100, v: 3}, {t: 200, v: 7}]
+        }
+      )
     end
 
     it "shows Events and Storage navigation links" do
@@ -76,7 +83,7 @@ RSpec.describe "Dashboard", type: :feature do
     it "falls back selected range for an invalid range param" do
       visit "/solid_observer?range=bogus"
 
-      expect(page).to have_select("Range", selected: "1h")
+      expect(page).to have_select("Range", selected: "15m")
     end
 
     it "shows the Stability indicator with a click-through to failures" do
@@ -86,20 +93,16 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_link("View failures", href: "/solid_observer/events?event_type=job_failed")
     end
 
-    it "hides the Live toggle when ui_refresh_interval is 0" do
-      SolidObserver.config.ui_refresh_interval = 0
-
+    it "renders the Live toggle unconditionally regardless of config" do
       visit "/solid_observer"
 
-      expect(page).not_to have_css('input[type="checkbox"][name="live"]')
+      expect(page).to have_css('input[type="checkbox"][name="live"]')
     end
 
     it "renders checked Live toggle as pill switch when enabled in params" do
-      SolidObserver.config.ui_refresh_interval = 5
-
       visit "/solid_observer?live=on"
 
-      expect(page).to have_css('form[data-so-live][data-so-live-interval="5"]')
+      expect(page).to have_css("form[data-so-live]")
       expect(page).to have_css('input[type="checkbox"][name="live"][value="on"][checked]')
       expect(page).to have_css("label.so-toggle.so-toggle--pill.so-toggle--on")
       expect(page).to have_css(".so-toggle__label", text: "Live")
@@ -108,8 +111,6 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "renders pill toggle with correct markup and a11y attributes" do
-      SolidObserver.config.ui_refresh_interval = 2
-
       visit "/solid_observer"
 
       expect(page).to have_css("label.so-toggle.so-toggle--pill")
@@ -117,6 +118,7 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_css(".so-toggle__label", text: "Live")
       expect(page).to have_css(".so-toggle__sep", text: "·")
       expect(page).to have_css(".so-toggle__cadence", text: "off")
+      expect(page).to have_css('.so-toggle__cadence[aria-live="polite"]')
       expect(page).to have_css('.so-toggle__track[aria-hidden="true"]')
       expect(page).to have_css('.so-toggle__sep[aria-hidden="true"]')
       expect(page).to have_css('.so-toggle__dot[aria-hidden="true"]')
@@ -157,10 +159,32 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_css('[data-so-card-value="failed"]')
       expect(page).to have_css('[data-so-card-value="enqueue_rate_per_min"]')
     end
+
+    it "renders chart polylines with non-empty points on first paint" do
+      visit "/solid_observer"
+
+      within('[data-so-spark="performed"]') do
+        polyline = find(".so-spark__line")
+        expect(polyline["points"]).not_to be_empty
+      end
+      within('[data-so-spark="failed"]') do
+        polyline = find(".so-spark__line")
+        expect(polyline["points"]).not_to be_empty
+      end
+      within('[data-so-spark="ready"]') do
+        polyline = find(".so-spark__line")
+        expect(polyline["points"]).not_to be_empty
+      end
+    end
   end
 
   context "in realtime mode" do
-    before { SolidObserver.config.storage_mode = :realtime }
+    before do
+      SolidObserver.config.storage_mode = :realtime
+      allow(SolidObserver::QueueStats).to receive(:chart_data).and_return(
+        {performed: [], failed: [], ready: [{t: 100, v: 3}]}
+      )
+    end
 
     it "does not show Events and Storage navigation links" do
       visit "/solid_observer"

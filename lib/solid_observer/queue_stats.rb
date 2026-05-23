@@ -14,7 +14,7 @@ module SolidObserver
       "7d" => 7.days,
       "14d" => 14.days
     }.freeze
-    DEFAULT_RANGE = "1h"
+    DEFAULT_RANGE = "15m"
     POLL_DEFAULT_RANGE = "15m"
     POLL_EMPTY_SNAPSHOT = {
       ready: 0,

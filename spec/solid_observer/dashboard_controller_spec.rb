@@ -50,7 +50,7 @@ RSpec.describe SolidObserver::DashboardController do
         workers: 1,
         queues: {},
         available: true,
-        range: "1h"
+        range: "15m"
       }
     end
     let(:request_double) do
@@ -63,15 +63,33 @@ RSpec.describe SolidObserver::DashboardController do
     before do
       allow(controller).to receive(:request).and_return(request_double)
       allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(stats)
+      allow(SolidObserver::QueueStats).to receive(:chart_data).and_return(
+        {performed: [], failed: [], ready: []}
+      )
     end
 
     it "assigns @stats from QueueStats.snapshot and exposes available ranges" do
       SolidObserver.config.storage_mode = :realtime
       controller.index
 
-      expect(SolidObserver::QueueStats).to have_received(:snapshot).with(range: "1h")
+      expect(SolidObserver::QueueStats).to have_received(:snapshot).with(range: "15m")
       expect(controller.instance_variable_get(:@stats)).to eq(stats)
-      expect(controller.instance_variable_get(:@range)).to eq("1h")
+      expect(controller.instance_variable_get(:@range)).to eq("15m")
+    end
+
+    it "assigns @chart from QueueStats.chart_data with performed, failed, and ready keys" do
+      chart_data = {
+        performed: [{t: 100, v: 5}, {t: 200, v: 10}],
+        failed: [{t: 100, v: 1}],
+        ready: [{t: 100, v: 3}, {t: 200, v: 7}]
+      }
+      allow(SolidObserver::QueueStats).to receive(:chart_data).and_return(chart_data)
+      SolidObserver.config.storage_mode = :persistence
+      controller.index
+
+      expect(SolidObserver::QueueStats).to have_received(:chart_data).with(window: 15.minutes)
+      result = controller.instance_variable_get(:@chart)
+      expect(result).to include(:performed, :failed, :ready)
     end
 
     describe "GET #index with range param" do
@@ -96,9 +114,9 @@ RSpec.describe SolidObserver::DashboardController do
           SolidObserver.config.storage_mode = :realtime
           controller.index
 
-          expect(SolidObserver::QueueStats).to have_received(:snapshot).with(range: "1h")
-          expect(controller.instance_variable_get(:@range)).to eq("1h")
-          expect(controller.instance_variable_get(:@stats)[:range]).to eq("1h")
+          expect(SolidObserver::QueueStats).to have_received(:snapshot).with(range: "15m")
+          expect(controller.instance_variable_get(:@range)).to eq("15m")
+          expect(controller.instance_variable_get(:@stats)[:range]).to eq("15m")
         end
       end
 
@@ -107,9 +125,9 @@ RSpec.describe SolidObserver::DashboardController do
           SolidObserver.config.storage_mode = :realtime
           controller.index
 
-          expect(SolidObserver::QueueStats).to have_received(:snapshot).with(range: "1h")
-          expect(controller.instance_variable_get(:@range)).to eq("1h")
-          expect(controller.instance_variable_get(:@stats)[:range]).to eq("1h")
+          expect(SolidObserver::QueueStats).to have_received(:snapshot).with(range: "15m")
+          expect(controller.instance_variable_get(:@range)).to eq("15m")
+          expect(controller.instance_variable_get(:@stats)[:range]).to eq("15m")
         end
       end
     end

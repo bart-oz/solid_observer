@@ -53,8 +53,8 @@ RSpec.describe SolidObserver::QueueStats do
     end
 
     it "falls back to the default for unknown values" do
-      expect(described_class.parse_range("999d")).to eq("1h")
-      expect(described_class.parse_range(nil)).to eq("1h")
+      expect(described_class.parse_range("999d")).to eq("15m")
+      expect(described_class.parse_range(nil)).to eq("15m")
     end
   end
 
@@ -103,7 +103,7 @@ RSpec.describe SolidObserver::QueueStats do
           workers: 0,
           queues: {},
           available: false,
-          range: "1h",
+          range: "15m",
           error: "SolidQueue not available"
         )
       end
@@ -143,13 +143,11 @@ RSpec.describe SolidObserver::QueueStats do
       context "when persistence_mode? is true" do
         before do
           SolidObserver.config.storage_mode = :persistence
-          allow(SolidObserver::QueueEvent).to receive(:performed_count_last).with(1.hour).and_return(120)
           allow(SolidObserver::QueueEvent).to receive(:performed_count_last).with(15.minutes).and_return(34)
           allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(15.minutes).and_return(2)
           allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 15.minutes).and_return(9.1)
           allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(1.hour).and_return(0)
           allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(24.hours).and_return(7)
-          allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 1.hour).and_return(14.2)
           allow(SolidObserver::QueueEvent).to receive(:recent_failures).with(1).and_return([])
         end
 
@@ -164,13 +162,13 @@ RSpec.describe SolidObserver::QueueStats do
             workers: 4,
             queues: {"default" => 8, "mailers" => 2},
             available: true,
-            performed_in_range: 120,
-            failed_in_range: 0,
+            performed_in_range: 34,
+            failed_in_range: 2,
             failed_last_24h: 7,
             failed_last_hour: 0,
             latest_failure_at: nil,
-            enqueue_rate_per_min: 14.2,
-            range: "1h"
+            enqueue_rate_per_min: 9.1,
+            range: "15m"
           )
         end
 
@@ -265,7 +263,7 @@ RSpec.describe SolidObserver::QueueStats do
           workers: 0,
           queues: {},
           available: false,
-          range: "1h",
+          range: "15m",
           error: "Database connection failed"
         )
       end
