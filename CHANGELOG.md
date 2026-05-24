@@ -1,4 +1,4 @@
-## [0.3.0] - [unreleased]
+## [0.3.0] - 2026-05-25
 
 > Note: there is no separate `0.2.0` gem release — work originally scoped for v0.2.0 (stability + refactoring, SO-040 through SO-049) was folded into this release.
 
@@ -20,7 +20,7 @@ Headline: **Web UI Dashboard** + stability hardening from pre-release review.
 - Dashboard polled chart strip and unified card grid: a JSON-fed polling client refreshes six stat cards (Ready, Scheduled, Claimed, Workers, Failed, Enqueue Rate) and three sparklines (Performed/min, Ready depth, Failed/min) every `SolidObserver.config.ui_refresh_interval` seconds (default `30`, `0` disables polling). In realtime mode only the Ready sparkline renders and the Enqueue Rate card is omitted. Toggle in the dashboard top bar enables/disables polling; state lives in `?live=on` URL param. Hand-rolled inline-SVG sparklines, no JS framework, no external chart library.
 
 ### Fixed
-- **Duration was displayed off by 1000x.** `RecordEvent` stored `ActiveSupport::Notifications::Event#duration` (milliseconds) directly; `format_duration` interpreted it as seconds. Fixed by converting ms → seconds at write time. No data migration needed (v0.3.0 unreleased); run `bin/rails solid_observer:storage:purge` to clear pre-fix local data.
+- **Duration was displayed off by 1000x.** `RecordEvent` stored `ActiveSupport::Notifications::Event#duration` (milliseconds) directly; `format_duration` interpreted it as seconds. Fixed by converting ms → seconds at write time. No data migration needed (fixed before v0.3.0 release); run `bin/rails solid_observer:storage:purge` to clear pre-fix local data.
 - **Dashboard chart strip renders populated polylines on first paint** instead of empty placeholders. Server-side `spark_points` helper mirrors the JS `Sparkline.render` projection formula so the first HTML response ships with real data; the first JS poll appends one additional segment with no visible "empty → full" transition.
 - **Live toggle cadence label stays in sync with toggle state.** The `.so-toggle__cadence` span now carries `aria-live="polite"` and is updated in the same synchronous tick as the `--on` class toggle. Server-side ERB hardcodes `"5s"` / `"off"` matching the JS literals.
 - Jobs details page no longer crashes for `SolidQueue::FailedExecution`; Queue and Priority now fall back to underlying `SolidQueue::Job` values and show `N/A` when unavailable.
