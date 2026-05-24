@@ -32,6 +32,7 @@ RSpec.describe "SolidObserver::QueueEvent" do
         t.string :event_type, null: false, limit: 50
         t.string :job_class, limit: 100
         t.string :queue_name, limit: 50
+        t.float :duration
         t.datetime :recorded_at, null: false
       end
     end
@@ -103,6 +104,7 @@ RSpec.describe "SolidObserver::QueueEvent" do
         t.string :event_type, null: false, limit: 50
         t.string :job_class, limit: 100
         t.string :queue_name, limit: 50
+        t.float :duration
         t.datetime :recorded_at, null: false
       end
     end
@@ -220,6 +222,64 @@ RSpec.describe "SolidObserver::QueueEvent" do
               bucket_seconds: 60
             )
           end
+        end
+      end
+    end
+
+    describe ".enqueued_count_last" do
+      it "counts enqueued events within the provided window" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_enqueued", recorded_at: 10.minutes.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_enqueued", recorded_at: 2.hours.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", recorded_at: 5.minutes.ago)
+
+          expect(SolidObserver::QueueEvent.enqueued_count_last(1.hour)).to eq(1)
+        end
+      end
+    end
+
+    describe ".avg_duration_last" do
+      it "returns average duration of completed events in the window" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", duration: 2.5, recorded_at: 5.minutes.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", duration: 7.5, recorded_at: 10.minutes.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", duration: nil, recorded_at: 15.minutes.ago)
+
+          expect(SolidObserver::QueueEvent.avg_duration_last(1.hour)).to eq(5.0)
+        end
+      end
+
+      it "returns 0.0 when there are no completed events" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_failed", duration: 1.0, recorded_at: 5.minutes.ago)
+
+          expect(SolidObserver::QueueEvent.avg_duration_last(1.hour)).to eq(0.0)
+        end
+      end
+    end
+
+    describe ".count_by_queue_and_event_type" do
+      it "returns counts grouped by queue name for the given event type" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", queue_name: "default", recorded_at: 5.minutes.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", queue_name: "default", recorded_at: 10.minutes.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", queue_name: "mailers", recorded_at: 5.minutes.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", queue_name: nil, recorded_at: 5.minutes.ago)
+          SolidObserver::QueueEvent.create!(event_type: "job_failed", queue_name: "default", recorded_at: 5.minutes.ago)
+
+          result = SolidObserver::QueueEvent.count_by_queue_and_event_type(window: 1.hour, event_type: "job_completed")
+
+          expect(result).to eq("default" => 2, "mailers" => 1)
+        end
+      end
+
+      it "excludes events outside the window" do
+        travel_to(Time.utc(2026, 1, 21, 12, 0, 0)) do
+          SolidObserver::QueueEvent.create!(event_type: "job_completed", queue_name: "default", recorded_at: 2.hours.ago)
+
+          result = SolidObserver::QueueEvent.count_by_queue_and_event_type(window: 1.hour, event_type: "job_completed")
+
+          expect(result).to eq({})
         end
       end
     end

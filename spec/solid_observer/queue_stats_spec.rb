@@ -145,10 +145,14 @@ RSpec.describe SolidObserver::QueueStats do
           SolidObserver.config.storage_mode = :persistence
           allow(SolidObserver::QueueEvent).to receive(:performed_count_last).with(15.minutes).and_return(34)
           allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(15.minutes).and_return(2)
+          allow(SolidObserver::QueueEvent).to receive(:enqueued_count_last).with(15.minutes).and_return(40)
+          allow(SolidObserver::QueueEvent).to receive(:avg_duration_last).with(15.minutes).and_return(1.2)
           allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 15.minutes).and_return(9.1)
           allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(1.hour).and_return(0)
           allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(24.hours).and_return(7)
           allow(SolidObserver::QueueEvent).to receive(:recent_failures).with(1).and_return([])
+          allow(SolidObserver::QueueEvent).to receive(:count_by_queue_and_event_type).with(window: 15.minutes, event_type: "job_completed").and_return({"default" => 30})
+          allow(SolidObserver::QueueEvent).to receive(:count_by_queue_and_event_type).with(window: 15.minutes, event_type: "job_failed").and_return({"default" => 2})
         end
 
         it "returns snapshot with throughput statistics for the default range" do
@@ -164,10 +168,14 @@ RSpec.describe SolidObserver::QueueStats do
             available: true,
             performed_in_range: 34,
             failed_in_range: 2,
+            enqueued_in_range: 40,
+            avg_duration_in_range: 1.2,
             failed_last_24h: 7,
             failed_last_hour: 0,
             latest_failure_at: nil,
             enqueue_rate_per_min: 9.1,
+            performed_by_queue: {"default" => 30},
+            failed_by_queue: {"default" => 2},
             range: "15m"
           )
         end
@@ -178,6 +186,8 @@ RSpec.describe SolidObserver::QueueStats do
           expect(result).to include(
             performed_in_range: 34,
             failed_in_range: 2,
+            enqueued_in_range: 40,
+            avg_duration_in_range: 1.2,
             enqueue_rate_per_min: 9.1,
             range: "15m"
           )
@@ -298,18 +308,38 @@ RSpec.describe SolidObserver::QueueStats do
     context "in persistence mode" do
       before { SolidObserver.config.storage_mode = :persistence }
 
-      it "returns six-key snapshot including enqueue rate" do
+      it "returns full snapshot including enqueue rate and per-queue aggregates" do
         allow(SolidObserver::QueueEvent).to receive(:enqueue_rate_per_minute).with(window: 15.minutes).and_return(1.6)
+        allow(SolidObserver::QueueEvent).to receive(:performed_count_last).with(15.minutes).and_return(34)
+        allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(15.minutes).and_return(2)
+        allow(SolidObserver::QueueEvent).to receive(:enqueued_count_last).with(15.minutes).and_return(40)
+        allow(SolidObserver::QueueEvent).to receive(:avg_duration_last).with(15.minutes).and_return(1.2)
+        allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(1.hour).and_return(0)
+        allow(SolidObserver::QueueEvent).to receive(:failed_count_last).with(24.hours).and_return(7)
+        allow(SolidObserver::QueueEvent).to receive(:recent_failures).with(1).and_return([])
+        allow(SolidObserver::QueueEvent).to receive(:count_by_queue_and_event_type).with(window: 15.minutes, event_type: "job_completed").and_return({"default" => 30, "mailers" => 4})
+        allow(SolidObserver::QueueEvent).to receive(:count_by_queue_and_event_type).with(window: 15.minutes, event_type: "job_failed").and_return({"default" => 2})
+
+        group_double = double
+        allow(ready_execution).to receive(:group).with(:queue_name).and_return(group_double)
+        allow(group_double).to receive(:count).and_return({"default" => 6})
 
         result = queue_stats.snapshot_for_poll("15m")
 
-        expect(result).to eq(
+        expect(result).to include(
           ready: 6,
           scheduled: 2,
           claimed: 1,
           workers: 4,
           failed: 3,
-          enqueue_rate_per_min: 1.6
+          enqueue_rate_per_min: 1.6,
+          performed_in_range: 34,
+          failed_in_range: 2,
+          enqueued_in_range: 40,
+          avg_duration_in_range: 1.2,
+          queues: {"default" => 6},
+          performed_by_queue: {"default" => 30, "mailers" => 4},
+          failed_by_queue: {"default" => 2}
         )
       end
     end
@@ -331,6 +361,74 @@ RSpec.describe SolidObserver::QueueStats do
           enqueue_rate_per_min: nil
         )
       end
+    end
+  end
+
+  describe "#snapshot_for_tick" do
+    let(:queue_stats) { described_class.new }
+    let(:ready_execution) { double("ReadyExecution") }
+    let(:scheduled_execution) { double("ScheduledExecution") }
+    let(:claimed_execution) { double("ClaimedExecution") }
+    let(:failed_execution) { double("FailedExecution") }
+    let(:process_model) { double("Process") }
+
+    before do
+      stub_const("SolidQueue", Module.new)
+      stub_const("SolidQueue::Job", Class.new)
+      stub_const("SolidQueue::ReadyExecution", ready_execution)
+      stub_const("SolidQueue::ScheduledExecution", scheduled_execution)
+      stub_const("SolidQueue::ClaimedExecution", claimed_execution)
+      stub_const("SolidQueue::FailedExecution", failed_execution)
+      stub_const("SolidQueue::Process", process_model)
+      allow(described_class).to receive(:solid_queue_available?).and_return(true)
+
+      allow(ready_execution).to receive(:count).and_return(6)
+      allow(scheduled_execution).to receive(:count).and_return(2)
+      allow(claimed_execution).to receive(:count).and_return(1)
+      allow(failed_execution).to receive(:count).and_return(3)
+      allow(process_model).to receive(:where).with(kind: "Worker").and_return(double(count: 4))
+    end
+
+    it "returns lightweight live-state snapshot without throughput or per-queue data" do
+      SolidObserver.config.storage_mode = :persistence
+
+      expect(SolidObserver::QueueEvent).not_to receive(:enqueue_rate_per_minute)
+      expect(SolidObserver::QueueEvent).not_to receive(:performed_count_last)
+      expect(SolidObserver::QueueEvent).not_to receive(:failed_count_last)
+      expect(SolidObserver::QueueEvent).not_to receive(:count_by_queue_and_event_type)
+
+      result = queue_stats.snapshot_for_tick
+
+      expect(result).to eq(
+        ready: 6,
+        scheduled: 2,
+        claimed: 1,
+        workers: 4,
+        failed: 3
+      )
+    end
+
+    it "returns empty snapshot when SolidQueue is not available" do
+      allow(described_class).to receive(:solid_queue_available?).and_return(false)
+
+      result = queue_stats.snapshot_for_tick
+
+      expect(result).to eq(
+        ready: 0,
+        scheduled: 0,
+        claimed: 0,
+        workers: 0,
+        failed: 0
+      )
+    end
+
+    it "returns the frozen TICK_EMPTY_SNAPSHOT constant when SolidQueue is not available" do
+      allow(described_class).to receive(:solid_queue_available?).and_return(false)
+
+      result = queue_stats.snapshot_for_tick
+
+      expect(result).to eq(described_class::TICK_EMPTY_SNAPSHOT)
+      expect(described_class::TICK_EMPTY_SNAPSHOT).to be_frozen
     end
   end
 
