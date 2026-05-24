@@ -1,20 +1,20 @@
 <div class="so-chart-strip" data-so-zone="chart" data-so-chart>
   <% if SolidObserver.config.persistence_mode? %>
     <figure class="so-spark" data-so-spark="performed">
-      <figcaption class="so-spark__label">Performed/min <span data-so-range-copy><%= range_label(local_assigns[:range] || "15m") %></span></figcaption>
+      <figcaption class="so-spark__label">Performed total <span data-so-range-copy><%= range_label(local_assigns[:range] || "15m") %></span></figcaption>
       <svg class="so-spark__svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
         <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
         <polyline class="so-spark__line" points="<%= spark_points(@chart[:performed]) %>"/>
       </svg>
-      <span class="so-spark__value" data-so-spark-value><%= @chart[:performed].last&.dig(:v) || "—" %></span>
+      <span class="so-spark__value" data-so-card-value="performed_in_range"><%= number_with_delimiter(@stats[:performed_in_range].to_i) %></span>
     </figure>
     <figure class="so-spark" data-so-spark="failed">
-      <figcaption class="so-spark__label">Failed/min <span data-so-range-copy><%= range_label(local_assigns[:range] || "15m") %></span></figcaption>
+      <figcaption class="so-spark__label">Failed total <span data-so-range-copy><%= range_label(local_assigns[:range] || "15m") %></span></figcaption>
       <svg class="so-spark__svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
         <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
         <polyline class="so-spark__line" points="<%= spark_points(@chart[:failed]) %>"/>
       </svg>
-      <span class="so-spark__value" data-so-spark-value><%= @chart[:failed].last&.dig(:v) || "—" %></span>
+      <span class="so-spark__value" data-so-card-value="failed_in_range"><%= number_with_delimiter(@stats[:failed_in_range].to_i) %></span>
     </figure>
   <% end %>
   <figure class="so-spark" data-so-spark="ready">
@@ -23,6 +23,6 @@
       <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
       <polyline class="so-spark__line" points="<%= spark_points(@chart[:ready]) %>"/>
     </svg>
-    <span class="so-spark__value" data-so-spark-value><%= @chart[:ready].last&.dig(:v) || "—" %></span>
+    <span class="so-spark__value" data-so-card-value="ready"><%= number_with_delimiter(@stats[:ready].to_i) %></span>
   </figure>
 </div>
