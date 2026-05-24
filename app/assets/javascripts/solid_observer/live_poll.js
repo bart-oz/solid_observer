@@ -7,7 +7,8 @@
   var INTERVAL_SEC = 5;
 
   // Shared state — IIFE-level so all functions can access them
-  var checkbox, rangeSelect, refreshBtn, helpBtn, helpPanel, freshnessEl;
+  var checkbox, rangeSelect, refreshBtn, helpBtn, helpPanel, helpWrapper, freshnessEl;
+  var hoverActive = false;
   var sparks = {};
   var url = "/solid_observer/poll_data";
   var inFlight = false;
@@ -27,6 +28,7 @@
     refreshBtn = wrapper.querySelector("[data-so-refresh]");
     helpBtn = wrapper.querySelector("[data-so-help-btn]");
     helpPanel = wrapper.querySelector("[data-so-help-panel]");
+    helpWrapper = wrapper.querySelector("[data-so-help-wrapper]");
     freshnessEl = wrapper.querySelector("[data-so-freshness]");
 
     sparks = collectSparks();
@@ -53,6 +55,10 @@
     if (helpBtn && helpPanel) {
       helpBtn.addEventListener("click", function () {
         var expanded = helpBtn.getAttribute("aria-expanded") === "true";
+        // Don't close on click if hover is active — mouseleave will handle closing
+        if (expanded && hoverActive) {
+          return;
+        }
         helpBtn.setAttribute("aria-expanded", String(!expanded));
         helpPanel.hidden = expanded;
       });
@@ -83,6 +89,19 @@
           helpPanel.hidden = true;
         }
       });
+      // Hover show/hide for mouse users
+      if (helpWrapper) {
+        helpWrapper.addEventListener("mouseenter", function () {
+          hoverActive = true;
+          helpBtn.setAttribute("aria-expanded", "true");
+          helpPanel.hidden = false;
+        });
+        helpWrapper.addEventListener("mouseleave", function () {
+          hoverActive = false;
+          helpBtn.setAttribute("aria-expanded", "false");
+          helpPanel.hidden = true;
+        });
+      }
     }
 
     // --- Live toggle ---
@@ -177,11 +196,13 @@
     patchZoneValues("live-state", snapshot);
     // Patch throughput values (Zone C) — value nodes only, preserve suffix/range-copy
     patchZoneValues("throughput", snapshot);
+    // Patch chart indicator values (Zone D) — range totals, not latest bucket
+    patchZoneValues("chart", snapshot);
     // Patch queue table (Zone E)
     patchQueueTable(snapshot);
     // Patch stability (Zone F)
     patchStability(snapshot);
-    // Update chart (Zone D)
+    // Update chart sparklines (Zone D)
     var chart = data.chart || {};
     Object.keys(sparks).forEach(function (key) {
       var series = chart[key];
@@ -314,7 +335,6 @@
 
   function Sparkline(figureEl) {
     this.line = figureEl.querySelector(".so-spark__line");
-    this.valueEl = figureEl.querySelector("[data-so-spark-value]");
   }
 
   Sparkline.prototype.render = function (series) {
@@ -335,9 +355,6 @@
       points.push(x.toFixed(1) + "," + y.toFixed(1));
     }
     this.line.setAttribute("points", points.join(" "));
-    if (this.valueEl) {
-      this.valueEl.textContent = formatValue(series[series.length - 1].v);
-    }
   };
 
   function formatValue(v) {

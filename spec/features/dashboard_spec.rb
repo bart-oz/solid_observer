@@ -138,11 +138,54 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_css("[data-so-help-btn][aria-expanded]")
     end
 
+    it "renders help button and panel inside a hover wrapper" do
+      visit "/solid_observer"
+      expect(page).to have_css("[data-so-help-wrapper]")
+      expect(page).to have_css("[data-so-help-wrapper] [data-so-help-btn]")
+      expect(page).to have_css("[data-so-help-wrapper] [data-so-help-panel]", visible: false)
+    end
+
     it "renders chart strip with three sparkline figures" do
       visit "/solid_observer"
       expect(page).to have_css('[data-so-spark="performed"]')
       expect(page).to have_css('[data-so-spark="failed"]')
       expect(page).to have_css('[data-so-spark="ready"]')
+    end
+
+    it "renders chart indicators with range total values, not latest bucket values" do
+      visit "/solid_observer"
+      # Performed total shows performed_in_range (1200), not latest bucket (10)
+      within('[data-so-spark="performed"]') do
+        expect(page).to have_css('[data-so-card-value="performed_in_range"]', text: "1,200")
+      end
+      # Failed total shows failed_in_range (9), not latest bucket (1)
+      within('[data-so-spark="failed"]') do
+        expect(page).to have_css('[data-so-card-value="failed_in_range"]', text: "9")
+      end
+    end
+
+    it "renders chart labels as range totals, not per-minute rates" do
+      visit "/solid_observer"
+      within('[data-so-spark="performed"]') do
+        expect(page).to have_css(".so-spark__label", text: /Performed total/)
+        expect(page).not_to have_css(".so-spark__label", text: /Performed\/min/)
+      end
+      within('[data-so-spark="failed"]') do
+        expect(page).to have_css(".so-spark__label", text: /Failed total/)
+        expect(page).not_to have_css(".so-spark__label", text: /Failed\/min/)
+      end
+    end
+
+    it "renders Ready depth chart indicator with data-so-card-value" do
+      visit "/solid_observer"
+      within('[data-so-spark="ready"]') do
+        expect(page).to have_css('[data-so-card-value="ready"]')
+      end
+    end
+
+    it "does not use data-so-spark-value for chart indicator values" do
+      visit "/solid_observer"
+      expect(page).not_to have_css("[data-so-spark-value]")
     end
 
     it "renders chart polylines with non-empty points on first paint" do

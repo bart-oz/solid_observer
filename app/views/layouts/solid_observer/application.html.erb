@@ -132,7 +132,9 @@
     .so-btn--help { font-size: 0.75rem; padding: 0.2rem 0.5rem; border: 1px solid var(--so-border); border-radius: var(--so-radius); background: var(--so-card-bg); color: var(--so-text-muted); cursor: pointer; }
     .so-btn--help:hover { background: var(--so-surface-muted); }
     .so-btn--help:focus-visible { outline: 2px solid var(--so-info); outline-offset: 2px; box-shadow: 0 0 0 3px var(--so-focus-ring); }
-    .so-help-panel { font-size: 0.8rem; color: var(--so-text-muted); padding: 0.5rem 0.75rem; border: 1px solid var(--so-border); border-radius: var(--so-radius); background: var(--so-card-bg); margin-top: 0.25rem; max-width: 420px; }
+    .so-help-wrapper { position: relative; }
+    .so-help-wrapper .so-help-panel { position: absolute; top: 100%; right: 0; z-index: 10; }
+    .so-help-panel { font-size: 0.8rem; color: var(--so-text-muted); padding: 0.5rem 0.75rem; border: 1px solid var(--so-border); border-radius: var(--so-radius); background: var(--so-card-bg); margin-top: 0.25rem; width: min(20rem, calc(100vw - 2rem)); max-width: 420px; }
     .so-toolbar-freshness { font-size: 0.75rem; color: var(--so-text-subtle); }
 
     /* SO-067 Focus rings */

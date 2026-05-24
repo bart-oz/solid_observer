@@ -24,10 +24,12 @@
         <span class="so-toggle__cadence" aria-live="polite"><%= @live ? "5s" : "off" %></span>
         <span class="so-toggle__dot" aria-hidden="true"></span>
       </label>
-      <button type="button" class="so-btn so-btn--help" data-so-help-btn aria-expanded="false" aria-controls="so-help-panel">(?)
-      </button>
-      <div id="so-help-panel" class="so-help-panel" data-so-help-panel hidden>
-        <p>Live mode polls every 5 seconds for current queue state. Throughput and chart data update only on range change or manual refresh.</p>
+      <div class="so-help-wrapper" data-so-help-wrapper>
+        <button type="button" class="so-btn so-btn--help" data-so-help-btn aria-expanded="false" aria-controls="so-help-panel">(?)
+        </button>
+        <div id="so-help-panel" class="so-help-panel" data-so-help-panel hidden>
+          <p>Live mode polls every 5 seconds for current queue state. Throughput and chart data update only on range change or manual refresh.</p>
+        </div>
       </div>
     </div>
   </div>
