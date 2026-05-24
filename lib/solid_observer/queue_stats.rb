@@ -24,6 +24,13 @@ module SolidObserver
       failed: 0,
       enqueue_rate_per_min: nil
     }.freeze
+    TICK_EMPTY_SNAPSHOT = {
+      ready: 0,
+      scheduled: 0,
+      claimed: 0,
+      workers: 0,
+      failed: 0
+    }.freeze
     BUCKET_RULES = [
       [30.minutes.to_i, 30],
       [2.hours.to_i, 60],
@@ -37,6 +44,10 @@ module SolidObserver
 
       def snapshot_for_poll(range:)
         new.snapshot_for_poll(parse_range(range, fallback: POLL_DEFAULT_RANGE))
+      end
+
+      def snapshot_for_tick
+        new.snapshot_for_tick
       end
 
       def chart_data(window: 15.minutes)
@@ -73,16 +84,40 @@ module SolidObserver
       return empty_snapshot unless klass.solid_queue_available?
 
       window = klass.range_duration(range, fallback: POLL_DEFAULT_RANGE)
-      {
+      persistence = SolidObserver.config.persistence_mode?
+      base = {
         ready: ready_count,
         scheduled: scheduled_count,
         claimed: claimed_count,
         workers: active_workers_count,
         failed: failed_count,
-        enqueue_rate_per_min: SolidObserver.config.persistence_mode? ? QueueEvent.enqueue_rate_per_minute(window: window) : nil
+        enqueue_rate_per_min: persistence ? QueueEvent.enqueue_rate_per_minute(window: window) : nil
       }
+
+      if persistence
+        base.merge!(throughput_stats(range))
+        base[:queues] = queue_depths
+        base[:performed_by_queue] = QueueEvent.count_by_queue_and_event_type(window: window, event_type: "job_completed")
+        base[:failed_by_queue] = QueueEvent.count_by_queue_and_event_type(window: window, event_type: "job_failed")
+      end
+
+      base
     rescue
       empty_snapshot
+    end
+
+    def snapshot_for_tick
+      return TICK_EMPTY_SNAPSHOT unless self.class.solid_queue_available?
+
+      {
+        ready: ready_count,
+        scheduled: scheduled_count,
+        claimed: claimed_count,
+        workers: active_workers_count,
+        failed: failed_count
+      }
+    rescue
+      TICK_EMPTY_SNAPSHOT
     end
 
     # :reek:TooManyStatements
@@ -118,7 +153,12 @@ module SolidObserver
       base = snapshot_base
       return base unless SolidObserver.config.persistence_mode? && range_key
 
-      base.merge(throughput_stats(range_key)).merge(range: range_key)
+      duration = self.class.range_duration(range_key)
+      base.merge(throughput_stats(range_key)).merge(
+        range: range_key,
+        performed_by_queue: QueueEvent.count_by_queue_and_event_type(window: duration, event_type: "job_completed"),
+        failed_by_queue: QueueEvent.count_by_queue_and_event_type(window: duration, event_type: "job_failed")
+      )
     end
 
     def snapshot_base
@@ -138,6 +178,8 @@ module SolidObserver
       {
         performed_in_range: QueueEvent.performed_count_last(duration),
         failed_in_range: QueueEvent.failed_count_last(duration),
+        enqueued_in_range: QueueEvent.enqueued_count_last(duration),
+        avg_duration_in_range: QueueEvent.avg_duration_last(duration),
         # Stability indicator still uses dedicated rolling windows independent of selected range.
         failed_last_24h: QueueEvent.failed_count_last(24.hours),
         failed_last_hour: QueueEvent.failed_count_last(1.hour),

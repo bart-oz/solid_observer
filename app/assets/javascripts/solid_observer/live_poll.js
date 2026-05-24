@@ -6,78 +6,88 @@
     SVG_H = 32;
   var INTERVAL_SEC = 5;
 
+  // Shared state — IIFE-level so all functions can access them
+  var checkbox, rangeSelect, refreshBtn, helpBtn, helpPanel, freshnessEl;
+  var sparks = {};
+  var url = "/solid_observer/poll_data";
+  var inFlight = false;
+  var timerId = null;
+  var lastFullSnapshot = null;
+  var lastFullChart = null;
+  var lastRange = null;
+
   function init() {
     var wrapper = document.querySelector("[data-so-live]");
     if (!wrapper) return;
 
-    var checkbox = wrapper.querySelector("input[type=checkbox][name=live]");
+    checkbox = wrapper.querySelector('[data-so-live-toggle]');
     if (!checkbox) return;
 
-    var sparks = collectSparks();
-    var url = "/solid_observer/poll_data";
-    var inFlight = false,
-      timerId = null;
+    rangeSelect = wrapper.querySelector("[data-so-range-select]");
+    refreshBtn = wrapper.querySelector("[data-so-refresh]");
+    helpBtn = wrapper.querySelector("[data-so-help-btn]");
+    helpPanel = wrapper.querySelector("[data-so-help-panel]");
+    freshnessEl = wrapper.querySelector("[data-so-freshness]");
 
-    function tick() {
-      if (inFlight) return;
-      inFlight = true;
-      var rangeParam = readRangeFromUrl();
-      fetch(
-        url + (rangeParam ? "?range=" + encodeURIComponent(rangeParam) : ""),
-        { headers: { Accept: "application/json" }, credentials: "same-origin" },
-      )
-        .then(function (r) {
-          return r.ok ? r.json() : null;
-        })
-        .then(function (data) {
-          if (data) applyUpdate(data);
-        })
-        .catch(function () {
-          /* drop tick silently */
-        })
-        .finally(function () {
-          inFlight = false;
-        });
-    }
+    sparks = collectSparks();
+    lastRange = readRangeFromUrl() || "15m";
 
-    function applyUpdate(data) {
-      var snapshot = data.snapshot || {};
-      Object.keys(snapshot).forEach(function (key) {
-        var el = document.querySelector('[data-so-card-value="' + key + '"]');
-        if (el) el.textContent = formatValue(snapshot[key]);
-      });
-      var chart = data.chart || {};
-      Object.keys(sparks).forEach(function (key) {
-        var series = chart[key];
-        if (Array.isArray(series)) sparks[key].render(series);
+    // --- Range change (full fetch) ---
+    if (rangeSelect) {
+      rangeSelect.addEventListener("change", function () {
+        lastRange = rangeSelect.value;
+        updateUrlRange(lastRange);
+        updateUrlLive(checkbox.checked);
+        fullFetch();
       });
     }
 
-    function start() {
-      stop();
-      timerId = window.setInterval(tick, INTERVAL_SEC * 1000);
+    // --- Refresh button (full fetch) ---
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", function () {
+        fullFetch();
+      });
     }
 
-    function stop() {
-      if (timerId !== null) {
-        window.clearInterval(timerId);
-        timerId = null;
-      }
-      inFlight = false;
+    // --- Help disclosure ---
+    if (helpBtn && helpPanel) {
+      helpBtn.addEventListener("click", function () {
+        var expanded = helpBtn.getAttribute("aria-expanded") === "true";
+        helpBtn.setAttribute("aria-expanded", String(!expanded));
+        helpPanel.hidden = expanded;
+      });
+      helpBtn.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          helpBtn.setAttribute("aria-expanded", "false");
+          helpPanel.hidden = true;
+          helpBtn.focus();
+        }
+      });
+      helpBtn.addEventListener("focusout", function (e) {
+        var related = e.relatedTarget;
+        if (!related || !helpPanel.contains(related)) {
+          helpBtn.setAttribute("aria-expanded", "false");
+          helpPanel.hidden = true;
+        }
+      });
+      document.addEventListener("click", function (e) {
+        if (helpPanel && !helpPanel.contains(e.target) && e.target !== helpBtn) {
+          helpBtn.setAttribute("aria-expanded", "false");
+          helpPanel.hidden = true;
+        }
+      });
+      // Focusout/blur close behavior
+      helpPanel.addEventListener("focusout", function (e) {
+        if (!helpPanel.contains(e.relatedTarget) && e.relatedTarget !== helpBtn) {
+          helpBtn.setAttribute("aria-expanded", "false");
+          helpPanel.hidden = true;
+        }
+      });
     }
 
-    function syncUrl() {
-      var url = new URL(window.location.href);
-      if (checkbox.checked) {
-        url.searchParams.set("live", "on");
-      } else {
-        url.searchParams.delete("live");
-      }
-      window.history.replaceState({}, "", url.toString());
-    }
-
+    // --- Live toggle ---
     checkbox.addEventListener("change", function () {
-      syncUrl();
+      updateUrlLive(checkbox.checked);
       var label = checkbox.closest("label");
       label.classList.toggle("so-toggle--on", checkbox.checked);
       label.querySelector(".so-toggle__cadence").textContent = checkbox.checked
@@ -103,6 +113,193 @@
     checkbox
       .closest("label")
       .classList.toggle("so-toggle--on", checkbox.checked);
+  }
+
+  function fullFetch() {
+    if (inFlight) return;
+    inFlight = true;
+
+    if (refreshBtn) {
+      refreshBtn.textContent = "Refreshing\u2026";
+      refreshBtn.setAttribute("aria-busy", "true");
+      refreshBtn.disabled = true;
+    }
+
+    // Add loading class to range-bound zones
+    addLoadingClass(true);
+
+    var rangeParam = lastRange || readRangeFromUrl() || "15m";
+    fetch(
+      url + "?range=" + encodeURIComponent(rangeParam),
+      { headers: { Accept: "application/json" }, credentials: "same-origin" }
+    )
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (data) {
+          lastFullSnapshot = data.snapshot || {};
+          lastFullChart = data.chart || {};
+          applyFullUpdate(data);
+          updateFreshness("Updated just now");
+        }
+      })
+      .catch(function () { /* drop silently */ })
+      .finally(function () {
+        inFlight = false;
+        addLoadingClass(false);
+        if (refreshBtn) {
+          refreshBtn.textContent = "Refresh data";
+          refreshBtn.setAttribute("aria-busy", "false");
+          refreshBtn.disabled = false;
+          refreshBtn.focus();
+        }
+      });
+  }
+
+  function tick() {
+    if (inFlight) return;
+    inFlight = true;
+    var rangeParam = lastRange || readRangeFromUrl() || "15m";
+    fetch(
+      url + "?range=" + encodeURIComponent(rangeParam) + "&tick=true",
+      { headers: { Accept: "application/json" }, credentials: "same-origin" }
+    )
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (data) applyTickUpdate(data);
+      })
+      .catch(function () { /* drop tick silently */ })
+      .finally(function () { inFlight = false; });
+  }
+
+  function applyFullUpdate(data) {
+    var snapshot = data.snapshot || {};
+    // Patch live-state values (Zone B)
+    patchZoneValues("live-state", snapshot);
+    // Patch throughput values (Zone C) — value nodes only, preserve suffix/range-copy
+    patchZoneValues("throughput", snapshot);
+    // Patch queue table (Zone E)
+    patchQueueTable(snapshot);
+    // Patch stability (Zone F)
+    patchStability(snapshot);
+    // Update chart (Zone D)
+    var chart = data.chart || {};
+    Object.keys(sparks).forEach(function (key) {
+      var series = chart[key];
+      if (Array.isArray(series)) sparks[key].render(series);
+    });
+    // Update range-copy nodes from server-provided label
+    if (data.range_label) {
+      updateRangeCopyFromLabel(data.range_label);
+    }
+  }
+
+  function applyTickUpdate(data) {
+    var snapshot = data.snapshot || {};
+    // Tick only patches live-state values (Zone B)
+    patchZoneValues("live-state", snapshot);
+    // chart is nil on tick — preserve last full-fetch chart/range state
+  }
+
+  function patchZoneValues(zone, snapshot) {
+    var zoneEl = document.querySelector('[data-so-zone="' + zone + '"]');
+    if (!zoneEl) return;
+    var valueEls = zoneEl.querySelectorAll("[data-so-card-value]");
+    valueEls.forEach(function (el) {
+      var key = el.getAttribute("data-so-card-value");
+      if (snapshot.hasOwnProperty(key)) {
+        var val = snapshot[key];
+        // Duration values arrive in seconds; display as milliseconds
+        if (key === "avg_duration_in_range" && val !== null && val !== undefined) {
+          var ms = Math.round(val * 1000);
+          el.textContent = formatValue(ms);
+          var suffixEl = el.parentElement.querySelector("[data-so-card-suffix]");
+          if (suffixEl) suffixEl.textContent = "ms";
+        } else {
+          el.textContent = formatValue(val);
+        }
+      }
+    });
+  }
+
+  function patchQueueTable(snapshot) {
+    var tableEl = document.querySelector('[data-so-zone="queue-table"]');
+    if (!tableEl) return;
+    var queues = snapshot.queues || {};
+    var performedByQueue = snapshot.performed_by_queue || {};
+    var failedByQueue = snapshot.failed_by_queue || {};
+
+    // Update live depth values
+    Object.keys(queues).forEach(function (qName) {
+      var el = tableEl.querySelector('[data-so-table-value="queue-depth-' + qName + '"]');
+      if (el) el.textContent = formatValue(queues[qName]);
+    });
+
+    // Update performed/failed in range
+    Object.keys(performedByQueue).forEach(function (qName) {
+      var el = tableEl.querySelector('[data-so-table-value="queue-performed-' + qName + '"]');
+      if (el) el.textContent = formatValue(performedByQueue[qName]);
+    });
+    Object.keys(failedByQueue).forEach(function (qName) {
+      var el = tableEl.querySelector('[data-so-table-value="queue-failed-' + qName + '"]');
+      if (el) el.textContent = formatValue(failedByQueue[qName]);
+    });
+  }
+
+  function patchStability(snapshot) {
+    // Stability is rendered server-side; tick does not update it.
+    // Full fetch re-renders via page or could patch, but we keep it simple.
+  }
+
+  function updateRangeCopyFromLabel(label) {
+    var els = document.querySelectorAll("[data-so-range-copy]");
+    els.forEach(function (el) { el.textContent = label; });
+  }
+
+  function updateFreshness(text) {
+    if (freshnessEl) freshnessEl.textContent = text;
+  }
+
+  function addLoadingClass(on) {
+    var zones = document.querySelectorAll(
+      '[data-so-zone="throughput"], [data-so-zone="chart"], [data-so-zone="queue-table"]'
+    );
+    zones.forEach(function (el) {
+      var section = el.closest(".so-dashboard-section") || el;
+      if (on) {
+        section.classList.add("is-loading");
+      } else {
+        section.classList.remove("is-loading");
+      }
+    });
+  }
+
+  function start() {
+    stop();
+    timerId = window.setInterval(tick, INTERVAL_SEC * 1000);
+  }
+
+  function stop() {
+    if (timerId !== null) {
+      window.clearInterval(timerId);
+      timerId = null;
+    }
+    inFlight = false;
+  }
+
+  function updateUrlRange(range) {
+    var urlObj = new URL(window.location.href);
+    urlObj.searchParams.set("range", range);
+    window.history.replaceState({}, "", urlObj.toString());
+  }
+
+  function updateUrlLive(isLive) {
+    var urlObj = new URL(window.location.href);
+    if (isLive) {
+      urlObj.searchParams.set("live", "on");
+    } else {
+      urlObj.searchParams.delete("live");
+    }
+    window.history.replaceState({}, "", urlObj.toString());
   }
 
   function collectSparks() {

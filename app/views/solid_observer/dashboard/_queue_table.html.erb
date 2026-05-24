@@ -1,0 +1,34 @@
+<%# Zone E: Per-queue table with live depth and range throughput %>
+<% if persistence_mode? && stats[:available] %>
+  <div class="so-card so-card--section" data-so-zone="queue-table">
+    <div class="so-card__label">Queue throughput</div>
+    <% queues = stats[:queues] || {} %>
+    <% performed_by_queue = stats[:performed_by_queue] || {} %>
+    <% failed_by_queue = stats[:failed_by_queue] || {} %>
+    <% all_queue_names = (queues.keys | performed_by_queue.keys | failed_by_queue.keys).sort %>
+    <% if all_queue_names.any? %>
+      <table class="so-table so-table--card">
+        <thead>
+          <tr>
+            <th>Queue</th>
+            <th>Live depth</th>
+            <th>Performed <span data-so-range-copy><%= range_label(range) %></span></th>
+            <th>Failed <span data-so-range-copy><%= range_label(range) %></span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% all_queue_names.each do |queue_name| %>
+            <tr>
+              <td><%= queue_name %></td>
+              <td data-so-table-value="queue-depth-<%= queue_name %>"><%= number_with_delimiter(queues[queue_name].to_i) %></td>
+              <td data-so-table-value="queue-performed-<%= queue_name %>"><%= number_with_delimiter(performed_by_queue[queue_name].to_i) %></td>
+              <td data-so-table-value="queue-failed-<%= queue_name %>"><%= number_with_delimiter(failed_by_queue[queue_name].to_i) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-queue">No queue activity in this range. Live depth still shows current waiting work when present.</p>
+    <% end %>
+  </div>
+<% end %>

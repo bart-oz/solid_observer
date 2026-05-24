@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SolidObserver — <%= content_for?(:title) ? yield(:title) : "Dashboard" %></title>
+  <title>SolidObserver - Dashboard</title>
   <%= csrf_meta_tags %>
   <style>
     :root {
@@ -15,7 +15,7 @@
       /* text */
       --so-text: #171717;
       --so-text-muted: #737373;
-      --so-text-subtle: #a3a3a3;
+      --so-text-subtle: #737373;
 
       /* lines */
       --so-border: #e5e5e5;
@@ -40,6 +40,12 @@
 
       /* type */
       --so-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+      /* SO-067 additions */
+      --so-focus-ring: rgba(37, 99, 235, 0.28);
+      --so-live-marker: var(--so-success);
+      --so-range-marker: var(--so-info);
+      --so-toolbar-gap: 0.75rem;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -100,6 +106,56 @@
     .so-content { padding: 2rem; overflow-y: auto; }
     .so-content__header { margin-bottom: 1.5rem; }
     .so-content__header h1 { font-size: 1.375rem; font-weight: 500; }
+
+    /* SO-067 Dashboard layout */
+    .so-dashboard { max-width: 1120px; }
+    .so-dashboard-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--so-toolbar-gap); margin-bottom: 1.5rem; }
+    .so-dashboard-toolbar__left { display: flex; align-items: center; gap: var(--so-toolbar-gap); }
+    .so-dashboard-toolbar__right { display: flex; align-items: center; gap: var(--so-toolbar-gap); margin-left: auto; }
+    .so-dashboard-section { margin-bottom: 2rem; }
+    .so-dashboard-section__header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .so-dashboard-section__title { font-size: 0.875rem; font-weight: 600; color: var(--so-text); }
+    .so-dashboard-section__meta { font-size: 0.75rem; color: var(--so-text-muted); }
+    .so-dashboard-section__meta--idle,
+    .so-dashboard-section__meta--empty-range,
+    .so-dashboard-section__meta--empty-queue,
+    .so-dashboard-section__meta--empty-events { font-size: 0.8rem; color: var(--so-text-subtle); margin-top: 0.5rem; }
+
+    /* SO-067 Metric card anatomy — separated value/suffix/range-copy */
+    .so-metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem; }
+    .so-metric__value { font-size: 1.625rem; font-weight: 600; color: var(--so-text); }
+    .so-metric__suffix { font-size: 0.75rem; color: var(--so-text-muted); }
+
+    /* SO-067 Toolbar controls */
+    .so-btn--refresh { font-size: 0.85rem; }
+    .so-btn--refresh[aria-busy="true"] { opacity: 0.6; pointer-events: none; }
+    .so-btn--help { font-size: 0.75rem; padding: 0.2rem 0.5rem; border: 1px solid var(--so-border); border-radius: var(--so-radius); background: var(--so-card-bg); color: var(--so-text-muted); cursor: pointer; }
+    .so-btn--help:hover { background: var(--so-surface-muted); }
+    .so-btn--help:focus-visible { outline: 2px solid var(--so-info); outline-offset: 2px; box-shadow: 0 0 0 3px var(--so-focus-ring); }
+    .so-help-panel { font-size: 0.8rem; color: var(--so-text-muted); padding: 0.5rem 0.75rem; border: 1px solid var(--so-border); border-radius: var(--so-radius); background: var(--so-card-bg); margin-top: 0.25rem; max-width: 420px; }
+    .so-toolbar-freshness { font-size: 0.75rem; color: var(--so-text-subtle); }
+
+    /* SO-067 Focus rings */
+    select:focus-visible,
+    .so-btn--refresh:focus-visible,
+    .so-toggle--pill input:focus-visible + .so-toggle__track,
+    .so-btn--help:focus-visible,
+    .so-stability__link:focus-visible {
+      outline: 2px solid var(--so-info);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 3px var(--so-focus-ring);
+    }
+
+    /* SO-067 Loading transition for range-bound zones */
+    .so-dashboard-section.is-loading,
+    .so-card--section.is-loading { opacity: 0.62; transition: opacity 140ms cubic-bezier(0.22, 1, 0.36, 1); }
+    @media (prefers-reduced-motion: reduce) {
+      .so-dashboard-section.is-loading,
+      .so-card--section.is-loading { transition: none; }
+    }
+
+    /* SO-067 sr-only utility */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
     .so-stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
     .so-chart-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
@@ -290,10 +346,8 @@
     .so-toggle__label, .so-toggle__sep, .so-toggle__cadence { font-size: 0.85rem; color: var(--so-text-muted); }
     .so-toggle--on .so-toggle__label, .so-toggle--on .so-toggle__cadence { color: var(--so-text); }
     .so-toggle__dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--so-success); opacity: 0; }
-    .so-toggle--on .so-toggle__dot { opacity: 1; animation: so-pulse 1.5s ease-in-out infinite; }
-    @keyframes so-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+    .so-toggle--on .so-toggle__dot { opacity: 1; }
     @media (prefers-reduced-motion: reduce) {
-      .so-toggle--on .so-toggle__dot { animation: none; opacity: 1; }
       .so-toggle__track, .so-toggle__thumb { transition: none; }
     }
 
@@ -353,6 +407,13 @@
 
     .so-card li + li { margin-top: 0.45rem; }
 
+    @media (max-width: 960px) {
+      .so-dashboard-toolbar { flex-direction: column; align-items: stretch; }
+      .so-dashboard-toolbar__left, .so-dashboard-toolbar__right { margin-left: 0; }
+      .so-stat-cards { grid-template-columns: repeat(auto-fit, minmax(156px, 1fr)); }
+      .so-stability { flex-wrap: wrap; }
+    }
+
     @media (max-width: 768px) {
       .so-layout { grid-template-columns: 1fr; }
       .so-sidebar { position: relative; padding: 0.75rem 0; border-right: none; border-bottom: 1px solid var(--so-border); }
@@ -383,7 +444,8 @@
       </div>
     </aside>
 
-    <main class="so-content">
+    <main class="so-content" aria-labelledby="so-main-heading">
+      <h1 class="sr-only" id="so-main-heading">Dashboard</h1>
       <% if flash[:notice] %>
         <div class="so-flash so-flash--notice"><%= flash[:notice] %></div>
       <% end %>

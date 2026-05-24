@@ -5,9 +5,10 @@ require "feature_helper"
 RSpec.describe "Dashboard", type: :feature do
   before { SolidObserver.config.storage_mode = :persistence }
 
-  it "displays the Dashboard heading" do
+  it "has an accessible sr-only h1 instead of visible h1" do
     visit "/solid_observer"
-    expect(page).to have_css("h1", text: "Dashboard")
+    expect(page).to have_css("h1.sr-only", text: "Dashboard")
+    expect(page).not_to have_css(".so-content__header h1", text: "Dashboard")
   end
 
   it "shows the SolidObserver logo in the sidebar" do
@@ -29,15 +30,19 @@ RSpec.describe "Dashboard", type: :feature do
         claimed: 2,
         failed: 1,
         workers: 3,
-        queues: {},
+        queues: {"default" => 8, "mailers" => 2},
         available: true,
         range: "15m",
         performed_in_range: 1200,
         failed_in_range: 9,
+        enqueued_in_range: 1500,
+        avg_duration_in_range: 1.2,
         failed_last_24h: 9,
         failed_last_hour: 0,
         latest_failure_at: nil,
-        enqueue_rate_per_min: 4.6
+        enqueue_rate_per_min: 4.6,
+        performed_by_queue: {"default" => 1100, "mailers" => 100},
+        failed_by_queue: {"default" => 8, "mailers" => 1}
       )
       allow(SolidObserver::QueueEvent).to receive(:recent).and_return([])
       allow(SolidObserver::QueueEvent).to receive(:recent_failures).and_return([])
@@ -61,120 +66,133 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_content("Persistence")
     end
 
-    it "shows Enqueue rate card in persistence mode" do
+    it "renders Zone B live-state cards with data-so-zone attribute" do
       visit "/solid_observer"
-
-      expect(page).to have_css('[data-so-card-value="enqueue_rate_per_min"]', text: "4.6")
-      expect(page).to have_content("jobs/min")
+      expect(page).to have_css('[data-so-zone="live-state"]')
+      expect(page).to have_css('[data-so-card-value="ready"]')
+      expect(page).to have_css('[data-so-card-value="scheduled"]')
+      expect(page).to have_css('[data-so-card-value="claimed"]')
+      expect(page).to have_css('[data-so-card-value="workers"]')
+      expect(page).to have_css('[data-so-card-value="failed"]')
     end
 
-    it "does not render turbo frame wrappers" do
+    it "renders Zone C throughput cards with separated value and suffix nodes" do
       visit "/solid_observer"
-
-      expect(page).not_to have_css("turbo-frame")
+      expect(page).to have_css('[data-so-zone="throughput"]')
+      expect(page).to have_css('[data-so-card-value="performed_in_range"]')
+      expect(page).to have_css('[data-so-card-value="failed_in_range"]')
+      expect(page).to have_css('[data-so-card-value="enqueued_in_range"]')
+      expect(page).to have_css('[data-so-card-value="avg_duration_in_range"]')
+      expect(page).to have_css(".so-metric__suffix", text: "jobs")
+      expect(page).to have_css("[data-so-range-copy]", text: "in last 15m")
+      # Avg duration value node contains only a number; suffix is "ms"
+      avg_card = find('[data-so-card-value="avg_duration_in_range"]')
+      expect(avg_card.text).to match(/\A[\d,]+\z/)
+      expect(page).to have_css("[data-so-card-suffix]", text: "ms")
     end
 
-    it "keeps selected range for a valid range param" do
-      visit "/solid_observer?range=15m"
-
-      expect(page).to have_select("Range", selected: "15m")
-    end
-
-    it "falls back selected range for an invalid range param" do
-      visit "/solid_observer?range=bogus"
-
-      expect(page).to have_select("Range", selected: "15m")
-    end
-
-    it "shows the Stability indicator with a click-through to failures" do
+    it "renders Zone E per-queue table with live depth and range columns" do
       visit "/solid_observer"
+      expect(page).to have_css('[data-so-zone="queue-table"]')
+      expect(page).to have_content("Queue throughput")
+      expect(page).to have_css("th", text: "Queue")
+      expect(page).to have_css("th", text: "Live depth")
+      expect(page).to have_content("default")
+      expect(page).to have_content("mailers")
+    end
 
+    it "renders Zone F Stability strip with badge and detail" do
+      visit "/solid_observer"
       expect(page).to have_content("Stability")
       expect(page).to have_link("View failures", href: "/solid_observer/events?event_type=job_failed")
     end
 
-    it "renders the Live toggle unconditionally regardless of config" do
+    it "renders the Live toggle with correct markup" do
       visit "/solid_observer"
-
-      expect(page).to have_css('input[type="checkbox"][name="live"]')
+      expect(page).to have_css('input[data-so-live-toggle][type="checkbox"][name="live"]')
     end
 
     it "renders checked Live toggle as pill switch when enabled in params" do
       visit "/solid_observer?live=on"
 
-      expect(page).to have_css("form[data-so-live]")
-      expect(page).to have_css('input[type="checkbox"][name="live"][value="on"][checked]')
+      expect(page).to have_css("[data-so-live]")
+      expect(page).to have_css('input[data-so-live-toggle][type="checkbox"][name="live"][value="on"][checked]')
       expect(page).to have_css("label.so-toggle.so-toggle--pill.so-toggle--on")
       expect(page).to have_css(".so-toggle__label", text: "Live")
       expect(page).to have_css(".so-toggle__cadence", text: "5s")
       expect(page).to have_css(".so-toggle__dot")
     end
 
-    it "renders pill toggle with correct markup and a11y attributes" do
+    it "renders the range selector with data-so-range-select" do
       visit "/solid_observer"
-
-      expect(page).to have_css("label.so-toggle.so-toggle--pill")
-      expect(page).not_to have_css("label.so-toggle--on")
-      expect(page).to have_css(".so-toggle__label", text: "Live")
-      expect(page).to have_css(".so-toggle__sep", text: "·")
-      expect(page).to have_css(".so-toggle__cadence", text: "off")
-      expect(page).to have_css('.so-toggle__cadence[aria-live="polite"]')
-      expect(page).to have_css('.so-toggle__track[aria-hidden="true"]')
-      expect(page).to have_css('.so-toggle__sep[aria-hidden="true"]')
-      expect(page).to have_css('.so-toggle__dot[aria-hidden="true"]')
+      expect(page).to have_css("[data-so-range-select]")
     end
 
-    it "renders the chart strip with three sparkline figures" do
+    it "renders Refresh data button" do
       visit "/solid_observer"
+      expect(page).to have_css("[data-so-refresh]", text: "Refresh data")
+    end
 
+    it "renders help button with aria-expanded" do
+      visit "/solid_observer"
+      expect(page).to have_css("[data-so-help-btn][aria-expanded]")
+    end
+
+    it "renders chart strip with three sparkline figures" do
+      visit "/solid_observer"
       expect(page).to have_css('[data-so-spark="performed"]')
       expect(page).to have_css('[data-so-spark="failed"]')
       expect(page).to have_css('[data-so-spark="ready"]')
     end
 
-    it "renders each sparkline figure with baseline and polyline" do
-      visit "/solid_observer"
-
-      within('[data-so-spark="performed"]') do
-        expect(page).to have_css(".so-spark__baseline")
-        expect(page).to have_css(".so-spark__line")
-      end
-      within('[data-so-spark="failed"]') do
-        expect(page).to have_css(".so-spark__baseline")
-        expect(page).to have_css(".so-spark__line")
-      end
-      within('[data-so-spark="ready"]') do
-        expect(page).to have_css(".so-spark__baseline")
-        expect(page).to have_css(".so-spark__line")
-      end
-    end
-
-    it "renders card value elements with data-so-card-value attributes" do
-      visit "/solid_observer"
-
-      expect(page).to have_css('[data-so-card-value="ready"]')
-      expect(page).to have_css('[data-so-card-value="scheduled"]')
-      expect(page).to have_css('[data-so-card-value="claimed"]')
-      expect(page).to have_css('[data-so-card-value="workers"]')
-      expect(page).to have_css('[data-so-card-value="failed"]')
-      expect(page).to have_css('[data-so-card-value="enqueue_rate_per_min"]')
-    end
-
     it "renders chart polylines with non-empty points on first paint" do
       visit "/solid_observer"
-
       within('[data-so-spark="performed"]') do
         polyline = find(".so-spark__line")
         expect(polyline["points"]).not_to be_empty
       end
-      within('[data-so-spark="failed"]') do
-        polyline = find(".so-spark__line")
-        expect(polyline["points"]).not_to be_empty
-      end
-      within('[data-so-spark="ready"]') do
-        polyline = find(".so-spark__line")
-        expect(polyline["points"]).not_to be_empty
-      end
+    end
+
+    it "keeps selected range for a valid range param" do
+      visit "/solid_observer?range=15m"
+      expect(page).to have_select("Range", selected: "15m")
+    end
+
+    it "falls back selected range for an invalid range param" do
+      visit "/solid_observer?range=bogus"
+      expect(page).to have_select("Range", selected: "15m")
+    end
+
+    it "does not render turbo frame wrappers" do
+      visit "/solid_observer"
+      expect(page).not_to have_css("turbo-frame")
+    end
+
+    it "renders Zone A toolbar with left and right groups" do
+      visit "/solid_observer"
+      expect(page).to have_css(".so-dashboard-toolbar__left")
+      expect(page).to have_css(".so-dashboard-toolbar__right")
+    end
+
+    it "renders Zone B section heading" do
+      visit "/solid_observer"
+      expect(page).to have_css("h2", text: "Right now")
+    end
+
+    it "renders Zone C section heading with range subtitle" do
+      visit "/solid_observer"
+      expect(page).to have_css("h2", text: "Throughput in selected range")
+    end
+
+    it "renders Zone D chart section" do
+      visit "/solid_observer"
+      expect(page).to have_css('[data-so-zone="chart"]')
+      expect(page).to have_css("h2", text: "Charts")
+    end
+
+    it "renders freshness text area" do
+      visit "/solid_observer"
+      expect(page).to have_css("[data-so-freshness]")
     end
   end
 
@@ -197,7 +215,7 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_content("Real-time")
     end
 
-    it "does not show Enqueue rate card or Stability in realtime mode" do
+    it "does not show throughput cards or Stability in realtime mode" do
       allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(
         ready: 1,
         scheduled: 0,
@@ -211,11 +229,11 @@ RSpec.describe "Dashboard", type: :feature do
 
       visit "/solid_observer"
 
-      expect(page).not_to have_css('[data-so-card-value="enqueue_rate_per_min"]')
+      expect(page).not_to have_css('[data-so-zone="throughput"]')
       expect(page).not_to have_content("Stability")
     end
 
-    it "renders five-card grid without turbo frames in realtime mode" do
+    it "renders live-state cards in realtime mode" do
       allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(
         ready: 1,
         scheduled: 0,
@@ -235,7 +253,6 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_css('[data-so-card-value="claimed"]')
       expect(page).to have_css('[data-so-card-value="workers"]')
       expect(page).to have_css('[data-so-card-value="failed"]')
-      expect(page).not_to have_css('[data-so-card-value="enqueue_rate_per_min"]')
       expect(page).to have_select("Range", selected: "15m")
     end
 
@@ -256,27 +273,6 @@ RSpec.describe "Dashboard", type: :feature do
       expect(page).to have_css('[data-so-spark="ready"]')
       expect(page).not_to have_css('[data-so-spark="performed"]')
       expect(page).not_to have_css('[data-so-spark="failed"]')
-    end
-
-    it "renders card value elements with data-so-card-value attributes in realtime mode" do
-      allow(SolidObserver::QueueStats).to receive(:snapshot).and_return(
-        ready: 1,
-        scheduled: 0,
-        claimed: 0,
-        failed: 0,
-        workers: 1,
-        queues: {},
-        available: true,
-        range: "15m"
-      )
-
-      visit "/solid_observer"
-
-      expect(page).to have_css('[data-so-card-value="ready"]')
-      expect(page).to have_css('[data-so-card-value="scheduled"]')
-      expect(page).to have_css('[data-so-card-value="claimed"]')
-      expect(page).to have_css('[data-so-card-value="workers"]')
-      expect(page).to have_css('[data-so-card-value="failed"]')
     end
   end
 

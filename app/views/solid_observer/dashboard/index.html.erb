@@ -1,89 +1,111 @@
 <% content_for :title, "Dashboard" %>
 
-<div class="so-content__header">
-  <h1>Dashboard</h1>
-</div>
-
-<form method="get" action="<%= root_path %>" class="so-filters" data-turbo-frame="_top"
-      data-so-live>
-  <label for="so-range" class="so-card__label so-filters__label">Range</label>
-  <select id="so-range" name="range" onchange="this.form.requestSubmit()">
-    <% SolidObserver::QueueStats::RANGES.each_key do |key| %>
-      <option value="<%= key %>" <%= "selected" if key == @range %>><%= key %></option>
-    <% end %>
-  </select>
-  <label class="so-toggle so-toggle--pill <%= "so-toggle--on" if @live %>">
-    <input type="checkbox" name="live" value="on" <%= "checked" if @live %>>
-    <span class="so-toggle__track" aria-hidden="true">
-      <span class="so-toggle__thumb"></span>
-    </span>
-    <span class="so-toggle__label">Live</span>
-    <span class="so-toggle__sep" aria-hidden="true"> · </span>
-    <span class="so-toggle__cadence" aria-live="polite"><%= @live ? "5s" : "off" %></span>
-    <span class="so-toggle__dot" aria-hidden="true"></span>
-  </label>
-  <noscript><button type="submit" class="so-btn">Apply</button></noscript>
-</form>
-
-<% if @stats[:available] %>
-  <%= render "chart" %>
-<% end %>
-
-<%= render "right_now", stats: @stats %>
-
-<% if @stats[:available] && @stats[:queues].any? %>
-  <div class="so-card so-card--section">
-    <div class="so-card__label">Queue Depths</div>
-    <table class="so-table so-table--card">
-      <thead>
-        <tr>
-          <th>Queue</th>
-          <th>Jobs</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @stats[:queues].each do |queue_name, count| %>
-          <tr>
-            <td><%= queue_name %></td>
-            <td><%= number_with_delimiter(count) %></td>
-          </tr>
+<div class="so-dashboard">
+  <%# Zone A: Toolbar — range selector, Refresh, Live toggle, help disclosure %>
+  <div class="so-dashboard-toolbar" data-so-live>
+    <div class="so-dashboard-toolbar__left">
+      <label for="so-range" class="so-card__label so-filters__label">Range</label>
+      <select id="so-range" name="range" data-so-range-select>
+        <% SolidObserver::QueueStats::RANGES.each_key do |key| %>
+          <option value="<%= key %>" <%= "selected" if key == @range %>><%= key %></option>
         <% end %>
-      </tbody>
-    </table>
+      </select>
+      <button type="button" class="so-btn so-btn--refresh" data-so-refresh aria-busy="false">Refresh data</button>
+      <span class="so-toolbar-freshness" data-so-freshness aria-live="polite"></span>
+    </div>
+    <div class="so-dashboard-toolbar__right">
+      <label class="so-toggle so-toggle--pill <%= "so-toggle--on" if @live %>">
+        <input type="checkbox" name="live" value="on" <%= "checked" if @live %> data-so-live-toggle>
+        <span class="so-toggle__track" aria-hidden="true">
+          <span class="so-toggle__thumb"></span>
+        </span>
+        <span class="so-toggle__label">Live</span>
+        <span class="so-toggle__sep" aria-hidden="true"> · </span>
+        <span class="so-toggle__cadence" aria-live="polite"><%= @live ? "5s" : "off" %></span>
+        <span class="so-toggle__dot" aria-hidden="true"></span>
+      </label>
+      <button type="button" class="so-btn so-btn--help" data-so-help-btn aria-expanded="false" aria-controls="so-help-panel">(?)
+      </button>
+      <div id="so-help-panel" class="so-help-panel" data-so-help-panel hidden>
+        <p>Live mode polls every 5 seconds for current queue state. Throughput and chart data update only on range change or manual refresh.</p>
+      </div>
+    </div>
   </div>
-<% end %>
 
-<% if @stats[:available] && persistence_mode? %>
-  <section class="so-stability">
-    <span class="so-stability__label">Stability</span>
-    <%= stability_badge(@stats) %>
-    <span class="so-stability__detail"><%= stability_detail(@stats) %></span>
-    <%= link_to "View failures →", events_path(event_type: "job_failed"), class: "so-stability__link" %>
+  <%# Zone B: Right now — live state %>
+  <section class="so-dashboard-section" aria-labelledby="so-live-state-heading">
+    <div class="so-dashboard-section__header">
+      <h2 class="so-dashboard-section__title" id="so-live-state-heading">Right now</h2>
+      <span class="so-dashboard-section__meta"><span class="so-badge so-badge--pill so-badge--success"><svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true"><circle r="3" cx="3" cy="3" fill="var(--so-live-marker, var(--so-success))"/></svg></span> current</span>
+    </div>
+    <%= render "live_state", stats: @stats %>
   </section>
 
-  <% if @recent_events.any? %>
-    <div class="so-card">
-      <div class="so-card__label">Recent Events</div>
-      <table class="so-table so-table--card">
-        <thead>
-          <tr>
-            <th>Event</th>
-            <th>Job Class</th>
-            <th>Queue</th>
-            <th>Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @recent_events.each do |event| %>
-            <tr>
-              <td><%= event.event_type.humanize %></td>
-              <td><%= event.job_class %></td>
-              <td><%= event.queue_name %></td>
-              <td><%= time_ago_in_words(event.recorded_at) %> ago</td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+  <%# Zone C: Throughput in selected range %>
+  <% if persistence_mode? && @stats[:available] %>
+    <section class="so-dashboard-section" aria-labelledby="so-throughput-heading">
+      <div class="so-dashboard-section__header">
+        <h2 class="so-dashboard-section__title" id="so-throughput-heading">Throughput in selected range</h2>
+        <span class="so-dashboard-section__meta"><span class="so-badge so-badge--pill so-badge--info"><svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true"><circle r="3" cx="3" cy="3" fill="var(--so-range-marker, var(--so-info))"/></svg></span> <span data-so-range-copy><%= range_label(@range) %></span></span>
+      </div>
+      <%= render "throughput", stats: @stats, range: @range %>
+    </section>
   <% end %>
-<% end %>
+
+  <%# Zone D: Charts %>
+  <% if @stats[:available] %>
+    <section class="so-dashboard-section" aria-labelledby="so-chart-heading">
+      <div class="so-dashboard-section__header">
+        <h2 class="so-dashboard-section__title" id="so-chart-heading">Charts</h2>
+      </div>
+      <%= render "chart", range: @range %>
+    </section>
+  <% end %>
+
+  <%# Zone E: Per-queue table %>
+  <%= render "queue_table", stats: @stats, range: @range %>
+
+  <%# Zone F: Stability strip %>
+  <% if @stats[:available] && persistence_mode? %>
+    <section class="so-stability" data-so-zone="stability" aria-labelledby="so-stability-heading">
+      <span class="so-stability__label" id="so-stability-heading">Stability</span>
+      <%= stability_badge(@stats) %>
+      <span class="so-stability__detail"><%= stability_detail(@stats) %></span>
+      <%= link_to "View failures →", events_path(event_type: "job_failed"), class: "so-stability__link" %>
+    </section>
+  <% end %>
+
+  <%# Zone G: Recent Events %>
+  <% if @stats[:available] && persistence_mode? %>
+    <% if defined?(@recent_events) && @recent_events.present? %>
+      <div class="so-card">
+        <div class="so-card__label">Recent Events</div>
+        <table class="so-table so-table--card">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Job Class</th>
+              <th>Queue</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_events.each do |event| %>
+              <tr>
+                <td><%= event.event_type.humanize %></td>
+                <td><%= event.job_class %></td>
+                <td><%= event.queue_name %></td>
+                <td><%= time_ago_in_words(event.recorded_at) %> ago</td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="so-card">
+        <div class="so-card__label">Recent Events</div>
+        <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-events">No recent events yet. Queue activity will appear here after jobs are enqueued, performed, or failed.</p>
+      </div>
+    <% end %>
+  <% end %>
+</div>

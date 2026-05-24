@@ -21,5 +21,19 @@ module SolidObserver
         format("%.1f,%.1f", point_x, point_y)
       }.join(" ")
     end
+
+    RANGE_LABELS = {
+      "15m" => "in last 15m",
+      "30m" => "in last 30m",
+      "1h" => "in last hour",
+      "7h" => "in last 7h",
+      "1d" => "in last day",
+      "7d" => "in last 7d",
+      "14d" => "in last 14d"
+    }.freeze
+
+    def range_label(range_key)
+      RANGE_LABELS.fetch(range_key, "in selected range")
+    end
   end
 end

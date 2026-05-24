@@ -21,14 +21,8 @@ module SolidObserver
     def poll_data
       range = QueueStats.parse_range(request_range_param, fallback: QueueStats::POLL_DEFAULT_RANGE)
       window = QueueStats.range_duration(range, fallback: QueueStats::POLL_DEFAULT_RANGE)
-
-      ChartBuffer.append(SolidQueue::ReadyExecution.count) if QueueStats.solid_queue_available?
-
-      render json: {
-        mode: persistence_mode? ? "persistence" : "realtime",
-        snapshot: QueueStats.snapshot_for_poll(range: range),
-        chart: QueueStats.chart_data(window: window)
-      }
+      append_chart_buffer
+      render json: tick_request? ? tick_payload : full_payload(range: range, window: window)
     end
 
     private
@@ -51,6 +45,35 @@ module SolidObserver
 
     def request_live_param
       request&.query_parameters&.[]("live") || request&.query_parameters&.[](:live)
+    end
+
+    def request_tick_param
+      request&.query_parameters&.[]("tick") || request&.query_parameters&.[](:tick)
+    end
+
+    def tick_request?
+      request_tick_param == "true"
+    end
+
+    def tick_payload
+      {
+        mode: persistence_mode? ? "persistence" : "realtime",
+        snapshot: QueueStats.snapshot_for_tick,
+        chart: nil
+      }
+    end
+
+    def full_payload(range:, window:)
+      {
+        mode: persistence_mode? ? "persistence" : "realtime",
+        snapshot: QueueStats.snapshot_for_poll(range: range),
+        chart: QueueStats.chart_data(window: window),
+        range_label: helpers.range_label(range)
+      }
+    end
+
+    def append_chart_buffer
+      ChartBuffer.append(SolidQueue::ReadyExecution.count) if QueueStats.solid_queue_available?
     end
   end
 end

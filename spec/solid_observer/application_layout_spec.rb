@@ -164,13 +164,14 @@ RSpec.describe "SolidObserver application layout" do
       expect(template_source).to include(".so-toggle--on .so-toggle__dot")
     end
 
-    it "includes so-pulse keyframe animation for the toggle dot" do
-      expect(template_source).to include("@keyframes so-pulse")
+    it "includes static 6px success dot for live-on state (no infinite pulse)" do
+      expect(template_source).to include(".so-toggle__dot")
+      expect(template_source).to include(".so-toggle--on .so-toggle__dot")
+      expect(template_source).not_to include("@keyframes so-pulse")
     end
 
-    it "includes prefers-reduced-motion media query for toggle animations" do
+    it "includes prefers-reduced-motion media query for toggle transitions" do
       expect(template_source).to include("@media (prefers-reduced-motion: reduce)")
-      expect(template_source).to include("animation: none")
       expect(template_source).to include("transition: none")
     end
 

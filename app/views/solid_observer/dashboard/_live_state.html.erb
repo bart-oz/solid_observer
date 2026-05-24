@@ -1,0 +1,20 @@
+<%# Zone B: Right now — live state cards %>
+<% if stats[:available] %>
+  <div class="so-stat-cards" data-so-zone="live-state">
+    <%= render "solid_observer/shared/stat_card", label: "Ready", subtitle: "queued", value: stats[:ready], data_key: "ready" %>
+    <%= render "solid_observer/shared/stat_card", label: "Scheduled", subtitle: "future runs", value: stats[:scheduled], data_key: "scheduled" %>
+    <%= render "solid_observer/shared/stat_card", label: "In-flight", subtitle: "in progress", value: stats[:claimed], data_key: "claimed" %>
+    <%= render "solid_observer/shared/stat_card", label: "Workers", subtitle: "active processes", value: stats[:workers], data_key: "workers" %>
+    <%= render "solid_observer/shared/stat_card", label: "Pending failures", subtitle: "awaiting retry", value: stats[:failed], data_key: "failed" %>
+  </div>
+  <% if stats[:ready].to_i.zero? && stats[:scheduled].to_i.zero? && stats[:claimed].to_i.zero? && stats[:failed].to_i.zero? %>
+    <p class="so-dashboard-section__meta so-dashboard-section__meta--idle">Queue idle right now. No ready, scheduled, in-flight, or pending-failure work is currently visible.</p>
+  <% end %>
+<% else %>
+  <div class="so-card">
+    <div class="so-empty">
+      <div class="so-empty__icon">&#9888;&#65039;</div>
+      <div>SolidQueue is not available</div>
+    </div>
+  </div>
+<% end %>

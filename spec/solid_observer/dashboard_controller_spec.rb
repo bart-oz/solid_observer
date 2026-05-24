@@ -84,6 +84,7 @@ RSpec.describe SolidObserver::DashboardController do
         ready: [{t: 100, v: 3}, {t: 200, v: 7}]
       }
       allow(SolidObserver::QueueStats).to receive(:chart_data).and_return(chart_data)
+      allow(SolidObserver::QueueEvent).to receive(:recent).with(10).and_return([])
       SolidObserver.config.storage_mode = :persistence
       controller.index
 
@@ -326,7 +327,14 @@ RSpec.describe SolidObserver::DashboardController do
           claimed: 0,
           workers: 1,
           failed: 2,
-          enqueue_rate_per_min: 1.2
+          enqueue_rate_per_min: 1.2,
+          performed_in_range: 34,
+          failed_in_range: 2,
+          enqueued_in_range: 40,
+          avg_duration_in_range: 1.2,
+          queues: {"default" => 3},
+          performed_by_queue: {"default" => 30},
+          failed_by_queue: {"default" => 2}
         }
       )
       allow(SolidObserver::QueueStats).to receive(:chart_data).with(window: 15.minutes).and_return(
@@ -342,9 +350,10 @@ RSpec.describe SolidObserver::DashboardController do
 
       expect(status).to eq(200)
       expect(headers["Content-Type"]).to include("application/json")
-      expect(payload.keys.sort).to eq(%i[chart mode snapshot])
+      expect(payload.keys.sort).to eq(%i[chart mode range_label snapshot])
       expect(payload[:mode]).to eq("persistence")
-      expect(payload[:snapshot].keys.sort).to eq(%i[claimed enqueue_rate_per_min failed ready scheduled workers])
+      expect(payload[:range_label]).to eq("in last 15m")
+      expect(payload[:snapshot]).to include(:ready, :scheduled, :claimed, :workers, :failed, :enqueue_rate_per_min, :performed_in_range, :failed_in_range, :enqueued_in_range, :avg_duration_in_range, :queues, :performed_by_queue, :failed_by_queue)
       expect(payload[:chart].keys.sort).to eq(%i[failed performed ready])
     end
 
@@ -411,6 +420,29 @@ RSpec.describe SolidObserver::DashboardController do
 
       expect(status).to eq(404)
       expect(body).to include("Not Found")
+    end
+
+    it "returns lightweight tick payload with chart nil when tick=true" do
+      SolidObserver.config.storage_mode = :persistence
+      allow(SolidObserver::QueueStats).to receive(:solid_queue_available?).and_return(true)
+
+      tick_snapshot = {
+        ready: 5,
+        scheduled: 1,
+        claimed: 2,
+        workers: 3,
+        failed: 0
+      }
+      allow(SolidObserver::QueueStats).to receive(:snapshot_for_tick).and_return(tick_snapshot)
+
+      status, _, body = call_controller_action(:poll_data, "/solid_observer/poll_data?range=15m&tick=true")
+      payload = parse_json(body)
+
+      expect(status).to eq(200)
+      expect(payload[:mode]).to eq("persistence")
+      expect(payload[:snapshot]).to include(:ready, :scheduled, :claimed, :workers, :failed)
+      expect(payload[:snapshot]).not_to include(:performed_in_range, :failed_in_range, :enqueued_in_range, :avg_duration_in_range, :queues, :performed_by_queue, :failed_by_queue)
+      expect(payload[:chart]).to be_nil
     end
 
     context "with HTTP basic auth configured" do

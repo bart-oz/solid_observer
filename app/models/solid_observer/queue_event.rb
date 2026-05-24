@@ -54,6 +54,22 @@ module SolidObserver
       (count.to_f / (window.to_f / 60.0)).round(1)
     end
 
+    def self.enqueued_count_last(duration)
+      by_event_type("job_enqueued").since(duration.ago).count
+    end
+
+    def self.avg_duration_last(duration)
+      by_event_type("job_completed").since(duration.ago).average(:duration).to_f
+    end
+
+    def self.count_by_queue_and_event_type(window:, event_type:)
+      since(window.ago)
+        .where(event_type: event_type)
+        .where.not(queue_name: nil)
+        .group(:queue_name)
+        .count
+    end
+
     def self.count_by_time_bucket(event_type:, window:, bucket_seconds:)
       context = build_bucket_context(window: window, bucket_seconds: bucket_seconds)
       return [] unless context

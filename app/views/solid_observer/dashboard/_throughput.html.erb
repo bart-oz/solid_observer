@@ -1,0 +1,32 @@
+<%# Zone C: Throughput in selected range %>
+<% if persistence_mode? && stats[:available] %>
+  <div class="so-stat-cards" data-so-zone="throughput">
+    <div class="so-card so-metric">
+      <div class="so-card__label">Performed</div>
+      <div class="so-metric__value" data-so-card-value="performed_in_range"><%= number_with_delimiter(stats[:performed_in_range].to_i) %></div>
+      <span class="so-metric__suffix" data-so-card-suffix>jobs</span>
+      <div class="so-card__subtitle" data-so-range-copy><%= range_label(range) %></div>
+    </div>
+    <div class="so-card so-metric">
+      <div class="so-card__label">Failed</div>
+      <div class="so-metric__value" data-so-card-value="failed_in_range"><%= number_with_delimiter(stats[:failed_in_range].to_i) %></div>
+      <span class="so-metric__suffix" data-so-card-suffix>jobs</span>
+      <div class="so-card__subtitle" data-so-range-copy><%= range_label(range) %></div>
+    </div>
+    <div class="so-card so-metric">
+      <div class="so-card__label">Enqueued</div>
+      <div class="so-metric__value" data-so-card-value="enqueued_in_range"><%= number_with_delimiter(stats[:enqueued_in_range].to_i) %></div>
+      <span class="so-metric__suffix" data-so-card-suffix>jobs</span>
+      <div class="so-card__subtitle" data-so-range-copy><%= range_label(range) %></div>
+    </div>
+    <div class="so-card so-metric">
+      <div class="so-card__label">Avg duration</div>
+      <div class="so-metric__value" data-so-card-value="avg_duration_in_range"><%= stats[:avg_duration_in_range] > 0 ? number_with_delimiter((stats[:avg_duration_in_range] * 1000).round) : "0" %></div>
+      <span class="so-metric__suffix" data-so-card-suffix>ms</span>
+      <div class="so-card__subtitle" data-so-range-copy><%= range_label(range) %></div>
+    </div>
+  </div>
+  <% if stats[:performed_in_range].to_i.zero? && stats[:failed_in_range].to_i.zero? && stats[:enqueued_in_range].to_i.zero? %>
+    <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-range"><%= "No throughput #{range_label(range).sub('in ', '')}".html_safe %>. Jobs may still be waiting right now; this row only counts completed queue events in the selected range.</p>
+  <% end %>
+<% end %>
