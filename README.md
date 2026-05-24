@@ -14,6 +14,9 @@
 </p>
 
 ---
+<p align="center">
+  <img src=".github/assets/dash_1.png" alt="Dashboard overview" width="700">
+</p>
 
 SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. Starting with **Solid Queue** monitoring in v0.3.0, it provides unified visibility into your background job processing with a Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
 
@@ -165,6 +168,14 @@ Configuration:
 ## Web UI Dashboard
 
 SolidObserver ships with a zero-dependency Web UI (no asset pipeline, no JS framework) at `/solid_observer`.
+
+<table>
+  <tr>
+    <td align="center"><a href=".github/assets/dash_1.png"><img src=".github/assets/dash_1.png" alt="Dashboard overview" width="250"></a></td>
+    <td align="center"><a href=".github/assets/dash_2.png"><img src=".github/assets/dash_2.png" alt="Dashboard jobs and events" width="250"></a></td>
+    <td align="center"><a href=".github/assets/dash_3.png"><img src=".github/assets/dash_3.png" alt="Dashboard storage and details" width="250"></a></td>
+  </tr>
+</table>
 
 ### Mount
 
