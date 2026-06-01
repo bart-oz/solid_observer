@@ -9,17 +9,36 @@ module SolidObserver
     def spark_points(series, width: SVG_W, height: SVG_H)
       return "" if series.blank?
 
-      t_min = series.first[:t]
-      t_max = series.last[:t]
-      v_max = [series.max_by { |point| point[:v] }[:v], 1].max
-      time_span = t_max - t_min
+      context = build_spark_context(series, width, height)
+      series.map { |point| format_spark_point(point: point, context: context) }.join(" ")
+    end
 
-      series.map { |point|
-        val = point[:v]
-        point_x = time_span.zero? ? width / 2.0 : ((point[:t] - t_min).to_f / time_span) * (width - 2) + 1
-        point_y = height - 1 - (val.to_f / v_max) * (height - 2)
-        format("%.1f,%.1f", point_x, point_y)
-      }.join(" ")
+    def build_spark_context(series, width, height)
+      first_point = series.first
+      last_point = series.last
+      min_time = first_point[:t]
+
+      {
+        min_time: min_time,
+        time_span: last_point[:t] - min_time,
+        max_value: [series.max_by { |point| point[:v] }[:v], 1].max,
+        width: width,
+        height: height,
+        inner_width: width - 2,
+        inner_height: height - 2
+      }
+    end
+
+    def format_spark_point(point:, context:)
+      time_span = context[:time_span]
+      coordinate_x = if time_span.zero?
+        context[:width] / 2.0
+      else
+        ((point[:t] - context[:min_time]).to_f / time_span) * context[:inner_width] + 1
+      end
+
+      coordinate_y = context[:height] - 1 - (point[:v].to_f / context[:max_value]) * context[:inner_height]
+      format("%.1f,%.1f", coordinate_x, coordinate_y)
     end
 
     RANGE_LABELS = {

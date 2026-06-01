@@ -12,12 +12,10 @@ module SolidObserver
     end
 
     def push(event_data)
-      return unless SolidObserver.config.persistence_mode?
+      config = SolidObserver.config
+      return unless config.persistence_mode?
 
-      should_flush = @mutex.synchronize do
-        @buffer << event_data
-        @buffer.size >= SolidObserver.config.buffer_size
-      end
+      should_flush = buffer_ready_to_flush?(event_data, config.buffer_size)
       flush! if should_flush
     end
 
@@ -41,6 +39,15 @@ module SolidObserver
 
     def clear
       @mutex.synchronize { @buffer.clear }
+    end
+
+    private
+
+    def buffer_ready_to_flush?(event_data, buffer_size)
+      @mutex.synchronize do
+        @buffer << event_data
+        @buffer.size >= buffer_size
+      end
     end
   end
 end

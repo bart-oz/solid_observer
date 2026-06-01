@@ -16,20 +16,37 @@ module SolidObserver
       def call
         return 0 if @events.empty?
 
-        CacheEvent.transaction { CacheEvent.insert_all!(@events) }
+        insert_all_events
         @events.size
       rescue ActiveRecord::RecordInvalid, ActiveRecord::StatementInvalid => error
-        Rails.logger&.error("[SolidObserver] Cache bulk insert failed, retrying in batches: #{error.message}") if defined?(Rails)
-        @events.each_slice(BATCH_SIZE).sum { |batch| insert_batch(batch) }
+        fallback_insert_count(error)
       end
 
       private
 
+      def insert_all_events
+        CacheEvent.transaction { CacheEvent.insert_all!(@events) }
+      end
+
+      def fallback_insert_count(error)
+        Rails.logger&.error("[SolidObserver] Cache bulk insert failed, retrying in batches: #{error.message}") if defined?(Rails)
+        @events.each_slice(BATCH_SIZE).sum { |batch| insert_batch(batch) }
+      end
+
       def insert_batch(batch)
+        size = batch.size
         CacheEvent.insert_all(batch, returning: false)
-        batch.size
+        size
       rescue ActiveRecord::RecordInvalid, ActiveRecord::StatementInvalid => error
-        Rails.logger&.warn("[SolidObserver] Failed to insert cache batch of #{batch.size} events: #{error.message}") if defined?(Rails)
+        handle_batch_insert_error(size, error)
+      end
+
+      def log_batch_warning(size, error)
+        Rails.logger&.warn("[SolidObserver] Failed to insert cache batch of #{size} events: #{error.message}") if defined?(Rails)
+      end
+
+      def handle_batch_insert_error(size, error)
+        log_batch_warning(size, error)
         0
       end
     end

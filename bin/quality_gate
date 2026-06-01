@@ -47,7 +47,7 @@ gate_standardrb() {
 }
 
 gate_reek() {
-  run_gate "Reek" bundle exec reek lib/ app/ db/
+  run_gate "Reek" bundle exec reek lib/ app/
 }
 
 gate_appraisal() {

@@ -24,6 +24,17 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
     ))
   end
 
+  it "records metrics even when raw event is not sampled" do
+    allow(Kernel).to receive(:rand).and_return(0.9)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 0.0, cache_slow_threshold: 10.0, cache_store_errors: true)
+    allow(SolidObserver::Services::RecordCacheMetric).to receive(:call)
+
+    described_class.call(event: event, buffer: buffer)
+
+    expect(SolidObserver::Services::RecordCacheMetric).to have_received(:call).with(event: event)
+    expect(buffer).not_to have_received(:push)
+  end
+
   it "stores unsampled events when slow" do
     allow(Kernel).to receive(:rand).and_return(0.9)
     allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 0.0, cache_slow_threshold: 0.001, cache_store_errors: true)
