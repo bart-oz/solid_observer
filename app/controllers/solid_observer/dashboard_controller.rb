@@ -6,8 +6,12 @@ module SolidObserver
     skip_after_action :verify_same_origin_request, only: :live_poll
 
     def index
-      assign_range_and_stats
-      load_persistence_data if persistence_mode?
+      @component = selected_component
+      @queue_available_for_render = queue_dashboard_renderable?
+      if @component == "queue" && @queue_available_for_render
+        assign_range_and_stats
+        load_persistence_data if persistence_mode?
+      end
     end
 
     def live_poll
@@ -32,7 +36,13 @@ module SolidObserver
       @range = range
       @live = request_live_param == "on"
       @stats = QueueStats.snapshot(range: range)
-      @chart = QueueStats.chart_data(window: QueueStats.range_duration(@range))
+      @chart = if @stats[:available]
+        QueueStats.chart_data(window: QueueStats.range_duration(@range))
+      else
+        {performed: [], failed: [], ready: []}
+      end
+    rescue
+      @chart = {performed: [], failed: [], ready: []}
     end
 
     def load_persistence_data
@@ -74,6 +84,32 @@ module SolidObserver
 
     def append_chart_buffer
       ChartBuffer.append(SolidQueue::ReadyExecution.count) if QueueStats.solid_queue_available?
+    end
+
+    def selected_component
+      requested = if request&.respond_to?(:path_parameters)
+        request.path_parameters&.[](:component).to_s
+      else
+        ""
+      end
+      requested = path_component if requested.empty?
+      return "cache" if requested == "cache" && SolidObserver.config.solid_cache_enabled?
+
+      "queue"
+    end
+
+    def path_component
+      return "" unless request&.respond_to?(:path)
+
+      path = request&.path.to_s
+      return "cache" if path.end_with?("/cache")
+      return "queue" if path.end_with?("/queue")
+
+      ""
+    end
+
+    def queue_dashboard_renderable?
+      @component == "queue" && SolidObserver.config.solid_queue_enabled?
     end
   end
 end

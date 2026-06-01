@@ -76,6 +76,33 @@ RSpec.describe SolidObserver::Configuration do
     end
   end
 
+  describe "component helpers" do
+    it "reports queue enabled by default when SolidQueue is available" do
+      stub_const("SolidQueue", Module.new)
+      config = described_class.new
+
+      expect(config.solid_queue_available?).to be(true)
+      expect(config.solid_queue_enabled?).to be(true)
+    end
+
+    it "reports cache disabled by default when SolidCache is absent" do
+      hide_const("SolidCache")
+      config = described_class.new
+
+      expect(config.solid_cache_available?).to be(false)
+      expect(config.solid_cache_enabled?).to be(false)
+    end
+
+    it "enables cache only when observe_cache and SolidCache are both present" do
+      stub_const("SolidCache", Module.new)
+      config = described_class.new
+      config.observe_cache = true
+
+      expect(config.solid_cache_available?).to be(true)
+      expect(config.solid_cache_enabled?).to be(true)
+    end
+  end
+
   describe "#max_buffer_size" do
     it "accepts positive integers greater than or equal to buffer_size" do
       config = described_class.new

@@ -84,6 +84,22 @@ module SolidObserver
       @storage_mode == :realtime
     end
 
+    def solid_queue_available?
+      !!defined?(::SolidQueue)
+    end
+
+    def solid_cache_available?
+      !!defined?(::SolidCache)
+    end
+
+    def solid_queue_enabled?
+      observe_queue
+    end
+
+    def solid_cache_enabled?
+      observe_cache && solid_cache_available?
+    end
+
     def sampling_rate=(value)
       validate_rate!(:sampling_rate, value)
       @sampling_rate = value

@@ -93,6 +93,22 @@
     .so-sidebar__nav a.active {
       background: var(--so-sidebar-active-bg);
       color: var(--so-sidebar-active-text);
+      font-weight: 600;
+    }
+
+    .so-sidebar__nav a:focus-visible {
+      outline: 2px solid var(--so-info);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 3px var(--so-focus-ring);
+    }
+
+    .so-sidebar__section {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--so-text-muted);
+      padding: 0.5rem 0.75rem 0.25rem;
+      margin: 0.5rem 0.75rem 0.25rem;
     }
 
     .so-sidebar__mode {
@@ -433,12 +449,20 @@
   <div class="so-layout">
     <aside class="so-sidebar">
       <div class="so-sidebar__logo">SolidObserver</div>
-      <nav class="so-sidebar__nav">
-        <%= link_to "Dashboard", root_path, class: ("active" if controller_name == "dashboard") %>
-        <%= link_to "Jobs", jobs_path, class: ("active" if controller_name == "jobs") %>
-        <% if persistence_mode? %>
-          <%= link_to "Events", events_path, class: ("active" if controller_name == "events") %>
-          <%= link_to "Storage", storage_path, class: ("active" if controller_name == "storages") %>
+      <nav class="so-sidebar__nav" aria-label="SolidObserver navigation">
+        <% if SolidObserver.config.solid_queue_enabled? %>
+          <div class="so-sidebar__section">Queue</div>
+          <%= link_to "Dashboard", root_path, class: ("active" if controller_name == "dashboard" && @component.to_s != "cache"), "aria-current": (controller_name == "dashboard" && @component.to_s != "cache" ? "page" : nil) %>
+          <%= link_to "Jobs", jobs_path, class: ("active" if controller_name == "jobs"), "aria-current": (controller_name == "jobs" ? "page" : nil) %>
+          <% if persistence_mode? %>
+            <%= link_to "Events", events_path, class: ("active" if controller_name == "events"), "aria-current": (controller_name == "events" ? "page" : nil) %>
+            <%= link_to "Storage", storage_path, class: ("active" if controller_name == "storages"), "aria-current": (controller_name == "storages" ? "page" : nil) %>
+          <% end %>
+        <% end %>
+
+        <% if SolidObserver.config.solid_cache_enabled? %>
+          <div class="so-sidebar__section">Cache</div>
+          <%= link_to "Cache Dashboard", cache_dashboard_path, class: ("active" if controller_name == "dashboard" && @component.to_s == "cache"), "aria-current": (controller_name == "dashboard" && @component.to_s == "cache" ? "page" : nil) %>
         <% end %>
       </nav>
       <div class="so-sidebar__mode">

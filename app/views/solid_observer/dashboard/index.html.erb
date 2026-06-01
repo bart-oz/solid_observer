@@ -1,6 +1,18 @@
 <% content_for :title, "Dashboard" %>
 
 <div class="so-dashboard">
+  <% if @component == "cache" %>
+    <section class="so-card so-card--section" aria-labelledby="so-cache-heading">
+      <h2 id="so-cache-heading">Dashboard</h2>
+      <p class="so-dashboard-section__meta so-dashboard-section__meta--idle">SolidCache integration is enabled, but cache metrics are not part of this release.</p>
+    </section>
+  <% else %>
+  <% if !SolidObserver.config.solid_queue_enabled? %>
+    <section class="so-card so-card--section" aria-labelledby="so-queue-unavailable-heading">
+      <h2 id="so-queue-unavailable-heading">Queue Unavailable</h2>
+      <p class="so-dashboard-section__meta so-dashboard-section__meta--idle">Queue component is disabled or not installed. Enable SolidQueue to access dashboard controls.</p>
+    </section>
+  <% else %>
   <%# Zone A: Toolbar — range selector, Refresh, Live toggle, help disclosure %>
   <div class="so-dashboard-toolbar" data-so-live>
     <div class="so-dashboard-toolbar__left">
@@ -109,5 +121,7 @@
         <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-events">No recent events yet. Queue activity will appear here after jobs are enqueued, performed, or failed.</p>
       </div>
     <% end %>
+  <% end %>
+  <% end %>
   <% end %>
 </div>
