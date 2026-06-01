@@ -9,8 +9,10 @@ detectors:
     exclude:
       - SolidObserver::Configuration
       - SolidObserver::QueueEventBuffer
+      - SolidObserver::CacheEventBuffer
       - SolidObserver::JobsController
       - SolidObserver::EventsController
+      - SolidObserver::DashboardController
       - SolidObserver::Params::EventsFilter
 
   TooManyStatements:
@@ -29,7 +31,9 @@ detectors:
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::JobsController#index
       - SolidObserver::EventsController#index
+      - SolidObserver::DashboardController#assign_range_and_stats
       - SolidObserver::Queries::EventsQuery#call
+      - SolidObserver::CacheEventBuffer#flush!
 
   LongParameterList:
     exclude:
@@ -63,6 +67,11 @@ detectors:
       - SolidObserver::Configuration#validate_positive_numeric!
       - SolidObserver::Queries::JobExecutionsQuery#apply_queue_filter
       - SolidObserver::ApplicationHelper#mode_badge
+      - SolidObserver::DashboardHelper#spark_points
+      - SolidObserver::Services::RecordCacheEvent#normalized_key_string
+      - SolidObserver::Services::RecordCacheEvent#key_size
+      - SolidObserver::Services::RecordCacheEvent#hits_count
+      - SolidObserver::DashboardHelper#format_spark_point
 
   DuplicateMethodCall:
     exclude:
@@ -81,6 +90,7 @@ detectors:
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::CLI::Storage#print_section_header
       - SolidObserver::CLI::Storage#print_storage_table
+      - SolidObserver::CacheEventBuffer#flush!
 
   InstanceVariableAssumption:
     exclude:
@@ -88,17 +98,23 @@ detectors:
       - SolidObserver::Services::CleanupStorage
       - SolidObserver::JobsController
       - SolidObserver::EventsController
+      - SolidObserver::CacheSubscriber
+      - SolidObserver::DashboardController
 
   MissingSafeMethod:
     exclude:
       - SolidObserver::Subscriber
       - SolidObserver::QueueEventBuffer
+      - SolidObserver::CacheEventBuffer
       - SolidObserver::Configuration
+      - SolidObserver::CacheSubscriber
 
   RepeatedConditional:
     exclude:
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CLI::Jobs
+      - SolidObserver::Engine
+      - SolidObserver::DashboardController
 
   UncommunicativeVariableName:
     accept:
@@ -113,6 +129,7 @@ detectors:
   NilCheck:
     exclude:
       - SolidObserver::CLI::Base#confirm
+      - SolidObserver::Services::RecordCacheEvent#hit_value
 
   ControlParameter:
     exclude:
@@ -130,6 +147,15 @@ detectors:
     exclude:
       - SolidObserver::CLI::Jobs
       - SolidObserver::QueueEventBuffer
+      - SolidObserver::CacheEventBuffer
+      - SolidObserver::Configuration
+      - SolidObserver::Engine
+      - SolidObserver::Services::RecordCacheEvent
+
+  TooManyConstants:
+    exclude:
+      - SolidObserver::QueueStats
 
 exclude_paths:
   - spec/
+  - db/

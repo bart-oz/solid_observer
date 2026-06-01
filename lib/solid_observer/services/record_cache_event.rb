@@ -15,6 +15,7 @@ module SolidObserver
       end
 
       def call
+        SolidObserver::Services::RecordCacheMetric.call(event: @event)
         return unless should_store_event?
 
         @buffer.push(build_event_data)
@@ -81,10 +82,13 @@ module SolidObserver
       end
 
       def hit_value
-        return payload[:hit] unless payload[:hit].nil?
-        return nil unless payload[:hits].is_a?(Array)
+        hit = payload[:hit]
+        hits = payload[:hits]
 
-        payload[:hits].any?
+        return hit unless hit.nil?
+        return nil unless hits.is_a?(Array)
+
+        hits.any?
       end
 
       def metadata
@@ -113,10 +117,12 @@ module SolidObserver
       def exception_data
         @exception_data ||= begin
           exception_obj = payload[:exception_object]
+          exception = payload[:exception]
+
           if exception_obj
             {error_class: exception_obj.class.name, error_message: exception_obj.message}
-          elsif payload[:exception].is_a?(Array)
-            {error_class: payload[:exception].first, error_message: payload[:exception].last}
+          elsif exception.is_a?(Array)
+            {error_class: exception.first, error_message: exception.last}
           else
             {}
           end
