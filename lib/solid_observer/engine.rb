@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+require_relative "cache_event_buffer"
+require_relative "cache_subscriber"
+require_relative "services/record_cache_event"
+require_relative "services/flush_cache_event_buffer"
+
 module SolidObserver
   class Engine < ::Rails::Engine
     isolate_namespace SolidObserver
@@ -38,10 +43,11 @@ module SolidObserver
 
       def activate_subscribers
         return activate_subscribers_in_realtime if SolidObserver.config.realtime_mode?
-        return if activation_skipped_for_table_status?
+        return if activation_skipped_for_table_status_for_enabled_components?
 
         Rails.logger.info "[SolidObserver] Activating event subscribers"
-        Subscriber.subscribe!
+        Subscriber.subscribe! if should_activate_queue_subscriber?
+        CacheSubscriber.subscribe! if should_activate_cache_subscriber?
       end
 
       private
@@ -64,13 +70,22 @@ module SolidObserver
 
       def activate_subscribers_in_realtime
         Rails.logger.info "[SolidObserver] Starting in real-time mode (no persistence)"
-        Subscriber.subscribe!
+        Subscriber.subscribe! if should_activate_queue_subscriber?
+        CacheSubscriber.subscribe! if should_activate_cache_subscriber?
       end
 
-      def activation_skipped_for_table_status?
-        case table_status("solid_observer_queue_events")
+      def activation_skipped_for_table_status_for_enabled_components?
+        enabled_tables = []
+        enabled_tables << "solid_observer_queue_events" if should_activate_queue_subscriber?
+        enabled_tables << "solid_observer_cache_events" if should_activate_cache_subscriber?
+
+        enabled_tables.any? { |table_name| skip_activation_for_missing_table?(table_name) }
+      end
+
+      def skip_activation_for_missing_table?(table_name)
+        case table_status(table_name)
         when :absent
-          log_activation_skip("Tables not found. Run: rails solid_observer:install:migrations && rails db:migrate")
+          log_activation_skip("Tables not found (missing: #{table_name}). Run: rails solid_observer:install:migrations && rails db:migrate")
           true
         when :unknown
           log_activation_skip("Database not reachable at boot. Skipping subscriber activation.")
@@ -78,6 +93,14 @@ module SolidObserver
         else
           false
         end
+      end
+
+      def should_activate_queue_subscriber?
+        SolidObserver.config.solid_queue_enabled?
+      end
+
+      def should_activate_cache_subscriber?
+        SolidObserver.config.solid_cache_enabled?
       end
 
       def log_activation_skip(message)
