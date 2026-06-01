@@ -91,5 +91,18 @@ module SolidObserver
     def latest_failure_phrase(timestamp)
       timestamp ? "#{time_ago_in_words(timestamp)} ago" : "unknown"
     end
+
+    def queue_component_enabled?
+      SolidObserver.config.solid_queue_enabled?
+    end
+
+    def cache_component_enabled?
+      SolidObserver.config.solid_cache_enabled?
+    end
+
+    def dashboard_section_active?(component)
+      current_component = @component.presence || "queue"
+      controller_name == "dashboard" && current_component == component.to_s
+    end
   end
 end

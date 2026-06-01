@@ -4,15 +4,25 @@ module SolidObserver
   class Engine < ::Rails::Engine
     isolate_namespace SolidObserver
 
+    SOLID_QUEUE_AVAILABLE = defined?(::SolidQueue)
+    SOLID_CACHE_AVAILABLE = defined?(::SolidCache)
+
     middleware.use ActionDispatch::Cookies
     middleware.use ActionDispatch::Session::CookieStore, key: "_solid_observer_session"
     middleware.use ActionDispatch::Flash
 
     class << self
       def check_solid_queue_availability
-        return if defined?(SolidQueue)
+        return if defined?(::SolidQueue)
 
         Rails.logger.warn "[SolidObserver] SolidQueue not detected. Queue observability features will be limited."
+      end
+
+      def check_solid_cache_availability
+        return if defined?(::SolidCache)
+        return unless SolidObserver.config.observe_cache
+
+        Rails.logger.warn "[SolidObserver] SolidCache not detected. Cache observability features will be disabled."
       end
 
       def check_ui_authentication
@@ -109,6 +119,7 @@ module SolidObserver
 
     config.before_initialize do
       Engine.check_solid_queue_availability
+      Engine.check_solid_cache_availability
     end
 
     config.after_initialize do

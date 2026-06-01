@@ -72,6 +72,35 @@ RSpec.describe SolidObserver::Engine do
     end
   end
 
+  describe ".check_solid_cache_availability" do
+    it "warns when SolidCache is not defined and cache observation is enabled" do
+      hide_const("SolidCache")
+      SolidObserver.config.observe_cache = true
+
+      expect(logger).to receive(:warn).with(/SolidCache not detected/)
+
+      described_class.check_solid_cache_availability
+    end
+
+    it "does not warn when SolidCache is not defined and cache observation is disabled" do
+      hide_const("SolidCache")
+      SolidObserver.config.observe_cache = false
+
+      expect(logger).not_to receive(:warn).with(/SolidCache not detected/)
+
+      described_class.check_solid_cache_availability
+    end
+
+    it "does not warn when SolidCache is defined" do
+      stub_const("SolidCache", Module.new)
+      SolidObserver.config.observe_cache = true
+
+      expect(logger).not_to receive(:warn).with(/SolidCache not detected/)
+
+      described_class.check_solid_cache_availability
+    end
+  end
+
   describe ".check_ui_authentication" do
     after { SolidObserver.reset_configuration! }
 
