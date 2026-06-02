@@ -21,6 +21,26 @@ RSpec.describe SolidObserver::Services::CacheStats do
 
   before { SolidObserver::CacheMetric.delete_all }
 
+  describe ".parse_range" do
+    it "returns the requested range when it is supported" do
+      expect(described_class.parse_range("1h")).to eq("1h")
+    end
+
+    it "falls back to the default range for unsupported values" do
+      expect(described_class.parse_range("bogus")).to eq("15m")
+    end
+  end
+
+  describe ".range_duration" do
+    it "returns the configured duration for a range key" do
+      expect(described_class.range_duration("1h")).to eq(1.hour)
+    end
+
+    it "uses the default duration for unsupported values" do
+      expect(described_class.range_duration("bogus")).to eq(15.minutes)
+    end
+  end
+
   it "returns dashboard-ready aggregated cache stats for window" do
     now = Time.current
     SolidObserver::CacheMetric.create!(

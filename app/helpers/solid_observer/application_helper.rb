@@ -23,6 +23,21 @@ module SolidObserver
       degraded: {label: "Degraded", tone: "warning"},
       critical: {label: "Critical", tone: "danger"}
     }.freeze
+    CACHE_OUTCOME_STATES = {
+      hit: {label: "Hit", tone: "success"},
+      miss: {label: "Miss", tone: "info"},
+      error: {label: "Error", tone: "danger"},
+      recorded: {label: "Recorded", tone: "recorded"}
+    }.freeze
+    CACHE_RANGE_LABELS = {
+      "15m" => "in last 15m",
+      "30m" => "in last 30m",
+      "1h" => "in last hour",
+      "7h" => "in last 7h",
+      "1d" => "in last day",
+      "7d" => "in last 7d",
+      "14d" => "in last 14d"
+    }.freeze
 
     def execution_status(execution)
       ExecutionPresenter.new(execution).status
@@ -81,6 +96,47 @@ module SolidObserver
       end
     end
 
+    def cache_ratio_percent(value)
+      number_to_percentage(value.to_f * 100, precision: 1, strip_insignificant_zeros: true)
+    end
+
+    def cache_storage_summary(storage_components)
+      snapshots = Array(storage_components)
+      reason = cache_storage_unavailable_reason(snapshots)
+      return {value: "—", subtitle: "— #{reason}"} if reason
+
+      {
+        value: number_to_human_size(cache_storage_total_bytes(snapshots), precision: 1, significant: false, strip_insignificant_zeros: false),
+        subtitle: "SolidCache + cache observer"
+      }
+    end
+
+    def cache_event_outcome_badge(event)
+      meta = cache_event_outcome_meta(event)
+      dot = tag.svg(
+        tag.circle(r: 3, cx: 3, cy: 3, fill: "currentColor"),
+        class: "so-badge__dot",
+        viewBox: "0 0 6 6",
+        "aria-hidden": "true"
+      )
+
+      tag.span(class: "so-badge so-badge--pill so-badge--#{meta[:tone]}") do
+        safe_join([dot, meta[:label]], " ")
+      end
+    end
+
+    def cache_event_digest(key_digest, visible_chars: 10)
+      digest = key_digest.to_s
+      return "—" if digest.empty?
+      return digest if digest.length <= visible_chars
+
+      "#{digest.first(visible_chars)}…"
+    end
+
+    def cache_range_label(range_key)
+      CACHE_RANGE_LABELS.fetch(range_key.to_s, "in selected range")
+    end
+
     def stability_detail(stats)
       failures_24h = stats[:failed_last_24h].to_i
       return "No failures in the last 24h" if failures_24h.zero?
@@ -103,6 +159,28 @@ module SolidObserver
     def dashboard_section_active?(component)
       current_component = @component.presence || "queue"
       controller_name == "dashboard" && current_component == component.to_s
+    end
+
+    private
+
+    def cache_storage_total_bytes(snapshots)
+      snapshots.sum { |snapshot| snapshot[:db_size_bytes].to_i }
+    end
+
+    def cache_storage_unavailable_reason(snapshots)
+      return "Storage snapshot unavailable" unless snapshots.size == 2
+
+      snapshots.find { |snapshot| !snapshot[:available] }&.[](:unavailable_reason)
+    end
+
+    def cache_event_outcome_meta(event)
+      hit = event.hit
+
+      return CACHE_OUTCOME_STATES.fetch(:error) if event.error_class.present?
+      return CACHE_OUTCOME_STATES.fetch(:hit) if hit == true
+      return CACHE_OUTCOME_STATES.fetch(:miss) if hit == false
+
+      CACHE_OUTCOME_STATES.fetch(:recorded)
     end
   end
 end

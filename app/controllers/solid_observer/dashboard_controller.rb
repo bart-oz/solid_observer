@@ -1,17 +1,22 @@
 # frozen_string_literal: true
 
+require_relative "../../helpers/solid_observer/application_helper"
+
 module SolidObserver
   class DashboardController < ApplicationController
+    helper SolidObserver::ApplicationHelper
+
     skip_forgery_protection only: :live_poll
     skip_after_action :verify_same_origin_request, only: :live_poll
 
     def index
       @component = selected_component
-      @queue_available_for_render = queue_dashboard_renderable?
-      if @component == "queue" && @queue_available_for_render
-        assign_range_and_stats
-        load_persistence_data if persistence_mode?
-      end
+      return assign_cache_dashboard if @component == "cache"
+
+      return unless @component == "queue" && SolidObserver.config.solid_queue_enabled?
+
+      assign_range_and_stats
+      load_persistence_data if persistence_mode?
     end
 
     def live_poll
@@ -47,6 +52,12 @@ module SolidObserver
 
     def load_persistence_data
       @recent_events = QueueEvent.recent(10)
+    end
+
+    def assign_cache_dashboard
+      SolidObserver::CacheDashboardController.cache_dashboard_assignments(range_param: request_range_param).each do |name, value|
+        instance_variable_set("@#{name}", value)
+      end
     end
 
     def request_range_param
@@ -106,10 +117,6 @@ module SolidObserver
       return "queue" if path.end_with?("/queue")
 
       ""
-    end
-
-    def queue_dashboard_renderable?
-      @component == "queue" && SolidObserver.config.solid_queue_enabled?
     end
   end
 end

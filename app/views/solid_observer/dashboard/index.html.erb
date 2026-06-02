@@ -1,12 +1,9 @@
 <% content_for :title, "Dashboard" %>
 
+<% if @component == "cache" %>
+  <%= render template: "solid_observer/cache_dashboard/index" %>
+<% else %>
 <div class="so-dashboard">
-  <% if @component == "cache" %>
-    <section class="so-card so-card--section" aria-labelledby="so-cache-heading">
-      <h2 id="so-cache-heading">Dashboard</h2>
-      <p class="so-dashboard-section__meta so-dashboard-section__meta--idle">SolidCache integration is enabled, but cache metrics are not part of this release.</p>
-    </section>
-  <% else %>
   <% if !SolidObserver.config.solid_queue_enabled? %>
     <section class="so-card so-card--section" aria-labelledby="so-queue-unavailable-heading">
       <h2 id="so-queue-unavailable-heading">Queue Unavailable</h2>
@@ -123,5 +120,5 @@
     <% end %>
   <% end %>
   <% end %>
-  <% end %>
 </div>
+<% end %>
