@@ -3,7 +3,10 @@
 require_relative "cache_event_buffer"
 require_relative "cache_subscriber"
 require_relative "services/record_cache_event"
+require_relative "services/record_cache_metric"
 require_relative "services/flush_cache_event_buffer"
+require_relative "services/cache_stats"
+require_relative "services/cache_operations"
 
 module SolidObserver
   class Engine < ::Rails::Engine

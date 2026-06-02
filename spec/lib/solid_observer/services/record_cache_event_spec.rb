@@ -52,4 +52,34 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
 
     expect(buffer).not_to have_received(:push)
   end
+
+  it "re-raises NameError wiring failures" do
+    allow(SolidObserver::Services::RecordCacheMetric).to receive(:call).and_raise(
+      NameError.new("uninitialized constant SolidObserver::Services::RecordCacheMetric")
+    )
+
+    expect {
+      described_class.call(event: event, buffer: buffer)
+    }.to raise_error(NameError, /RecordCacheMetric/)
+
+    expect(buffer).not_to have_received(:push)
+  end
+
+  it "logs and swallows ordinary StandardError failures" do
+    logger = instance_double(Logger, warn: nil)
+
+    allow(Rails).to receive(:logger).and_return(logger)
+    allow(SolidObserver::Services::RecordCacheMetric).to receive(:call).and_raise(
+      ActiveRecord::StatementInvalid.new("missing table")
+    )
+
+    expect {
+      described_class.call(event: event, buffer: buffer)
+    }.not_to raise_error
+
+    expect(logger).to have_received(:warn).with(
+      "[SolidObserver] Cache event recording failed: missing table"
+    )
+    expect(buffer).not_to have_received(:push)
+  end
 end

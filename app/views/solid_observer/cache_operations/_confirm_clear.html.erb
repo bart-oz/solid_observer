@@ -1,0 +1,6 @@
+<%= button_to "Clear cache",
+      clear_cache_operations_path,
+      method: :post,
+      class: "so-btn so-btn--danger",
+      form: {class: "so-form--inline"},
+      data: {confirm: SolidObserver::Services::CacheOperations.message(:clear, :confirmation)} %>

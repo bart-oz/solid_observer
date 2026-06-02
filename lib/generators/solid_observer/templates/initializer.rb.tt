@@ -19,7 +19,8 @@ SolidObserver.configure do |config|
   # === Queue Observability (v0.1.0) ===
   config.observe_queue = true
 
-  # === Cache Observability (Coming in v0.4.0+) ===
+  # === Cache Observability (v0.4.0) ===
+  # Enable SolidCache event capture and operational clear/prune controls
   # config.observe_cache = true
   # config.cache_sampling_rate = 0.1  # Sample 10% of cache operations
 
