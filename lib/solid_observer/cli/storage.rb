@@ -28,45 +28,48 @@ module SolidObserver
       end
 
       def gather_storage_stats
-        {
-          db_size_bytes: SolidObserver::Services::DatabaseSize.call(connection: QueueEvent.connection),
-          event_count: QueueEvent.count,
-          max_size_bytes: SolidObserver.config.max_db_size
-        }
+        {components: SolidObserver::Services::StorageInfoSnapshot.call, max_size_bytes: SolidObserver.config.max_db_size}
       rescue => e
         {error: "Failed to gather storage stats: #{e.message}"}
       end
 
       def print_storage_table(stats)
-        event_count = stats[:event_count]
-        db_size_bytes = stats[:db_size_bytes]
         max_size_bytes = stats[:max_size_bytes]
+        components = stats[:components]
 
         table(
           headers: ["Component", "Size", "Events", "Usage", "Status"],
-          rows: [storage_row(event_count: event_count, db_size_bytes: db_size_bytes, max_size_bytes: max_size_bytes)]
+          rows: components.map { |component| storage_row(component: component, max_size_bytes: max_size_bytes) }
         )
 
         output("")
       end
 
-      def storage_row(event_count:, db_size_bytes:, max_size_bytes:)
-        size, usage, status = storage_displays(db_size_bytes, max_size_bytes)
+      def storage_row(component:, max_size_bytes:)
+        event_count = component[:event_count]
+        size, usage, status = storage_displays(component: component, max_size_bytes: max_size_bytes)
 
         [
-          "Queue",
+          component[:label],
           size,
-          format_number(event_count),
+          event_count ? format_number(event_count) : "—",
           usage,
           status
         ]
       end
 
-      def storage_displays(db_size_bytes, max_size_bytes)
+      def storage_displays(component:, max_size_bytes:)
+        return unavailable_displays unless component[:available]
+
+        db_size_bytes = component[:db_size_bytes]
         return ["N/A", "N/A", "— Unknown"] unless db_size_bytes
 
         percentage = calculate_percentage(db_size_bytes, max_size_bytes)
         [format_size(bytes_to_mb(db_size_bytes)), "#{percentage}%", status_indicator(percentage)]
+      end
+
+      def unavailable_displays
+        ["—", "—", "— Unavailable"]
       end
 
       def print_configuration

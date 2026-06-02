@@ -215,15 +215,15 @@ RSpec.describe "SolidObserver application layout" do
     end
 
     describe "navigation" do
-      it "includes Dashboard and Jobs links in persistence mode" do
+      it "includes Overview and Jobs links in persistence mode" do
         html = render_layout(persistence_mode: true)
-        expect(html).to include("Dashboard")
+        expect(html).to include("Overview")
         expect(html).to include("Jobs")
       end
 
-      it "includes Dashboard and Jobs links in realtime mode" do
+      it "includes Overview and Jobs links in realtime mode" do
         html = render_layout(persistence_mode: false)
-        expect(html).to include("Dashboard")
+        expect(html).to include("Overview")
         expect(html).to include("Jobs")
       end
 
@@ -241,12 +241,12 @@ RSpec.describe "SolidObserver application layout" do
 
       it "marks the active controller's link with class active" do
         html = render_layout(controller_name: "dashboard")
-        expect(html).to include('class="active">Dashboard')
+        expect(html).to include('class="active">Overview')
       end
 
       it "does not mark a different controller's link as active" do
         html = render_layout(controller_name: "jobs")
-        expect(html).not_to include('class="active">Dashboard')
+        expect(html).not_to include('class="active">Overview')
       end
     end
 

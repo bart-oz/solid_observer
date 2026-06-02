@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "database_size"
+require_relative "storage_info_snapshot"
 
 module SolidObserver
   module Services
@@ -46,10 +47,25 @@ module SolidObserver
       end
 
       def record_snapshot_after_cleanup
+        snapshots = StorageInfoSnapshot.call
+
         # StorageInfo.db_size_bytes is NOT NULL; record_snapshot coerces nil to 0.
+        StorageInfo.record_snapshot(db_size: current_database_size, event_count: QueueEvent.count)
+
+        snapshots.each do |snapshot|
+          record_component_snapshot(snapshot)
+        end
+      end
+
+      def record_component_snapshot(snapshot)
+        return unless snapshot[:available]
+        component = snapshot[:component]
+        return if component == "queue_observer"
+
         StorageInfo.record_snapshot(
-          db_size: current_database_size,
-          event_count: QueueEvent.count
+          component: component,
+          db_size: snapshot[:db_size_bytes],
+          event_count: snapshot[:event_count]
         )
       end
 

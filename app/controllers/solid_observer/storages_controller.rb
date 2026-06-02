@@ -5,7 +5,7 @@ module SolidObserver
     include RequirePersistenceMode
 
     def show
-      @current_storage = SolidObserver::StorageInfo.order(recorded_at: :desc).first
+      @storage_components = SolidObserver::Services::StorageInfoSnapshot.call
       @storage_history = SolidObserver::StorageInfo.recent(20)
     end
   end

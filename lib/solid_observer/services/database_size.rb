@@ -7,14 +7,15 @@ module SolidObserver
     # SQLite uses whole-database page accounting; PostgreSQL and MySQL/Trilogy
     # use table + index size from adapter-native system functions.
     class DatabaseSize
-      TABLE_NAME = "solid_observer_queue_events"
+      DEFAULT_TABLE_NAME = "solid_observer_queue_events"
 
-      def self.call(connection:)
-        new(connection).call
+      def self.call(connection:, table_name: DEFAULT_TABLE_NAME)
+        new(connection, table_name: table_name).call
       end
 
-      def initialize(connection)
+      def initialize(connection, table_name:)
         @connection = connection
+        @table_name = table_name
       end
 
       def call
@@ -26,7 +27,7 @@ module SolidObserver
 
       private
 
-      attr_reader :connection
+      attr_reader :connection, :table_name
 
       def adapter_key
         case connection.adapter_name.to_s.downcase
@@ -52,16 +53,20 @@ module SolidObserver
       end
 
       def sqlite_size
-        connection.query_value("SELECT pragma_page_count() * pragma_page_size()")&.to_i
+        page_count = connection.query_value("PRAGMA page_count")
+        page_size = connection.query_value("PRAGMA page_size")
+        return unless page_count && page_size
+
+        page_count.to_i * page_size.to_i
       end
 
       def postgresql_size
-        quoted_table = connection.quote(TABLE_NAME)
+        quoted_table = connection.quote(table_name)
         connection.query_value("SELECT pg_total_relation_size(#{quoted_table})")&.to_i
       end
 
       def mysql_size
-        quoted_table = connection.quote(TABLE_NAME)
+        quoted_table = connection.quote(table_name)
 
         connection.query_value(<<~SQL)&.to_i
           SELECT COALESCE(data_length + index_length, 0)

@@ -16,9 +16,9 @@ RSpec.describe "Dashboard", type: :feature do
     expect(page).to have_content("SolidObserver")
   end
 
-  it "shows Dashboard and Jobs navigation links" do
+  it "shows Overview and Jobs navigation links" do
     visit "/solid_observer"
-    expect(page).to have_link("Dashboard")
+    expect(page).to have_link("Overview")
     expect(page).to have_link("Jobs")
   end
 

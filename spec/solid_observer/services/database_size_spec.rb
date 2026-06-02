@@ -13,14 +13,30 @@ RSpec.describe SolidObserver::Services::DatabaseSize do
     let(:connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter, adapter_name: adapter_name) }
     let(:adapter_name) { "SQLite" }
 
-    it "returns sqlite size via pragma query" do
+    it "returns sqlite size via discrete pragma queries" do
       allow(connection).to receive(:query_value)
-        .with("SELECT pragma_page_count() * pragma_page_size()")
-        .and_return(4_096_000)
+        .with("PRAGMA page_count")
+        .and_return("1000")
+      allow(connection).to receive(:query_value)
+        .with("PRAGMA page_size")
+        .and_return("4096")
 
       result = described_class.call(connection: connection)
 
       expect(result).to eq(4_096_000)
+    end
+
+    it "returns nil when sqlite page_count is nil" do
+      allow(connection).to receive(:query_value)
+        .with("PRAGMA page_count")
+        .and_return(nil)
+      allow(connection).to receive(:query_value)
+        .with("PRAGMA page_size")
+        .and_return("4096")
+
+      result = described_class.call(connection: connection)
+
+      expect(result).to be_nil
     end
 
     it "returns postgresql table size as integer bytes" do
@@ -124,6 +140,18 @@ RSpec.describe SolidObserver::Services::DatabaseSize do
       bad_connection = Object.new
 
       expect { described_class.call(connection: bad_connection) }.to raise_error(NoMethodError)
+    end
+
+    it "supports custom table_name" do
+      allow(connection).to receive(:adapter_name).and_return("PostgreSQL")
+      allow(connection).to receive(:quote).with("solid_cache_entries").and_return("'solid_cache_entries'")
+      allow(connection).to receive(:query_value)
+        .with("SELECT pg_total_relation_size('solid_cache_entries')")
+        .and_return("1024")
+
+      result = described_class.call(connection: connection, table_name: "solid_cache_entries")
+
+      expect(result).to eq(1024)
     end
   end
 end
