@@ -1,0 +1,52 @@
+<% content_for :title, "Cache overview" %>
+<% status_class = @cache_dashboard_available ? "so-badge--success" : "so-badge--warning" %>
+
+<div class="so-dashboard so-cache-dashboard">
+  <span class="sr-only">Cache Dashboard</span>
+
+  <div class="so-content__header">
+    <h1>Cache overview</h1>
+
+    <% if @cache_dashboard_available %>
+      <div class="so-cache-dashboard__intro">
+        <span class="so-badge so-badge--pill <%= status_class %>">
+          <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true">
+            <circle r="3" cx="3" cy="3" fill="currentColor" />
+          </svg>
+          Available
+        </span>
+        <p class="so-cache-dashboard__hint">Selected range: <%= cache_range_label(@range) %> · keys and values are never shown.</p>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @cache_dashboard_available %>
+    <form action="<%= request.path %>" method="get" class="so-dashboard-toolbar so-cache-dashboard__range-form">
+      <label for="so-cache-range" class="so-card__label so-filters__label">Range</label>
+      <select id="so-cache-range" name="range">
+        <% SolidObserver::Services::CacheStats::RANGES.each_key do |key| %>
+          <option value="<%= key %>" <%= "selected" if key == @range %>><%= cache_range_label(key) %></option>
+        <% end %>
+      </select>
+      <button type="submit" class="so-btn">Apply range</button>
+    </form>
+
+    <%= render "solid_observer/cache_dashboard/summary", stats: @stats, storage_components: @storage_components %>
+    <%= render "solid_observer/cache_dashboard/charts" %>
+    <%= render "solid_observer/cache_dashboard/recent_events", recent_events: @recent_events %>
+  <% else %>
+    <section class="so-card so-card--section" aria-labelledby="so-cache-unavailable-heading">
+      <header class="so-dashboard-section__header">
+        <h2 id="so-cache-unavailable-heading" class="so-dashboard-section__title">Cache dashboard unavailable</h2>
+        <span class="so-badge so-badge--pill <%= status_class %>">
+          <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true">
+            <circle r="3" cx="3" cy="3" fill="currentColor" />
+          </svg>
+          Unavailable
+        </span>
+      </header>
+
+      <p class="so-dashboard-section__meta so-dashboard-section__meta--idle">Cache dashboard is unavailable because SolidCache support is disabled or not detected. Metrics are unavailable.</p>
+    </section>
+  <% end %>
+</div>

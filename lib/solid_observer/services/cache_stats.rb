@@ -3,6 +3,28 @@
 module SolidObserver
   module Services
     class CacheStats
+      RANGES = {
+        "15m" => 15.minutes,
+        "30m" => 30.minutes,
+        "1h" => 1.hour,
+        "7h" => 7.hours,
+        "1d" => 1.day,
+        "7d" => 7.days,
+        "14d" => 14.days
+      }.freeze
+      DEFAULT_RANGE = "15m"
+
+      class << self
+        def parse_range(value, fallback: DEFAULT_RANGE)
+          range_key = value.to_s
+          RANGES.key?(range_key) ? range_key : fallback
+        end
+
+        def range_duration(value, fallback: DEFAULT_RANGE)
+          RANGES.fetch(parse_range(value, fallback: fallback))
+        end
+      end
+
       def self.call(window:)
         new.call(window: window)
       end

@@ -139,6 +139,8 @@
 
     /* SO-067 Metric card anatomy — separated value/suffix/range-copy */
     .so-metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem; }
+    .so-metric .so-card__label,
+    .so-metric .so-card__subtitle { flex-basis: 100%; }
     .so-metric__value { font-size: 1.625rem; font-weight: 600; color: var(--so-text); }
     .so-metric__suffix { font-size: 0.75rem; color: var(--so-text-muted); }
 
@@ -267,6 +269,7 @@
     .so-badge--danger { background: #fee2e2; color: #991b1b; }
     .so-badge--info { background: #dbeafe; color: #1e40af; }
     .so-badge--default { background: var(--so-surface-muted); color: var(--so-text-muted); }
+    .so-badge--recorded { background: var(--so-surface-muted); color: var(--so-text); }
 
     .so-badge--pill {
       display: inline-flex;
@@ -371,6 +374,7 @@
     }
 
     .so-cache-controls { max-width: 820px; }
+    .so-cache-dashboard__intro,
     .so-cache-controls__intro {
       display: flex;
       flex-wrap: wrap;
@@ -378,10 +382,31 @@
       gap: 0.75rem;
       margin-top: 0.5rem;
     }
+    .so-cache-dashboard__hint,
     .so-cache-controls__hint {
       font-size: 0.875rem;
       color: var(--so-text-subtle);
       line-height: 1.5;
+    }
+    .so-cache-dashboard__range-form {
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .so-cache-dashboard__range-form select {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid var(--so-border);
+      border-radius: var(--so-radius);
+      font-size: 0.85rem;
+      background: var(--so-card-bg);
+      color: var(--so-text);
+    }
+    .so-cache-dashboard__chart-empty {
+      max-width: 420px;
+      margin-bottom: 0;
+    }
+    .so-cache-dashboard__digest {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      white-space: nowrap;
     }
     .so-cache-control-row {
       display: grid;
@@ -509,7 +534,7 @@
 
         <% if SolidObserver.config.solid_cache_enabled? %>
           <div class="so-sidebar__section">Cache</div>
-          <%= link_to "Overview", cache_dashboard_path, class: ("active" if controller_name == "dashboard" && @component.to_s == "cache"), "aria-current": (controller_name == "dashboard" && @component.to_s == "cache" ? "page" : nil) %>
+          <%= link_to "Overview", cache_dashboard_path, class: ("active" if controller_name == "cache_dashboard"), "aria-current": (controller_name == "cache_dashboard" ? "page" : nil) %>
           <% if SolidObserver::Services::CacheOperations.available? %>
             <%= link_to "Controls", cache_operations_path, class: ("active" if controller_name == "cache_operations"), "aria-current": (controller_name == "cache_operations" ? "page" : nil) %>
           <% end %>

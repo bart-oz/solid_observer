@@ -1,0 +1,39 @@
+<% storage_summary = cache_storage_summary(storage_components) %>
+
+<section class="so-dashboard-section" aria-labelledby="so-cache-summary-heading">
+  <header class="so-dashboard-section__header">
+    <h2 id="so-cache-summary-heading" class="so-dashboard-section__title">Summary in selected range</h2>
+  </header>
+
+  <div class="so-stat-cards so-cache-dashboard__summary">
+    <article class="so-card so-metric">
+      <div class="so-card__label">Hit rate</div>
+      <div class="so-metric__value"><%= cache_ratio_percent(stats[:hit_rate]) %></div>
+      <div class="so-card__subtitle">hits / read outcomes</div>
+    </article>
+
+    <article class="so-card so-metric">
+      <div class="so-card__label">Operations</div>
+      <div class="so-metric__value"><%= number_with_delimiter(stats[:operations_count].to_i) %></div>
+      <div class="so-card__subtitle">selected window</div>
+    </article>
+
+    <article class="<%= ["so-card", "so-metric", ("so-card--accent-danger" if stats[:errors_count].to_i.positive?)].compact.join(" ") %>">
+      <div class="so-card__label">Error rate</div>
+      <div class="so-metric__value"><%= cache_ratio_percent(stats[:error_rate]) %></div>
+      <div class="so-card__subtitle">errors / operations</div>
+    </article>
+
+    <article class="so-card so-metric">
+      <div class="so-card__label">Avg duration</div>
+      <div class="so-metric__value"><%= format_duration(stats[:avg_duration].to_f) %></div>
+      <div class="so-card__subtitle">operation latency</div>
+    </article>
+
+    <article class="so-card so-metric">
+      <div class="so-card__label">Storage footprint</div>
+      <div class="so-metric__value"><%= storage_summary[:value] %></div>
+      <div class="so-card__subtitle"><%= storage_summary[:subtitle] %></div>
+    </article>
+  </div>
+</section>
