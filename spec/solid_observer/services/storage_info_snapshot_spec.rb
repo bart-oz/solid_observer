@@ -5,6 +5,32 @@ require "spec_helper"
 RSpec.describe SolidObserver::Services::StorageInfoSnapshot do
   let(:queue_connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
   let(:cache_connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
+  let(:solid_cache_connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
+  let(:solid_cache_entry_class) do
+    Class.new do
+      class << self
+        def connection
+        end
+
+        def table_name
+        end
+
+        def count
+        end
+      end
+    end
+  end
+  let(:solid_cache_record_class) do
+    Class.new do
+      class << self
+        def connection
+        end
+
+        def count
+        end
+      end
+    end
+  end
 
   before do
     allow(SolidObserver.config).to receive(:solid_queue_enabled?).and_return(true)
@@ -86,5 +112,62 @@ RSpec.describe SolidObserver::Services::StorageInfoSnapshot do
       event_count: nil,
       unavailable_reason: "Storage unavailable"
     )
+  end
+
+  context "when SolidCache::Entry is available" do
+    before do
+      allow(SolidObserver.config).to receive(:solid_queue_enabled?).and_return(false)
+
+      stub_const("SolidCache", Module.new)
+      stub_const("SolidCache::Entry", solid_cache_entry_class)
+      stub_const("SolidCache::Record", solid_cache_record_class)
+
+      allow(SolidCache::Entry).to receive(:connection).and_return(solid_cache_connection)
+      allow(SolidCache::Entry).to receive(:table_name).and_return("host_app_cache_entries")
+      allow(SolidCache::Entry).to receive(:count).and_return(7)
+      allow(solid_cache_connection).to receive(:data_source_exists?).with("host_app_cache_entries").and_return(true)
+      allow(SolidObserver::Services::DatabaseSize).to receive(:call)
+        .with(connection: solid_cache_connection, table_name: "host_app_cache_entries")
+        .and_return(300)
+
+      allow(SolidCache::Record).to receive(:connection)
+      allow(SolidCache::Record).to receive(:count)
+    end
+
+    it "uses SolidCache::Entry with its dynamic table name for storage metrics" do
+      snapshots = described_class.call
+      solid_cache = snapshots.find { |snapshot| snapshot[:component] == "solid_cache" }
+
+      expect(solid_cache).to include(
+        label: "SolidCache",
+        available: true,
+        db_size_bytes: 300,
+        event_count: 7,
+        record_label: "cache rows",
+        unavailable_reason: nil
+      )
+      expect(solid_cache_connection).to have_received(:data_source_exists?).with("host_app_cache_entries")
+      expect(SolidObserver::Services::DatabaseSize).to have_received(:call)
+        .with(connection: solid_cache_connection, table_name: "host_app_cache_entries")
+      expect(SolidCache::Record).not_to have_received(:connection)
+      expect(SolidCache::Record).not_to have_received(:count)
+    end
+
+    it "returns an unavailable solid cache snapshot when the concrete model raises PostgreSQL-style TypeError" do
+      allow(SolidCache::Entry).to receive(:count).and_raise(TypeError, "no implicit conversion of nil into String")
+
+      snapshots = described_class.call
+      solid_cache = snapshots.find { |snapshot| snapshot[:component] == "solid_cache" }
+
+      expect(solid_cache).to include(
+        label: "SolidCache",
+        available: false,
+        db_size_bytes: nil,
+        event_count: nil,
+        record_label: "cache rows",
+        recorded_at: nil,
+        unavailable_reason: "Storage unavailable"
+      )
+    end
   end
 end
