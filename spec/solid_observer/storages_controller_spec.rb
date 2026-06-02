@@ -19,19 +19,17 @@ RSpec.describe SolidObserver::StoragesController do
   end
 
   describe "#show" do
-    let(:latest_storage) { double("storage") }
+    let(:components) { [{component: "queue_observer"}] }
     let(:history) { [double("snap1"), double("snap2")] }
 
     before do
-      ordered = double("ordered")
-      allow(SolidObserver::StorageInfo).to receive(:order).with(recorded_at: :desc).and_return(ordered)
-      allow(ordered).to receive(:first).and_return(latest_storage)
+      allow(SolidObserver::Services::StorageInfoSnapshot).to receive(:call).and_return(components)
       allow(SolidObserver::StorageInfo).to receive(:recent).with(20).and_return(history)
     end
 
-    it "assigns @current_storage as the latest record" do
+    it "assigns @storage_components" do
       controller.send(:show)
-      expect(controller.instance_variable_get(:@current_storage)).to eq(latest_storage)
+      expect(controller.instance_variable_get(:@storage_components)).to eq(components)
     end
 
     it "assigns @storage_history with 20 recent records" do

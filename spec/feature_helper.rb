@@ -38,11 +38,18 @@ RSpec.configure do |config|
 
     unless conn.table_exists?(:solid_observer_storage_info)
       conn.create_table :solid_observer_storage_info do |t|
+        t.string :component, null: false, default: "queue_observer"
         t.integer :event_count, default: 0
         t.integer :db_size_bytes, default: 0
         t.datetime :recorded_at, null: false
+        t.index :component
         t.index :recorded_at
       end
+    end
+
+    if conn.table_exists?(:solid_observer_storage_info) && !conn.column_exists?(:solid_observer_storage_info, :component)
+      conn.add_column :solid_observer_storage_info, :component, :string, null: false, default: "queue_observer"
+      conn.add_index :solid_observer_storage_info, :component
     end
   end
 

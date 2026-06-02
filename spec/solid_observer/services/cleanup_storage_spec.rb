@@ -23,6 +23,7 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
     allow(connection).to receive(:adapter_name).and_return("SQLite")
 
     allow(SolidObserver::StorageInfo).to receive(:record_snapshot)
+    allow(SolidObserver::Services::StorageInfoSnapshot).to receive(:call).and_return([])
     allow(SolidObserver::Services::DatabaseSize).to receive(:call).with(connection: connection).and_return(500.kilobytes)
   end
 
@@ -60,6 +61,22 @@ RSpec.describe SolidObserver::Services::CleanupStorage do
       expect(SolidObserver::StorageInfo).to receive(:record_snapshot).with(
         db_size: 500.kilobytes,
         event_count: 500
+      )
+
+      described_class.call
+    end
+
+    it "records additional component snapshots when available" do
+      allow(SolidObserver::Services::StorageInfoSnapshot).to receive(:call).and_return([
+        {component: "queue_observer", available: true, db_size_bytes: 500.kilobytes, event_count: 500},
+        {component: "cache_observer", available: true, db_size_bytes: 200.kilobytes, event_count: 120}
+      ])
+
+      expect(SolidObserver::StorageInfo).to receive(:record_snapshot).with(db_size: 500.kilobytes, event_count: 500)
+      expect(SolidObserver::StorageInfo).to receive(:record_snapshot).with(
+        component: "cache_observer",
+        db_size: 200.kilobytes,
+        event_count: 120
       )
 
       described_class.call

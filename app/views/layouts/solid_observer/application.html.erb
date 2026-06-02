@@ -452,7 +452,7 @@
       <nav class="so-sidebar__nav" aria-label="SolidObserver navigation">
         <% if SolidObserver.config.solid_queue_enabled? %>
           <div class="so-sidebar__section">Queue</div>
-          <%= link_to "Dashboard", root_path, class: ("active" if controller_name == "dashboard" && @component.to_s != "cache"), "aria-current": (controller_name == "dashboard" && @component.to_s != "cache" ? "page" : nil) %>
+          <%= link_to "Overview", root_path, class: ("active" if controller_name == "dashboard" && @component.to_s != "cache"), "aria-current": (controller_name == "dashboard" && @component.to_s != "cache" ? "page" : nil) %>
           <%= link_to "Jobs", jobs_path, class: ("active" if controller_name == "jobs"), "aria-current": (controller_name == "jobs" ? "page" : nil) %>
           <% if persistence_mode? %>
             <%= link_to "Events", events_path, class: ("active" if controller_name == "events"), "aria-current": (controller_name == "events" ? "page" : nil) %>
@@ -462,7 +462,7 @@
 
         <% if SolidObserver.config.solid_cache_enabled? %>
           <div class="so-sidebar__section">Cache</div>
-          <%= link_to "Cache Dashboard", cache_dashboard_path, class: ("active" if controller_name == "dashboard" && @component.to_s == "cache"), "aria-current": (controller_name == "dashboard" && @component.to_s == "cache" ? "page" : nil) %>
+          <%= link_to "Overview", cache_dashboard_path, class: ("active" if controller_name == "dashboard" && @component.to_s == "cache"), "aria-current": (controller_name == "dashboard" && @component.to_s == "cache" ? "page" : nil) %>
         <% end %>
       </nav>
       <div class="so-sidebar__mode">

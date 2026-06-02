@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_15_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_02_000001) do
   create_table "solid_observer_metrics", force: :cascade do |t|
     t.string "metric_name", limit: 50, null: false
     t.datetime "period_start", null: false
@@ -35,9 +35,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_15_000003) do
   end
 
   create_table "solid_observer_storage_info", force: :cascade do |t|
+    t.string "component", default: "queue_observer", null: false
     t.bigint "db_size_bytes", null: false
     t.bigint "event_count", null: false
     t.datetime "recorded_at", null: false
+    t.index ["component"], name: "index_solid_observer_storage_info_on_component"
     t.index ["recorded_at"], name: "index_solid_observer_storage_info_on_recorded_at"
   end
 end

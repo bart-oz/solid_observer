@@ -43,4 +43,22 @@ RSpec.describe SolidObserver::StorageInfo do
   it "defines db_size_gb instance method" do
     expect(described_class.instance_methods).to include(:db_size_gb)
   end
+
+  describe ".record_snapshot" do
+    it "defaults component to queue_observer" do
+      allow(described_class).to receive(:create!)
+
+      described_class.record_snapshot(db_size: 1024, event_count: 5)
+
+      expect(described_class).to have_received(:create!).with(hash_including(component: "queue_observer"))
+    end
+
+    it "allows explicit component" do
+      allow(described_class).to receive(:create!)
+
+      described_class.record_snapshot(db_size: 2048, event_count: 10, component: "cache_observer")
+
+      expect(described_class).to have_received(:create!).with(hash_including(component: "cache_observer"))
+    end
+  end
 end

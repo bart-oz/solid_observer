@@ -13,36 +13,40 @@ RSpec.describe "Storage", type: :feature do
     end
 
     context "when no storage data exists" do
-      it "displays the empty state message" do
+      it "displays component health from live inspection" do
         visit "/solid_observer/storage"
-        expect(page).to have_content("No storage information available")
+        expect(page).to have_content("Component health")
+        expect(page).to have_content("Queue observer")
       end
     end
 
     context "when storage data exists" do
       before do
         SolidObserver::StorageInfo.create!(
+          component: "queue_observer",
           db_size_bytes: 2_048,
           event_count: 42,
           recorded_at: Time.now
         )
       end
 
-      it "displays database size stat card" do
+      it "displays component health card" do
         visit "/solid_observer/storage"
-        expect(page).to have_content("Database Size")
+        expect(page).to have_css(".so-dashboard")
+        expect(page).to have_content("Component health")
+        expect(page).to have_content("Queue observer")
         expect(page).to have_content("2.0 KB")
       end
 
-      it "displays event count stat card" do
+      it "displays records value" do
         visit "/solid_observer/storage"
-        expect(page).to have_content("Event Count")
-        expect(page).to have_content("42")
+        expect(page).to have_content("42 observer events")
       end
 
       it "displays the recent snapshots table" do
         visit "/solid_observer/storage"
         expect(page).to have_content("Recent Snapshots")
+        expect(page).to have_content("Component")
       end
     end
   end
