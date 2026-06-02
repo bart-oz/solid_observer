@@ -52,7 +52,7 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
     install_path_helpers!
 
     stub_const("SolidCache", Module.new)
-    stub_const("SolidCache::Record", Class.new(ActiveRecord::Base) do
+    stub_const("SolidCache::Entry", Class.new(ActiveRecord::Base) do
       self.table_name = "solid_cache_entries"
     end)
 
@@ -63,7 +63,7 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
 
     SolidObserver::CacheMetric.delete_all
     SolidObserver::CacheEvent.delete_all
-    SolidCache::Record.delete_all
+    SolidCache::Entry.delete_all
   end
 
   after { SolidObserver.reset_configuration! }
@@ -190,7 +190,7 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
         metadata: "{}",
         recorded_at: 2.hours.ago
       )
-      SolidCache::Record.create!(key: "cache-key", value: "cached")
+      SolidCache::Entry.create!(key: "cache-key", value: "cached")
 
       status, _headers, body = call_action("/solid_observer/cache?range=15m")
 
@@ -244,5 +244,17 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
     expect(status).to eq(200)
     expect(body).to include("No sampled cache events in the selected range yet. Slow, sampled, or errored cache operations will appear here.")
     expect(body).not_to include("missing table")
+  end
+
+  it "keeps the cache dashboard request successful when SolidCache metrics raise PostgreSQL-style TypeError" do
+    allow(SolidCache::Entry).to receive(:count).and_raise(TypeError, "no implicit conversion of nil into String")
+
+    status, _headers, body = call_action("/solid_observer/cache?range=15m")
+
+    expect(status).to eq(200)
+    expect(body).to include("Cache overview")
+    expect(body).to include("Summary in selected range")
+    expect(body).to include("Storage unavailable")
+    expect(body).not_to include("TypeError")
   end
 end

@@ -5,7 +5,7 @@ require_relative "database_size"
 module SolidObserver
   module Services
     class StorageInfoSnapshot
-      Component = Struct.new(:key, :label, :table_name, :record_label, :model, :enabled, keyword_init: true) do
+      Component = Struct.new(:key, :label, :record_label, :model, :enabled, keyword_init: true) do
         def enabled?
           enabled.call
         end
@@ -18,11 +18,11 @@ module SolidObserver
           model.call
         end
 
-        def data_source_exists?(connection)
+        def data_source_exists?(connection, table_name)
           connection.data_source_exists?(table_name)
         end
 
-        def database_size(connection)
+        def database_size(connection, table_name)
           DatabaseSize.call(connection: connection, table_name: table_name)
         end
 
@@ -31,7 +31,7 @@ module SolidObserver
           return unavailable_snapshot(reason: "SolidCache is unavailable") if unavailable_solid_cache?
 
           existing_data_source_snapshot
-        rescue *StorageInfoSnapshot::CONNECTION_ERRORS
+        rescue *StorageInfoSnapshot::CONNECTION_ERRORS, TypeError
           unavailable_snapshot(reason: "Storage unavailable")
         end
 
@@ -64,18 +64,23 @@ module SolidObserver
         private
 
         def unavailable_solid_cache?
-          solid_cache? && !defined?(::SolidCache::Record)
+          solid_cache? && !defined?(::SolidCache::Entry)
         end
 
         def existing_data_source_snapshot
           record_model = storage_model
           connection = record_model.connection
-          return unavailable_snapshot(reason: "Table unavailable") unless data_source_exists?(connection)
+          table_name = record_model.table_name.to_s
+          return table_unavailable_snapshot if table_name.empty? || !data_source_exists?(connection, table_name)
 
           available_snapshot(
-            db_size_bytes: database_size(connection),
+            db_size_bytes: database_size(connection, table_name),
             event_count: record_model.count
           )
+        end
+
+        def table_unavailable_snapshot
+          unavailable_snapshot(reason: "Table unavailable")
         end
       end
 
@@ -83,7 +88,6 @@ module SolidObserver
         Component.new(
           key: "queue_observer",
           label: "Queue observer",
-          table_name: "solid_observer_queue_events",
           record_label: "observer events",
           model: -> { SolidObserver::QueueEvent },
           enabled: -> { SolidObserver.config.solid_queue_enabled? }
@@ -91,7 +95,6 @@ module SolidObserver
         Component.new(
           key: "cache_observer",
           label: "Cache observer",
-          table_name: "solid_observer_cache_events",
           record_label: "observer events",
           model: -> { SolidObserver::CacheEvent },
           enabled: -> { SolidObserver.config.solid_cache_enabled? }
@@ -99,9 +102,8 @@ module SolidObserver
         Component.new(
           key: "solid_cache",
           label: "SolidCache",
-          table_name: "solid_cache_entries",
           record_label: "cache rows",
-          model: -> { ::SolidCache::Record },
+          model: -> { ::SolidCache::Entry },
           enabled: -> { SolidObserver.config.solid_cache_enabled? }
         )
       ].freeze
