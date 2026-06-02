@@ -1,0 +1,60 @@
+<% content_for :title, "Cache controls" %>
+<% cache_operations = SolidObserver::Services::CacheOperations %>
+<% status_class = @cache_controls_available ? "so-badge--success" : "so-badge--warning" %>
+
+<div class="so-dashboard so-cache-controls">
+  <div class="so-content__header">
+    <h1>Cache controls</h1>
+    <div class="so-cache-controls__intro">
+      <span class="so-badge so-badge--pill <%= status_class %>">
+        <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true">
+          <circle r="3" cx="3" cy="3" fill="currentColor" />
+        </svg>
+        <%= @cache_controls_available ? "Available" : "Unavailable" %>
+      </span>
+      <p class="so-cache-controls__hint">Clear or prune SolidCache safely. Cache keys and values are never shown.</p>
+    </div>
+  </div>
+
+  <% if @cache_controls_available %>
+    <section class="so-card so-card--section" aria-labelledby="so-cache-controls-title">
+      <header class="so-dashboard-section__header">
+        <h2 id="so-cache-controls-title" class="so-dashboard-section__title">Operational controls</h2>
+      </header>
+
+      <div class="so-cache-control-row">
+        <div class="so-cache-control-row__copy">
+          <h3 class="so-cache-control-row__title">Prune expired entries</h3>
+          <p class="so-cache-control-row__body">Removes expired SolidCache records only. Active cache entries remain eligible for hits.</p>
+        </div>
+
+        <div class="so-cache-control-row__action">
+          <%= button_to "Prune expired entries",
+                prune_cache_operations_path,
+                method: :post,
+                class: "so-btn",
+                form: {class: "so-form--inline"} %>
+        </div>
+      </div>
+
+      <div class="so-cache-control-row">
+        <div class="so-cache-control-row__copy">
+          <h3 class="so-cache-control-row__title">Clear all cache</h3>
+          <p class="so-cache-control-row__body">Evicts all cached application data. Requests may slow while the cache rebuilds.</p>
+        </div>
+
+        <div class="so-cache-control-row__action">
+          <%= render "confirm_clear" %>
+        </div>
+      </div>
+    </section>
+  <% else %>
+    <section class="so-card so-card--section" aria-labelledby="so-cache-controls-unavailable-title">
+      <header class="so-dashboard-section__header">
+        <h2 id="so-cache-controls-unavailable-title" class="so-dashboard-section__title">Operational controls</h2>
+      </header>
+
+      <p class="so-dashboard-section__meta so-dashboard-section__meta--idle"><%= cache_operations.unavailable_message %></p>
+    </section>
+  <% end %>
+</div>

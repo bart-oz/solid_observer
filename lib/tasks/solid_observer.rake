@@ -68,6 +68,35 @@ namespace :solid_observer do
     end
   end
 
+  namespace :cache do
+    desc "Clear all SolidCache entries after confirmation"
+    task clear: :environment do
+      if !SolidObserver::Services::CacheOperations.available?
+        puts SolidObserver::Services::CacheOperations.unavailable_message
+        next
+      end
+
+      print "#{SolidObserver::Services::CacheOperations.message(:clear, :confirmation)} (y/N) "
+      $stdout.flush
+
+      if $stdin.gets&.strip&.downcase == "y"
+        puts SolidObserver::Services::CacheOperations.clear[:message]
+      else
+        puts "Aborted"
+      end
+    end
+
+    desc "Prune expired SolidCache entries"
+    task prune: :environment do
+      if !SolidObserver::Services::CacheOperations.available?
+        puts SolidObserver::Services::CacheOperations.unavailable_message
+        next
+      end
+
+      puts SolidObserver::Services::CacheOperations.prune[:message]
+    end
+  end
+
   namespace :storage do
     desc "Run storage cleanup based on retention policy"
     task cleanup: :environment do

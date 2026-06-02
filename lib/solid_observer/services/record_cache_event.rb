@@ -15,15 +15,20 @@ module SolidObserver
       end
 
       def call
-        SolidObserver::Services::RecordCacheMetric.call(event: @event)
-        return unless should_store_event?
-
-        @buffer.push(build_event_data)
+        record_metric_and_event
       rescue => error
+        raise error if error.is_a?(NameError)
         Rails.logger&.warn("[SolidObserver] Cache event recording failed: #{error.message}") if defined?(Rails)
       end
 
       private
+
+      def record_metric_and_event
+        SolidObserver::Services::RecordCacheMetric.call(event: @event)
+        return unless should_store_event?
+
+        @buffer.push(build_event_data)
+      end
 
       def should_store_event?
         sampled? || slow? || errored?

@@ -154,6 +154,7 @@
     .so-toolbar-freshness { font-size: 0.75rem; color: var(--so-text-subtle); }
 
     /* SO-067 Focus rings */
+    .so-btn:focus-visible,
     select:focus-visible,
     .so-btn--refresh:focus-visible,
     .so-toggle--pill input:focus-visible + .so-toggle__track,
@@ -369,6 +370,48 @@
       .so-toggle__track, .so-toggle__thumb { transition: none; }
     }
 
+    .so-cache-controls { max-width: 820px; }
+    .so-cache-controls__intro {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .so-cache-controls__hint {
+      font-size: 0.875rem;
+      color: var(--so-text-subtle);
+      line-height: 1.5;
+    }
+    .so-cache-control-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 1rem;
+      align-items: center;
+      padding: 1rem 0;
+    }
+    .so-cache-control-row + .so-cache-control-row { border-top: 1px solid var(--so-border); }
+    .so-cache-control-row__copy { min-width: 0; }
+    .so-cache-control-row__title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--so-text);
+    }
+    .so-cache-control-row__body {
+      margin-top: 0.35rem;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      color: var(--so-text-subtle);
+    }
+    .so-cache-control-row__action {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .so-cache-control-row__action .so-form--inline {
+      display: flex;
+      justify-content: flex-end;
+    }
+
     .so-empty { text-align: center; padding: 3rem 1rem; color: var(--so-text-muted); }
     .so-empty__icon { font-size: 2rem; margin-bottom: 0.5rem; }
     .so-empty__message { font-size: 0.9rem; }
@@ -441,6 +484,10 @@
       .so-sidebar__mode { display: inline-block; padding: 0.5rem 1rem; border-top: none; margin-top: 0; font-size: 0.7rem; }
       .so-content { padding: 1rem; }
       .so-stat-cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+      .so-cache-control-row { grid-template-columns: 1fr; align-items: start; }
+      .so-cache-control-row__action,
+      .so-cache-control-row__action .so-form--inline { width: 100%; justify-content: stretch; }
+      .so-cache-control-row__action .so-btn { width: 100%; }
       .so-table { display: block; overflow-x: auto; }
     }
   </style>
@@ -463,6 +510,9 @@
         <% if SolidObserver.config.solid_cache_enabled? %>
           <div class="so-sidebar__section">Cache</div>
           <%= link_to "Overview", cache_dashboard_path, class: ("active" if controller_name == "dashboard" && @component.to_s == "cache"), "aria-current": (controller_name == "dashboard" && @component.to_s == "cache" ? "page" : nil) %>
+          <% if SolidObserver::Services::CacheOperations.available? %>
+            <%= link_to "Controls", cache_operations_path, class: ("active" if controller_name == "cache_operations"), "aria-current": (controller_name == "cache_operations" ? "page" : nil) %>
+          <% end %>
         <% end %>
       </nav>
       <div class="so-sidebar__mode">
@@ -473,10 +523,10 @@
     <main class="so-content" aria-labelledby="so-main-heading">
       <h1 class="sr-only" id="so-main-heading">Dashboard</h1>
       <% if flash[:notice] %>
-        <div class="so-flash so-flash--notice"><%= flash[:notice] %></div>
+        <div class="so-flash so-flash--notice" role="status" aria-live="polite"><%= flash[:notice] %></div>
       <% end %>
       <% if flash[:alert] %>
-        <div class="so-flash so-flash--alert"><%= flash[:alert] %></div>
+        <div class="so-flash so-flash--alert" role="alert"><%= flash[:alert] %></div>
       <% end %>
       <%= yield %>
     </main>
