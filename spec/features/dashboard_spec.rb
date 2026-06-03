@@ -237,6 +237,13 @@ RSpec.describe "Dashboard", type: :feature do
       visit "/solid_observer"
       expect(page).to have_css("[data-so-freshness]")
     end
+
+    it "renders Queue overview header with h1, status badge, and range caption" do
+      visit "/solid_observer"
+      expect(page).to have_css(".so-content__header h1", text: "Queue overview")
+      expect(page).to have_css(".so-badge.so-badge--pill", text: /Available/)
+      expect(page).to have_css(".so-queue-overview__intro")
+    end
   end
 
   context "in realtime mode" do
