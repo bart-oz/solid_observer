@@ -127,70 +127,100 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
     [status, headers, response_body]
   end
 
+  def seed_cache_dashboard_data(fixed_time)
+    SolidObserver::CacheMetric.create!(
+      event_type: "cache_read",
+      period_start: fixed_time.beginning_of_minute,
+      operations_count: 40,
+      hits_count: 30,
+      misses_count: 10,
+      errors_count: 4,
+      duration_total: 5.2
+    )
+    SolidObserver::CacheMetric.create!(
+      event_type: "cache_read",
+      period_start: 2.hours.ago.beginning_of_minute,
+      operations_count: 500,
+      hits_count: 400,
+      misses_count: 100,
+      errors_count: 0,
+      duration_total: 50.0
+    )
+
+    SolidObserver::CacheEvent.create!(
+      event_type: "cache_read",
+      key_digest: "abcdef1234567890",
+      hit: true,
+      duration: 0.003,
+      metadata: "{}",
+      recorded_at: 5.minutes.ago
+    )
+    SolidObserver::CacheEvent.create!(
+      event_type: "cache_write",
+      key_digest: "fedcba0987654321",
+      hit: nil,
+      duration: 1.2,
+      error_class: "RuntimeError",
+      error_message: "adapter internals should stay hidden",
+      metadata: "{}",
+      recorded_at: 3.minutes.ago
+    )
+    SolidObserver::CacheEvent.create!(
+      event_type: "cache_fetch",
+      key_digest: "1122334455667788",
+      hit: nil,
+      duration: nil,
+      metadata: "{}",
+      recorded_at: 2.minutes.ago
+    )
+    SolidObserver::CacheEvent.create!(
+      event_type: "cache_delete",
+      key_digest: "olddigest00000000",
+      hit: false,
+      duration: 0.001,
+      metadata: "{}",
+      recorded_at: 2.hours.ago
+    )
+    SolidCache::Entry.create!(key: "cache-key", value: "cached")
+  end
+
   it "defines the cache overview route on CacheDashboardController" do
     routes_source = File.read(File.expand_path("../../../config/routes.rb", __dir__))
 
     expect(routes_source).to include('get "cache", to: "cache_dashboard#index", as: :cache_dashboard')
   end
 
-  it "renders the cache overview with bounded summary data, chart empty state, and sampled events" do
+  it "exposes activity trends and stability from cache_dashboard_assignments" do
     fixed_time = Time.utc(2026, 6, 2, 12, 0, 0)
 
     travel_to(fixed_time) do
-      SolidObserver::CacheMetric.create!(
-        event_type: "cache_read",
-        period_start: fixed_time.beginning_of_minute,
-        operations_count: 40,
-        hits_count: 30,
-        misses_count: 10,
-        errors_count: 4,
-        duration_total: 5.2
-      )
-      SolidObserver::CacheMetric.create!(
-        event_type: "cache_read",
-        period_start: 2.hours.ago.beginning_of_minute,
-        operations_count: 500,
-        hits_count: 400,
-        misses_count: 100,
-        errors_count: 0,
-        duration_total: 50.0
-      )
+      seed_cache_dashboard_data(fixed_time)
 
-      SolidObserver::CacheEvent.create!(
-        event_type: "cache_read",
-        key_digest: "abcdef1234567890",
-        hit: true,
-        duration: 0.003,
-        metadata: "{}",
-        recorded_at: 5.minutes.ago
+      assignments = SolidObserver::CacheDashboardController.cache_dashboard_assignments(range_param: "15m")
+
+      expect(assignments).to include(cache_dashboard_available: true, range: "15m")
+      expect(assignments[:activity_trends]).to include(available: true)
+      expect(assignments[:stability]).to include(
+        available: true,
+        state: :critical,
+        error_count: 1,
+        slow_count: 0,
+        latest_recorded_at: 3.minutes.ago
       )
-      SolidObserver::CacheEvent.create!(
-        event_type: "cache_write",
-        key_digest: "fedcba0987654321",
-        hit: nil,
-        duration: 1.2,
-        error_class: "RuntimeError",
-        error_message: "adapter internals should stay hidden",
-        metadata: "{}",
-        recorded_at: 3.minutes.ago
-      )
-      SolidObserver::CacheEvent.create!(
-        event_type: "cache_fetch",
-        key_digest: "1122334455667788",
-        hit: nil,
-        duration: nil,
-        metadata: "{}",
-        recorded_at: 2.minutes.ago
-      )
-      SolidObserver::CacheEvent.create!(
-        event_type: "cache_delete",
-        key_digest: "olddigest00000000",
-        hit: false,
-        duration: 0.001,
-        metadata: "{}",
-        recorded_at: 2.hours.ago
-      )
-      SolidCache::Entry.create!(key: "cache-key", value: "cached")
+      expect(assignments[:stats][:activity_trends]).to eq(assignments[:activity_trends])
+      expect(assignments[:stats][:stability]).to eq(assignments[:stability])
+      expect(assignments[:storage_components].map { |snapshot| snapshot[:component] })
+        .to contain_exactly("cache_observer", "solid_cache")
+      expect(assignments[:recent_events].map(&:key_digest))
+        .to eq(%w[1122334455667788 fedcba0987654321 abcdef1234567890])
+    end
+  end
+
+  it "renders activity trends, stability, and sampled events for the selected range" do
+    fixed_time = Time.utc(2026, 6, 2, 12, 0, 0)
+
+    travel_to(fixed_time) do
+      seed_cache_dashboard_data(fixed_time)
 
       status, _headers, body = call_action("/solid_observer/cache?range=15m")
 
@@ -198,7 +228,9 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
       expect(body).to include("Cache overview")
       expect(body).to include("Available")
       expect(body).to include("Selected range: in last 15m · keys and values are never shown.")
-      expect(body).to include("Apply range")
+      expect(body).to include('onchange="this.form.submit()"')
+      expect(body).to include('<input type="submit" value="Apply range" hidden aria-hidden="true">')
+      expect(body).not_to include('<button type="submit"')
       expect(body).to include("Summary in selected range")
       expect(body).to include("75%")
       expect(body).to include("40")
@@ -206,7 +238,17 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
       expect(body).to include("130ms")
       expect(body).to include("SolidCache + cache observer")
       expect(body).to include("Activity trends")
-      expect(body).to include("No chart data in the selected range yet. Summary metrics still use bounded cache stats.")
+      expect(body).to include('data-so-spark="cache-hit-rate"')
+      expect(body).to include('data-so-spark="cache-operations"')
+      expect(body).to include('data-so-spark="cache-errors"')
+      expect(body).to match(/data-so-spark="cache-hit-rate".*?<polyline class="so-spark__line" points="[^"]+"/m)
+      expect(body).to match(/data-so-spark="cache-operations".*?<polyline class="so-spark__line" points="[^"]+"/m)
+      expect(body).to match(/data-so-spark="cache-errors".*?<polyline class="so-spark__line" points="[^"]+"/m)
+      expect(body).not_to include("No chart data in the selected range yet. Summary metrics still use bounded cache stats.")
+      expect(body).to include('data-so-zone="cache-stability"')
+      expect(body).to include("Stability")
+      expect(body).to include("Critical")
+      expect(body).to include("1 sampled cache error in the selected range")
       expect(body).to include("Sampled recent events")
       expect(body).to include("debug context only · no raw keys or values")
       expect(body).to include("abcdef1234…")

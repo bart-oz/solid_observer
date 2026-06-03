@@ -23,16 +23,26 @@
   <% if @cache_dashboard_available %>
     <form action="<%= request.path %>" method="get" class="so-dashboard-toolbar so-cache-dashboard__range-form">
       <label for="so-cache-range" class="so-card__label so-filters__label">Range</label>
-      <select id="so-cache-range" name="range">
+      <select id="so-cache-range" name="range" onchange="this.form.submit()">
         <% SolidObserver::Services::CacheStats::RANGES.each_key do |key| %>
           <option value="<%= key %>" <%= "selected" if key == @range %>><%= cache_range_label(key) %></option>
         <% end %>
       </select>
-      <button type="submit" class="so-btn">Apply range</button>
+      <input type="submit" value="Apply range" hidden aria-hidden="true">
     </form>
 
     <%= render "solid_observer/cache_dashboard/summary", stats: @stats, storage_components: @storage_components %>
     <%= render "solid_observer/cache_dashboard/charts" %>
+
+    <% if @stability&.[](:available) %>
+      <section class="so-stability" data-so-zone="cache-stability" aria-labelledby="so-cache-stability-heading">
+        <span class="so-stability__label" id="so-cache-stability-heading">Stability</span>
+        <%= cache_stability_badge(@stability[:state]) %>
+        <span class="so-stability__detail"><%= cache_stability_detail(@stability) %></span>
+        <a href="#so-cache-events-heading" class="so-stability__link">View sampled events →</a>
+      </section>
+    <% end %>
+
     <%= render "solid_observer/cache_dashboard/recent_events", recent_events: @recent_events %>
   <% else %>
     <section class="so-card so-card--section" aria-labelledby="so-cache-unavailable-heading">

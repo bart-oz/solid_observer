@@ -12,11 +12,14 @@ module SolidObserver
 
         range = SolidObserver::Services::CacheStats.parse_range(range_param)
         window = SolidObserver::Services::CacheStats.range_duration(range)
+        stats = SolidObserver::Services::CacheStats.call(window: window)
 
         {
           cache_dashboard_available: true,
           range: range,
-          stats: SolidObserver::Services::CacheStats.call(window: window),
+          stats: stats,
+          activity_trends: stats[:activity_trends],
+          stability: stats[:stability],
           storage_components: cache_storage_components,
           recent_events: recent_events(window)
         }
@@ -28,7 +31,9 @@ module SolidObserver
         {
           cache_dashboard_available: false,
           storage_components: [],
-          recent_events: []
+          recent_events: [],
+          activity_trends: SolidObserver::Services::CacheStats::ACTIVITY_TREND_EMPTY,
+          stability: SolidObserver::Services::CacheStats::STABILITY_EMPTY
         }
       end
 
