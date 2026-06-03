@@ -11,7 +11,7 @@
       <div class="so-cache-dashboard__intro">
         <span class="so-badge so-badge--pill <%= status_class %>">
           <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true">
-            <circle r="3" cx="3" cy="3" fill="currentColor" />
+            <circle r="3" cx="3" cy="3" />
           </svg>
           Available
         </span>
@@ -28,7 +28,7 @@
           <option value="<%= key %>" <%= "selected" if key == @range %>><%= cache_range_label(key) %></option>
         <% end %>
       </select>
-      <input type="submit" value="Apply range" hidden aria-hidden="true">
+      <button type="submit" class="so-btn so-btn--refresh">Refresh data</button>
     </form>
 
     <%= render "solid_observer/cache_dashboard/summary", stats: @stats, storage_components: @storage_components %>
@@ -50,7 +50,7 @@
         <h2 id="so-cache-unavailable-heading" class="so-dashboard-section__title">Cache dashboard unavailable</h2>
         <span class="so-badge so-badge--pill <%= status_class %>">
           <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true">
-            <circle r="3" cx="3" cy="3" fill="currentColor" />
+            <circle r="3" cx="3" cy="3" />
           </svg>
           Unavailable
         </span>

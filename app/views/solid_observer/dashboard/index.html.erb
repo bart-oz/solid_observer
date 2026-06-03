@@ -12,16 +12,17 @@
   <% else %>
   <%# Zone A: Toolbar — range selector, Refresh, Live toggle, help disclosure %>
   <div class="so-dashboard-toolbar" data-so-live>
-    <div class="so-dashboard-toolbar__left">
+    <form action="<%= request.path %>" method="get" class="so-dashboard-toolbar__left">
       <label for="so-range" class="so-card__label so-filters__label">Range</label>
-      <select id="so-range" name="range" data-so-range-select>
+      <select id="so-range" name="range" data-so-range-select onchange="this.form.submit()">
         <% SolidObserver::QueueStats::RANGES.each_key do |key| %>
           <option value="<%= key %>" <%= "selected" if key == @range %>><%= key %></option>
         <% end %>
       </select>
       <button type="button" class="so-btn so-btn--refresh" data-so-refresh aria-busy="false">Refresh data</button>
       <span class="so-toolbar-freshness" data-so-freshness aria-live="polite"></span>
-    </div>
+      <input type="hidden" name="live" value="<%= @live ? 'on' : '' %>">
+    </form>
     <div class="so-dashboard-toolbar__right">
       <label class="so-toggle so-toggle--pill <%= "so-toggle--on" if @live %>">
         <input type="checkbox" name="live" value="on" <%= "checked" if @live %> data-so-live-toggle>
