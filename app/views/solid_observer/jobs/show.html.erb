@@ -52,16 +52,16 @@
       <tbody>
         <tr>
           <td>Error Class</td>
-          <td><code><%= @execution.error.exception_class %></code></td>
+          <td><code><%= @execution.error["exception_class"] %></code></td>
         </tr>
         <tr>
           <td>Message</td>
-          <td><%= @execution.error.message %></td>
+          <td><%= @execution.error["message"] %></td>
         </tr>
       </tbody>
     </table>
     <div class="so-card__label">Backtrace</div>
-    <pre class="so-pre so-pre--error"><code><%= @execution.error.backtrace&.first(20)&.join("\n") || "No backtrace available" %></code></pre>
+    <pre class="so-pre so-pre--error"><code><%= @execution.error["backtrace"]&.first(20)&.join("\n") || "No backtrace available" %></code></pre>
   </div>
 
   <div class="so-actions">

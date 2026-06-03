@@ -256,4 +256,54 @@ RSpec.describe "Jobs", type: :feature do
       end
     end
   end
+
+  context "when showing a failed execution with a serialized error payload" do
+    before do
+      ensure_solid_queue_tables!
+      stub_solid_queue_models!
+      SolidQueue::FailedExecution.serialize :error, coder: JSON
+      SolidObserver.config.storage_mode = :persistence
+
+      SolidQueue::ReadyExecution.delete_all
+      SolidQueue::ScheduledExecution.delete_all
+      SolidQueue::ClaimedExecution.delete_all
+      SolidQueue::FailedExecution.delete_all
+      SolidQueue::Job.delete_all
+
+      now = Time.current
+      failed_job = SolidQueue::Job.create!(
+        queue_name: "default",
+        class_name: "FailedHashErrorJob",
+        priority: 0,
+        created_at: now - 1.minute,
+        updated_at: now - 1.minute
+      )
+      @failed_execution = SolidQueue::FailedExecution.create!(
+        job: failed_job,
+        error: {
+          "exception_class" => "SolidQueue::Processes::ProcessExitError",
+          "message" => "Process pid=8471 exited unexpectedly. Received unhandled signal 6.",
+          "backtrace" => nil
+        },
+        created_at: now - 1.minute
+      )
+    end
+
+    after do
+      SolidQueue::ReadyExecution.delete_all if defined?(SolidQueue::ReadyExecution)
+      SolidQueue::ScheduledExecution.delete_all if defined?(SolidQueue::ScheduledExecution)
+      SolidQueue::ClaimedExecution.delete_all if defined?(SolidQueue::ClaimedExecution)
+      SolidQueue::FailedExecution.delete_all if defined?(SolidQueue::FailedExecution)
+      SolidQueue::Job.delete_all if defined?(SolidQueue::Job)
+    end
+
+    it "renders the error details from the Hash payload" do
+      visit "/solid_observer/jobs/#{@failed_execution.id}?status=failed"
+
+      expect(page.status_code).to eq(200)
+      expect(page).to have_content("SolidQueue::Processes::ProcessExitError")
+      expect(page).to have_content("Process pid=8471 exited unexpectedly")
+      expect(page).to have_content("No backtrace available")
+    end
+  end
 end
