@@ -34,6 +34,7 @@ detectors:
       - SolidObserver::DashboardController#assign_range_and_stats
       - SolidObserver::Queries::EventsQuery#call
       - SolidObserver::CacheEventBuffer#flush!
+      - SolidObserver::ApplicationHelper#mode_badge
 
   LongParameterList:
     exclude:

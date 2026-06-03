@@ -397,7 +397,8 @@
 
     .so-cache-controls { max-width: 820px; }
     .so-cache-dashboard__intro,
-    .so-cache-controls__intro {
+    .so-cache-controls__intro,
+    .so-queue-overview__intro {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -405,7 +406,8 @@
       margin-top: 0.5rem;
     }
     .so-cache-dashboard__hint,
-    .so-cache-controls__hint {
+    .so-cache-controls__hint,
+    .so-queue-overview__hint {
       font-size: 0.875rem;
       color: var(--so-text-subtle);
       line-height: 1.5;
@@ -414,7 +416,8 @@
       align-items: center;
       margin-bottom: 2rem;
     }
-    .so-cache-dashboard__range-form select {
+    .so-cache-dashboard__range-form select,
+    .so-dashboard-toolbar select {
       padding: 0.4rem 0.6rem;
       border: 1px solid var(--so-border);
       border-radius: var(--so-radius);
@@ -550,7 +553,6 @@
           <%= link_to "Jobs", jobs_path, class: ("active" if controller_name == "jobs"), "aria-current": (controller_name == "jobs" ? "page" : nil) %>
           <% if persistence_mode? %>
             <%= link_to "Events", events_path, class: ("active" if controller_name == "events"), "aria-current": (controller_name == "events" ? "page" : nil) %>
-            <%= link_to "Storage", storage_path, class: ("active" if controller_name == "storages"), "aria-current": (controller_name == "storages" ? "page" : nil) %>
           <% end %>
         <% end %>
 
@@ -560,6 +562,10 @@
           <% if SolidObserver::Services::CacheOperations.available? %>
             <%= link_to "Controls", cache_operations_path, class: ("active" if controller_name == "cache_operations"), "aria-current": (controller_name == "cache_operations" ? "page" : nil) %>
           <% end %>
+        <% end %>
+
+        <% if persistence_mode? && (SolidObserver.config.solid_queue_enabled? || SolidObserver.config.solid_cache_enabled?) %>
+          <%= link_to "Storage", storage_path, class: ("active" if controller_name == "storages"), "aria-current": (controller_name == "storages" ? "page" : nil) %>
         <% end %>
       </nav>
       <div class="so-sidebar__mode">
