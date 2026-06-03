@@ -7,35 +7,39 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="Version"></a>
+  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.4.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.98%25-brightgreen.svg" alt="Coverage"></a>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.22%25-brightgreen.svg" alt="Coverage"></a>
 </p>
 
 ---
 <p align="center">
-  <img src=".github/assets/dash_1.png" alt="Dashboard overview" width="700">
+  <a href=".github/assets/dash_1.png"><img src=".github/assets/dash_1.png" alt="SolidObserver dashboard overview" width="700"></a>
 </p>
 
-SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. Starting with **Solid Queue** monitoring in v0.3.0, it provides unified visibility into your background job processing with a Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
+SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. v0.4.0 covers both **Solid Queue** and **Solid Cache** with a unified Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
 
-## Features (v0.3.0)
+## Features (v0.4.0)
 
-- 🖥️ **Web UI Dashboard** — Live queue stats, job browser, event log, and storage info
-- 📊 **Real-time Queue Status** — Monitor jobs across all states (ready, scheduled, claimed, failed)
-- 🔍 **Job Management CLI** — List, inspect, retry, and discard failed jobs
-- 💾 **Storage Monitoring** — Track database size and event counts
-- 🔗 **Distributed Tracing** — Correlate jobs with APM tools (Datadog, Sentry, OpenTelemetry)
-- ⚡ **High Performance** — Buffered writes, configurable sampling, minimal overhead
-- 🛡️ **Production Ready** — Docker/CI/K8s safe boot, automatic cleanup, size limits, retention policies
-- 🚀 **Two Operating Modes** — Real-time (no migrations) or persistence (full event history)
+| | Solid Queue | Solid Cache |
+|---|---|---|
+| **Web UI Dashboard** | Queue stats, jobs browser, events log | Hit rate, ops/sec, error rate, avg duration |
+| **Storage footprint** | DB size, event counts | SolidCache table size, row counts |
+| **Activity trends** | Sparklines (Performed, Ready, Failed) | Activity trend sparklines |
+| **Stability indicator** | Stable / Degraded / Critical badge | Stability pill badge |
+| **Operational controls** | Retry / discard failed jobs | Prune expired entries, clear all entries |
+| **CLI tools** | status, jobs:list/show/retry/discard | cache:prune, cache:clear |
+| **Privacy** | Job arguments excluded from persisted events | Keys and values **never** shown |
+| **Operating modes** | Real-time (no DB) or persistence (full history) | Persistence mode only |
+
+Additional: 🔗 APM distributed tracing · ⚡ buffered writes · 🛡️ Docker/CI/K8s safe boot
 
 ## Requirements
 
 - Ruby 3.2+
 - Rails 8.0+
-- Solid Queue (properly configured for all environments)
+- Solid Queue (configured with `connects_to` in all environments)
 
 > **Note:** Ensure Solid Queue is configured with `connects_to` in all environments, not just production. See [Troubleshooting](#troubleshooting) if you encounter database connection issues.
 
@@ -169,14 +173,6 @@ Configuration:
 
 SolidObserver ships with a zero-dependency Web UI (no asset pipeline, no JS framework) at `/solid_observer`.
 
-<table>
-  <tr>
-    <td align="center"><a href=".github/assets/dash_1.png"><img src=".github/assets/dash_1.png" alt="Dashboard overview" width="250"></a></td>
-    <td align="center"><a href=".github/assets/dash_2.png"><img src=".github/assets/dash_2.png" alt="Dashboard jobs and events" width="250"></a></td>
-    <td align="center"><a href=".github/assets/dash_3.png"><img src=".github/assets/dash_3.png" alt="Dashboard storage and details" width="250"></a></td>
-  </tr>
-</table>
-
 ### Mount
 
 The install generator mounts it for you. To mount manually:
@@ -186,7 +182,7 @@ The install generator mounts it for you. To mount manually:
 mount SolidObserver::Engine, at: "/solid_observer"
 ```
 
-### Configuration
+### Auth Configuration
 
 ```ruby
 SolidObserver.configure do |config|
@@ -200,42 +196,94 @@ end
 | Option | Default | Purpose |
 |---|---|---|
 | `ui_enabled` | `!Rails.env.production?` | Master switch for the Web UI |
-| `ui_username` / `ui_password` | `nil` | HTTP Basic Auth credentials. Auth is enabled only when **both** are set; if either is missing or `nil`, the UI is unauthenticated |
-| `ui_base_controller` | `"ApplicationController"` | Name of your host app's base controller. SolidObserver does **not** inherit from it; the value is used to detect API-only apps so the engine can include the rendering modules its dashboard needs |
+| `ui_username` / `ui_password` | `nil` | HTTP Basic Auth. Auth is enabled only when **both** are set |
+| `ui_base_controller` | `"ApplicationController"` | Detect API-only apps to include rendering modules |
 
-Live polling cadence is hardcoded at 5s.
-
-### Production hardening (recommended)
-
-The snippet above silently disables auth if `ENV["SOLID_OBSERVER_PASSWORD"]` is unset (fail-open with a boot warning — see Caveats). For production, prefer one of these patterns so a missing env var fails loudly at boot rather than shipping an unauthenticated UI:
-
-```ruby
-# Option A: fail at boot if the password env var is missing
-SolidObserver.configure do |config|
-  config.ui_username = "admin"
-  config.ui_password = ENV.fetch("SOLID_OBSERVER_PASSWORD")  # raises KeyError if unset
-end
-
-# Option B: only enable auth when the env var is present (no auth otherwise)
-SolidObserver.configure do |config|
-  if (password = ENV["SOLID_OBSERVER_PASSWORD"]).present?
-    config.ui_username = "admin"
-    config.ui_password = password
-  end
-end
-```
-
-Option A is best when the UI must always be authenticated in production (a missing env var crashes boot — you find out immediately). Option B is best when the UI is optional in some environments.
+For production hardening (fail-loud on missing env var vs. fail-open), see [Configuration](#configuration) below.
 
 ### Caveats
 
-- **Realtime mode** (`storage_mode: :realtime`) — Events and Storage navigation links are hidden. Direct visits to `/solid_observer/events` or `/solid_observer/storage` redirect to the dashboard with a flash alert (`This page is not available in real-time mode`).
-- **API-only apps** — the Web UI works in API-only Rails apps without manual configuration. SolidObserver's engine ships its own Cookies/Session/Flash middleware stack scoped to `/solid_observer/*` requests, so the dashboard renders, flash messages display, and retry/discard CSRF forms work even when the host app has `config.api_only = true`. The host app's middleware stack is not modified.
-- **Custom API base controller** — if your host app's API base controller is **not** named `ApplicationController`, set `config.ui_base_controller` to its name (e.g. `"Api::BaseController"`). The engine uses this only to detect `ActionController::API` ancestry; if detected, it includes `ActionView::Layouts`, `ActionView::Rendering`, and `ActionController::RequestForgeryProtection` so layouts and CSRF forms render.
-- **Host-app callbacks are not inherited.** SolidObserver does not run your host app's `before_action`s or authentication. Use `ui_username` / `ui_password` for the engine's built-in HTTP Basic Auth.
-- **Auth misconfiguration is fail-open, but loud.** If you set `ui_username` but `ui_password` resolves to `nil` (e.g. an unset ENV var), the UI ships unauthenticated rather than locking everyone out — and the engine logs a `WARNING` at boot naming the missing credential. Verify both are set in production.
+- **Realtime mode** — Events and Storage navigation links are hidden. Direct visits redirect with a flash alert.
+- **API-only apps** — the Web UI works without manual configuration. The engine ships its own Cookies/Session/Flash middleware stack scoped to `/solid_observer/*`.
+- **Host-app callbacks are not inherited.** Use `ui_username` / `ui_password` for built-in HTTP Basic Auth.
+- **Auth misconfiguration is fail-open, but loud.** If `ui_username` is set but `ui_password` resolves to `nil`, the UI ships unauthenticated and logs a boot `WARNING`.
+
+See the full component breakdown in [Components](#components) below.
+
+## Components
+
+### Solid Queue Observability
+
+Live queue stats, job browser (all states: ready/scheduled/claimed/failed), events log, time-range selector (15m → 14d), sparklines for Performed/Ready/Failed, stability indicator, retry/discard with confirmation dialogs. Realtime and persistence modes supported.
+
+<table>
+  <tr>
+    <td align="center"><a href=".github/assets/dash_2.png"><img src=".github/assets/dash_2.png" alt="Queue overview — 1d range" width="340"></a></td>
+    <td align="center"><a href=".github/assets/dash_3.png"><img src=".github/assets/dash_3.png" alt="Jobs list" width="340"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href=".github/assets/dash_4.png"><img src=".github/assets/dash_4.png" alt="Failed job detail" width="340"></a></td>
+    <td align="center"><a href=".github/assets/dash_5.png"><img src=".github/assets/dash_5.png" alt="Events stream" width="340"></a></td>
+  </tr>
+</table>
+
+**CLI commands (Solid Queue):**
+
+```bash
+bin/rails solid_observer:status                                # Queue overview
+bin/rails solid_observer:jobs:list                             # All active jobs
+bin/rails "solid_observer:jobs:list[failed]"                   # Failed jobs
+bin/rails "solid_observer:jobs:show[JOB_ID]"                   # Job details
+bin/rails "solid_observer:jobs:retry[JOB_ID]"                  # Retry failed job
+bin/rails "solid_observer:jobs:discard[JOB_ID]"                # Discard failed job
+bin/rails solid_observer:buffer:flush                          # Flush event buffer
+bin/rails solid_observer:buffer:clear                          # Clear buffer without saving
+```
+
+### Solid Cache Observability
+
+Cache dashboard shows hit rate, operations/sec, error rate, average duration, storage footprint, activity trend sparklines, and a stability pill. Cache controls page provides prune and clear operations. **Keys and values are never shown** — only aggregate metrics are collected.
+
+<table>
+  <tr>
+    <td align="center"><a href=".github/assets/dash_6.png"><img src=".github/assets/dash_6.png" alt="Cache overview dashboard" width="340"></a></td>
+    <td align="center"><a href=".github/assets/dash_7.png"><img src=".github/assets/dash_7.png" alt="Cache operational controls" width="340"></a></td>
+  </tr>
+</table>
+
+**Enabling Cache observability:**
+
+SolidCache must be configured in your host app (Rails 8 default). Then enable in the SolidObserver initializer:
+
+```ruby
+SolidObserver.configure do |config|
+  config.observe_cache = true  # default: false
+end
+```
+
+`solid_cache_enabled?` is `true` when both `observe_cache = true` and SolidCache is available in the host app.
+
+**CLI commands (Solid Cache):**
+
+```bash
+bin/rails solid_observer:cache:clear  # Clear all SolidCache entries (with confirmation)
+bin/rails solid_observer:cache:prune  # Prune expired SolidCache entries
+```
+
+### Storage
+
+The Storage page aggregates per-component health rows: Queue Observer database, Cache Observer, and SolidCache table sizes. Each row reports size, record counts, and a status indicator.
+
+<p align="center">
+  <a href=".github/assets/dash_8.png"><img src=".github/assets/dash_8.png" alt="Component health — Queue Observer + Cache Observer + SolidCache" width="700"></a>
+</p>
+
+For adapter notes and multi-adapter setup, see [Database Setup](#database-setup-persistence-mode) below.
 
 ## Configuration
+
+<details>
+<summary>Show full configuration reference</summary>
 
 After installation, configure SolidObserver in `config/initializers/solid_observer.rb`:
 
@@ -248,6 +296,9 @@ SolidObserver.configure do |config|
 
   # Enable queue monitoring (default: true)
   config.observe_queue = true
+
+  # Enable cache monitoring (default: false; requires SolidCache in host app)
+  config.observe_cache = true
 
   # Data Retention (persistence mode only)
   config.event_retention = 30.days    # Keep events for 30 days
@@ -265,8 +316,6 @@ end
 ```
 
 ### APM Integration
-
-Connect SolidObserver with your Application Performance Monitoring tool for distributed tracing:
 
 ```ruby
 SolidObserver.configure do |config|
@@ -294,6 +343,26 @@ end
 
 When configured, all job events will include your correlation ID, allowing you to trace jobs back to the originating request.
 
+### Production hardening (recommended)
+
+```ruby
+# Option A: fail at boot if the password env var is missing
+SolidObserver.configure do |config|
+  config.ui_username = "admin"
+  config.ui_password = ENV.fetch("SOLID_OBSERVER_PASSWORD")  # raises KeyError if unset
+end
+
+# Option B: only enable auth when the env var is present (no auth otherwise)
+SolidObserver.configure do |config|
+  if (password = ENV["SOLID_OBSERVER_PASSWORD"]).present?
+    config.ui_username = "admin"
+    config.ui_password = password
+  end
+end
+```
+
+</details>
+
 ## CLI Reference
 
 **Available in both modes (real-time and persistence):**
@@ -315,8 +384,10 @@ When configured, all job events will include your correlation ID, allowing you t
 | `solid_observer:buffer:clear` | Clear buffer without saving |
 | `solid_observer:storage:cleanup` | Run retention-based cleanup |
 | `solid_observer:storage:purge` | Delete ALL SolidObserver data |
+| `solid_observer:cache:clear` | Clear all SolidCache entries (with confirmation) |
+| `solid_observer:cache:prune` | Prune expired SolidCache entries |
 
-> **Note:** Storage commands manage **SolidObserver's storage** (event logs, metrics, snapshots) — not Solid Queue's jobs. To manage jobs, use `jobs:discard` or `jobs:retry`.
+> **Note:** Storage commands manage **SolidObserver's storage** (event logs, metrics, snapshots) — not Solid Queue's jobs. Cache commands operate on SolidCache entries in the host app's cache store.
 
 ### Jobs List Arguments
 
@@ -330,30 +401,11 @@ Arguments are positional: `[status, queue, job_class, limit]`
 | 4th | Max results (default: 20) | `50` |
 
 ```bash
-# Examples
 bin/rails solid_observer:jobs:list                           # All ready jobs
 bin/rails "solid_observer:jobs:list[failed]"                 # Failed jobs
 bin/rails "solid_observer:jobs:list[ready,mailers]"          # Ready jobs in mailers queue
 bin/rails "solid_observer:jobs:list[failed,,,50]"            # 50 failed jobs (skip queue/class)
 ```
-
-### Buffer & Storage Management (Persistence Mode)
-
-```bash
-# Flush in-memory buffer to database
-bin/rails solid_observer:buffer:flush
-
-# Clear buffer without saving (loses pending events!)
-bin/rails solid_observer:buffer:clear
-
-# Run cleanup based on retention policy (default: 30 days)
-bin/rails solid_observer:storage:cleanup
-
-# Delete ALL SolidObserver data (events + snapshots, interactive confirmation)
-bin/rails solid_observer:storage:purge
-```
-
-> **Important:** `storage:purge` deletes SolidObserver's monitoring data, NOT your Solid Queue jobs. Your queued jobs remain safe.
 
 ## Database Setup (Persistence Mode)
 
@@ -361,7 +413,12 @@ bin/rails solid_observer:storage:purge
 
 **SolidObserver works with any main application database** — PostgreSQL, MySQL, or SQLite.
 
-For its own monitoring data, the install generator defaults to a **separate SQLite database** — file-based, no extra infrastructure needed. The example below is what `rails generate solid_observer:install` produces:
+For its own monitoring data, the install generator defaults to a **separate SQLite database** — file-based, no extra infrastructure needed.
+
+<details>
+<summary>Show multi-adapter setup and configuration details</summary>
+
+The example below is what `rails generate solid_observer:install` produces:
 
 ```yaml
 # config/database.yml (generator default)
@@ -371,16 +428,16 @@ solid_observer_queue:
   database: storage/<%= Rails.env %>_solid_observer_queue.sqlite3
 ```
 
-> **Note:** SQLite is the generator default, not a requirement. The `solid_observer_queue` database can use any Rails-supported adapter for record persistence. Adapter-native **storage-size monitoring** is currently implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. On other adapters, the size query returns `nil` and the engine logs a single `[SolidObserver] Unknown adapter for DatabaseSize: …` warning — record persistence still works, but the size column on the dashboard will be empty until adapter support is added.
+> **Note:** SQLite is the generator default, not a requirement. The `solid_observer_queue` database can use any Rails-supported adapter for record persistence. Adapter-native **storage-size monitoring** is currently implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. On other adapters, the size query returns `nil` and the engine logs a single `[SolidObserver] Unknown adapter for DatabaseSize: …` warning — record persistence still works.
 
 ### Multi-adapter setup
 
-If your host application uses one database adapter (e.g. PostgreSQL) and you want SolidObserver to use a different adapter (e.g. SQLite — for isolation, simpler ops, or to avoid loading observability traffic onto your primary DB), keep the `solid_observer_queue` block **self-contained** — do not rely on `<<: *default`. The generator default (shown above) uses `<<: *default` with an explicit `adapter: sqlite3` override; that is safe on SQLite-primary hosts where the anchor is also SQLite. On a PostgreSQL host, merging `<<: *default` without an explicit adapter override pulls the PG adapter into the observer connection and fails at `db:create` with `PG::SyntaxError` (PG treating a SQLite file path as a database name). For multi-adapter connections, omit the merge entirely, as shown below.
+If your host application uses PostgreSQL and you want SolidObserver to use SQLite, keep the `solid_observer_queue` block **self-contained** — do not rely on `<<: *default`. The generator default uses `<<: *default` with an explicit `adapter: sqlite3` override; that is safe on SQLite-primary hosts. On a PostgreSQL host, merging `<<: *default` without an explicit adapter override pulls the PG adapter in and fails at `db:create`. For multi-adapter connections, omit the merge entirely:
 
 ```yaml
 # config/database.yml
 default: &default
-  adapter: postgresql           # host's adapter
+  adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
 
@@ -388,7 +445,6 @@ development:
   primary:
     <<: *default
     database: my_app_development
-  # ... cache / queue / cable on PG ...
 
   solid_observer_queue:
     adapter: sqlite3            # explicit override — do NOT merge *default
@@ -398,7 +454,7 @@ development:
     migrations_paths: db/solid_observer_migrate
 ```
 
-Apply the same pattern to `test:` and `production:`. For production with SQLite, ensure the `storage/` path is on persistent disk (not ephemeral container storage) — otherwise prefer PostgreSQL for the observer DB too.
+Apply the same pattern to `test:` and `production:`. For production with SQLite, ensure the `storage/` path is on persistent disk.
 
 **Bundler note (PG-only hosts):** if your `Gemfile` does not already include `sqlite3`, add it:
 
@@ -406,20 +462,18 @@ Apply the same pattern to `test:` and `production:`. For production with SQLite,
 gem "sqlite3", "~> 2.0"
 ```
 
-then `bundle install`. SolidObserver does not declare `sqlite3` as a runtime dependency — adapter choice is yours.
+**`migrations_paths` is recommended** to isolate SolidObserver's migrations from the host's primary `db/migrate/` folder. When `migrations_paths` is set on `solid_observer_queue`, `bin/rails solid_observer:install:migrations` copies migrations to that path automatically.
 
-**`migrations_paths` is recommended** to isolate SolidObserver's migrations from the host's primary `db/migrate/` folder. This prevents Rails from running SolidObserver's migrations against your primary database (which would create an unused `solid_observer_queue_events` table there). When `migrations_paths` is set on `solid_observer_queue`, `bin/rails solid_observer:install:migrations` copies migrations to that path automatically — no manual `mv` required.
+</details>
 
 ## Roadmap
-
-SolidObserver is actively developed. Here's what's coming:
 
 | Version | Focus | Status |
 |---------|-------|--------|
 | v0.1.0 | Solid Queue monitoring, CLI tools | ✅ Released |
 | v0.1.1 | Real-time mode (no migrations needed) | ✅ Released |
-| v0.3.0 | Web UI dashboard + stability hardening | ✅ Current |
-| v0.4.0 | Solid Cache monitoring | 🔜 Planned |
+| v0.3.0 | Web UI dashboard + stability hardening | ✅ Released |
+| v0.4.0 | Solid Cache monitoring | ✅ Current |
 | v0.5.0 | Solid Cable monitoring | 🔜 Planned |
 | v0.6.0 | Cross-component correlation, health scores | 🔜 Planned |
 | v0.7.0 | Alerting & notifications | 🔜 Planned |
@@ -478,7 +532,7 @@ config.solid_queue.connects_to = { database: { writing: :queue } }
 
 ### Multi-database setup
 
-> **See also:** [Multi-adapter setup](#multi-adapter-setup) in the Database Setup section for the full pattern (explicit `adapter:` override, `gem "sqlite3"` Bundler note, `migrations_paths` rationale).
+> **See also:** [Multi-adapter setup](#multi-adapter-setup) in the Database Setup section for the full pattern.
 
 SolidObserver works with Rails multi-database configurations. Quick-reference example with PostgreSQL as your primary database and SQLite for SolidObserver's storage:
 
@@ -487,7 +541,6 @@ development:
   primary:
     adapter: postgresql
     database: myapp_development
-    # ... PostgreSQL settings
   solid_observer_queue:
     adapter: sqlite3
     database: storage/development_solid_observer_queue.sqlite3
