@@ -60,7 +60,15 @@ module SolidObserver
     def status_badge(status)
       status_str = status.to_s
       color = STATUS_COLORS.fetch(status_str, "default")
-      content_tag(:span, status_str.humanize, class: "so-badge so-badge--#{color}")
+      dot = tag.svg(
+        tag.circle(r: 3, cx: 3, cy: 3),
+        class: "so-badge__dot",
+        viewBox: "0 0 6 6",
+        "aria-hidden": "true"
+      )
+      tag.span(class: "so-badge so-badge--pill so-badge--#{color}") do
+        safe_join([dot, status_str.humanize], " ")
+      end
     end
 
     def duration_with_semantic(value, event_type)
@@ -72,7 +80,15 @@ module SolidObserver
     def mode_badge
       config = SolidObserver.config
       color = config.persistence_mode? ? "info" : "warning"
-      content_tag(:span, config.storage_mode.to_s.capitalize, class: "so-badge so-badge--#{color}")
+      dot = tag.svg(
+        tag.circle(r: 3, cx: 3, cy: 3),
+        class: "so-badge__dot",
+        viewBox: "0 0 6 6",
+        "aria-hidden": "true"
+      )
+      tag.span(class: "so-badge so-badge--pill so-badge--#{color}") do
+        safe_join([dot, config.storage_mode.to_s.capitalize], " ")
+      end
     end
 
     def turbo_frame_tag(id, **options, &block)
@@ -117,7 +133,7 @@ module SolidObserver
     def cache_event_outcome_badge(event)
       meta = cache_event_outcome_meta(event)
       dot = tag.svg(
-        tag.circle(r: 3, cx: 3, cy: 3, fill: "currentColor"),
+        tag.circle(r: 3, cx: 3, cy: 3),
         class: "so-badge__dot",
         viewBox: "0 0 6 6",
         "aria-hidden": "true"

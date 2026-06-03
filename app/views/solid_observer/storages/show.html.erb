@@ -21,7 +21,7 @@
             <div class="so-card__label"><%= component[:label] %></div>
             <div class="so-card__subtitle">
               <span class="so-badge so-badge--pill <%= status_class %>">
-                <span aria-hidden="true">●</span>
+                <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true"><circle r="3" cx="3" cy="3"/></svg>
                 <%= component[:available] ? "Available" : "Unavailable" %>
               </span>
             </div>
