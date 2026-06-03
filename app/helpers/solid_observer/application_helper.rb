@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
+require_relative "dashboard_helper"
+
 module SolidObserver
   module ApplicationHelper
+    include SolidObserver::DashboardHelper
+
     STATUS_COLORS = {
       "completed" => "success",
       "ready" => "success",
@@ -88,12 +92,11 @@ module SolidObserver
     end
 
     def stability_badge(stats)
-      meta = STABILITY_STATES.fetch(stability_state(stats))
-      dot = tag.svg(tag.circle(r: 3, cx: 3, cy: 3),
-        class: "so-badge__dot", viewBox: "0 0 6 6", "aria-hidden": "true")
-      tag.span(class: "so-badge so-badge--pill so-badge--#{meta[:tone]}") do
-        safe_join([dot, meta[:label]], " ")
-      end
+      stability_badge_for(stability_state(stats))
+    end
+
+    def cache_stability_badge(state)
+      stability_badge_for(state.to_sym)
     end
 
     def cache_ratio_percent(value)
@@ -137,6 +140,20 @@ module SolidObserver
       CACHE_RANGE_LABELS.fetch(range_key.to_s, "in selected range")
     end
 
+    def cache_stability_detail(stability)
+      state = (stability || {})[:state]&.to_sym
+      state = :stable unless STABILITY_STATES.key?(state)
+
+      case state
+      when :critical
+        critical_cache_stability_detail(stability)
+      when :degraded
+        degraded_cache_stability_detail(stability)
+      else
+        "No sampled cache errors or slow events in the selected range"
+      end
+    end
+
     def stability_detail(stats)
       failures_24h = stats[:failed_last_24h].to_i
       return "No failures in the last 24h" if failures_24h.zero?
@@ -162,6 +179,31 @@ module SolidObserver
     end
 
     private
+
+    def stability_badge_for(state)
+      meta = STABILITY_STATES.fetch(state)
+      dot = tag.svg(tag.circle(r: 3, cx: 3, cy: 3),
+        class: "so-badge__dot", viewBox: "0 0 6 6", "aria-hidden": "true")
+      tag.span(class: "so-badge so-badge--pill so-badge--#{meta[:tone]}") do
+        safe_join([dot, meta[:label]], " ")
+      end
+    end
+
+    def critical_cache_stability_detail(stability)
+      detail = pluralize(stability[:error_count].to_i, "sampled cache error")
+      slow_count = stability[:slow_count].to_i
+      detail = "#{detail} and #{pluralize(slow_count, "slow event")}" if slow_count.positive?
+      "#{detail} in the selected range#{cache_stability_latest_suffix(stability[:latest_recorded_at])}"
+    end
+
+    def degraded_cache_stability_detail(stability)
+      detail = pluralize(stability[:slow_count].to_i, "slow sampled cache event")
+      "#{detail} in the selected range#{cache_stability_latest_suffix(stability[:latest_recorded_at])}"
+    end
+
+    def cache_stability_latest_suffix(timestamp)
+      timestamp ? ", latest #{time_ago_in_words(timestamp)} ago" : ""
+    end
 
     def cache_storage_total_bytes(snapshots)
       snapshots.sum { |snapshot| snapshot[:db_size_bytes].to_i }

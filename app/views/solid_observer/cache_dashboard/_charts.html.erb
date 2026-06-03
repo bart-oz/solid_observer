@@ -4,8 +4,37 @@
   </header>
 
   <div class="so-chart-strip">
-    <div class="so-card so-cache-dashboard__chart-empty">
-      <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-range">No chart data in the selected range yet. Summary metrics still use bounded cache stats.</p>
-    </div>
+    <% if @activity_trends&.[](:available) %>
+      <figure class="so-spark" data-so-spark="cache-hit-rate">
+        <figcaption class="so-spark__label">Hit rate <span data-so-range-copy><%= cache_range_label(@range) %></span></figcaption>
+        <svg class="so-spark__svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+          <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
+          <polyline class="so-spark__line" points="<%= spark_points(@activity_trends[:hit_rate]) %>"/>
+        </svg>
+        <span class="so-spark__value"><%= cache_ratio_percent(@stats[:hit_rate]) %></span>
+      </figure>
+
+      <figure class="so-spark" data-so-spark="cache-operations">
+        <figcaption class="so-spark__label">Operations total <span data-so-range-copy><%= cache_range_label(@range) %></span></figcaption>
+        <svg class="so-spark__svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+          <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
+          <polyline class="so-spark__line" points="<%= spark_points(@activity_trends[:operations]) %>"/>
+        </svg>
+        <span class="so-spark__value"><%= number_with_delimiter(@stats[:operations_count].to_i) %></span>
+      </figure>
+
+      <figure class="so-spark" data-so-spark="cache-errors">
+        <figcaption class="so-spark__label">Errors total <span data-so-range-copy><%= cache_range_label(@range) %></span></figcaption>
+        <svg class="so-spark__svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+          <line class="so-spark__baseline" x1="1" x2="119" y1="31" y2="31"/>
+          <polyline class="so-spark__line" points="<%= spark_points(@activity_trends[:errors]) %>"/>
+        </svg>
+        <span class="so-spark__value"><%= number_with_delimiter(@stats[:errors_count].to_i) %></span>
+      </figure>
+    <% else %>
+      <div class="so-card so-cache-dashboard__chart-empty">
+        <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-range">No chart data in the selected range yet. Summary metrics still use bounded cache stats.</p>
+      </div>
+    <% end %>
   </div>
 </section>
