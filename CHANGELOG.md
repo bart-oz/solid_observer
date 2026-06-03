@@ -1,3 +1,24 @@
+## [0.4.0] - 2026-06-03
+
+Headline: **Solid Cache observability** — multi-component foundation, cache dashboard, operational controls, and shared storage health.
+
+### Added
+- **Multi-component SolidObserver foundation** (SO-070) — refactored engine, configuration, and storage to support multiple Solid Stack components alongside Solid Queue. Introduced `observe_cache` config flag (default `false`).
+- **Cache telemetry foundation** (SO-071) — `CacheSubscriber` hooks into `ActiveSupport::Notifications` cache events; collects hit/miss/write/delete/prune operations with duration and error tracking. Keys and values are never recorded.
+- **Cache metrics aggregation** (SO-072) — `CacheMetricsAggregator` computes hit rate, operations/sec, error rate, and average duration from raw cache events; scoped to configurable time windows.
+- **Multi-component storage health** (SO-073) — Storage page aggregates Queue Observer DB, Cache Observer, and SolidCache table sizes into unified per-component rows with status indicators.
+- **Cache operational controls** (SO-074) — Cache controls dashboard page; `solid_observer:cache:clear` and `solid_observer:cache:prune` rake tasks; CSRF-protected prune/clear actions in the Web UI.
+- **Cache dashboard** (SO-075) — `/solid_observer/cache_dashboard` — hit rate, ops/sec, error rate, avg duration, storage footprint, activity trend sparklines, and stability pill.
+- **Cache overview activity trends and health parity** (SO-077) — activity trend sparklines on the cache dashboard; stability indicator parity with the Queue dashboard.
+
+### Fixed
+- **SolidCache storage snapshot TypeError** (SO-076) — `StorageInfoSnapshot` raised `TypeError: nil can't be coerced into Integer` on PostgreSQL hosts when SolidCache table names resolved to `nil`. Fixed with a nil-table-name guard on the PG size query path.
+- **Failed-job error payload read as Hash** (SO-079) — `Jobs::Show` raised `NoMethodError` when the serialised `SolidQueue::FailedExecution#error` payload was a plain `Hash` instead of an `ActiveSupport::HashWithIndifferentAccess`. Now reads both representations safely.
+
+### Changed
+- **Cross-tab styling consistency** (SO-078) — unified badge colours, font sizes, and border radii across Queue and Cache dashboard tabs so both surfaces share the same visual language.
+- **Dashboard headers, select heights, and Storage nav** (SO-080) — normalised `<h1>` sizing, select control heights, and Storage navigation link to be consistent across all component tabs; Storage promoted to top-level nav item.
+
 ## [0.3.0] - 2026-05-25
 
 > Note: there is no separate `0.2.0` gem release — work originally scoped for v0.2.0 (stability + refactoring, SO-040 through SO-049) was folded into this release.
