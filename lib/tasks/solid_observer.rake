@@ -40,30 +40,48 @@ namespace :solid_observer do
   end
 
   namespace :buffer do
-    desc "Flush the event buffer to the database"
+    desc "Flush the event buffers to the database"
     task flush: :environment do
-      buffer = SolidObserver::QueueEventBuffer.instance
-      buffer_size = buffer.size
+      buffers = [
+        {label: "queue events", buffer: SolidObserver::QueueEventBuffer.instance},
+        {label: "cache events", buffer: SolidObserver::CacheEventBuffer.instance},
+        {label: "cache metric buckets", buffer: SolidObserver::CacheMetricBuffer.instance}
+      ]
+      buffer_sizes = buffers.to_h { |entry| [entry, entry[:buffer].size] }
 
-      if buffer_size.zero?
-        puts "Buffer is empty, nothing to flush"
+      if buffer_sizes.values.sum.zero?
+        puts "Buffers are empty, nothing to flush"
       else
-        puts "Flushing #{buffer_size} events from buffer..."
-        buffer.flush!
-        puts "✓ Buffer flushed successfully"
+        buffers.each do |entry|
+          size = buffer_sizes.fetch(entry)
+          next if size.zero?
+
+          puts "Flushing #{size} #{entry[:label]} from buffer..."
+          entry[:buffer].flush!
+        end
+        puts "✓ Buffers flushed successfully"
       end
     end
 
-    desc "Clear the event buffer without flushing to database"
+    desc "Clear the event buffers without flushing to database"
     task clear: :environment do
-      buffer = SolidObserver::QueueEventBuffer.instance
-      buffer_size = buffer.size
+      buffers = [
+        {label: "queue events", buffer: SolidObserver::QueueEventBuffer.instance},
+        {label: "cache events", buffer: SolidObserver::CacheEventBuffer.instance},
+        {label: "cache metric buckets", buffer: SolidObserver::CacheMetricBuffer.instance}
+      ]
+      buffer_sizes = buffers.to_h { |entry| [entry, entry[:buffer].size] }
 
-      if buffer_size.zero?
-        puts "Buffer is already empty"
+      if buffer_sizes.values.sum.zero?
+        puts "Buffers are already empty"
       else
-        buffer.clear
-        puts "✓ Cleared #{buffer_size} events from buffer (not saved to database)"
+        buffers.each do |entry|
+          size = buffer_sizes.fetch(entry)
+          next if size.zero?
+
+          entry[:buffer].clear
+          puts "✓ Cleared #{size} #{entry[:label]} from buffer (not saved to database)"
+        end
       end
     end
   end

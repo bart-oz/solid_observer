@@ -245,58 +245,82 @@ RSpec.describe "solid_observer rake tasks" do
     end
 
     describe "solid_observer:buffer:flush" do
-      let(:buffer) { instance_double(SolidObserver::QueueEventBuffer) }
+      let(:queue_buffer) { instance_double(SolidObserver::QueueEventBuffer) }
+      let(:cache_event_buffer) { instance_double(SolidObserver::CacheEventBuffer) }
+      let(:cache_metric_buffer) { instance_double(SolidObserver::CacheMetricBuffer) }
 
       before do
-        allow(SolidObserver::QueueEventBuffer).to receive(:instance).and_return(buffer)
+        allow(SolidObserver::QueueEventBuffer).to receive(:instance).and_return(queue_buffer)
+        allow(SolidObserver::CacheEventBuffer).to receive(:instance).and_return(cache_event_buffer)
+        allow(SolidObserver::CacheMetricBuffer).to receive(:instance).and_return(cache_metric_buffer)
       end
 
-      it "flushes buffer when it has events" do
-        allow(buffer).to receive(:size).and_return(5)
-        allow(buffer).to receive(:flush!)
+      it "flushes queue event, cache event, and cache metric buffers when present" do
+        allow(queue_buffer).to receive(:size).and_return(5)
+        allow(cache_event_buffer).to receive(:size).and_return(2)
+        allow(cache_metric_buffer).to receive(:size).and_return(3)
+        allow(queue_buffer).to receive(:flush!)
+        allow(cache_event_buffer).to receive(:flush!)
+        allow(cache_metric_buffer).to receive(:flush!)
 
         expect {
           Rake::Task["solid_observer:buffer:flush"].invoke
-        }.to output(/Flushing 5 events.*Buffer flushed successfully/m).to_stdout
+        }.to output(/Flushing 5 queue events.*Flushing 2 cache events.*Flushing 3 cache metric buckets.*Buffers flushed successfully/m).to_stdout
 
-        expect(buffer).to have_received(:flush!)
+        expect(queue_buffer).to have_received(:flush!)
+        expect(cache_event_buffer).to have_received(:flush!)
+        expect(cache_metric_buffer).to have_received(:flush!)
       end
 
-      it "reports empty buffer when no events" do
-        allow(buffer).to receive(:size).and_return(0)
+      it "reports empty buffers when no buffers have data" do
+        allow(queue_buffer).to receive(:size).and_return(0)
+        allow(cache_event_buffer).to receive(:size).and_return(0)
+        allow(cache_metric_buffer).to receive(:size).and_return(0)
 
         expect {
           reenable_all_tasks
           Rake::Task["solid_observer:buffer:flush"].invoke
-        }.to output(/Buffer is empty, nothing to flush/).to_stdout
+        }.to output(/Buffers are empty, nothing to flush/).to_stdout
       end
     end
 
     describe "solid_observer:buffer:clear" do
-      let(:buffer) { instance_double(SolidObserver::QueueEventBuffer) }
+      let(:queue_buffer) { instance_double(SolidObserver::QueueEventBuffer) }
+      let(:cache_event_buffer) { instance_double(SolidObserver::CacheEventBuffer) }
+      let(:cache_metric_buffer) { instance_double(SolidObserver::CacheMetricBuffer) }
 
       before do
-        allow(SolidObserver::QueueEventBuffer).to receive(:instance).and_return(buffer)
+        allow(SolidObserver::QueueEventBuffer).to receive(:instance).and_return(queue_buffer)
+        allow(SolidObserver::CacheEventBuffer).to receive(:instance).and_return(cache_event_buffer)
+        allow(SolidObserver::CacheMetricBuffer).to receive(:instance).and_return(cache_metric_buffer)
       end
 
-      it "clears buffer when it has events" do
-        allow(buffer).to receive(:size).and_return(3)
-        allow(buffer).to receive(:clear)
+      it "clears queue event, cache event, and cache metric buffers when present" do
+        allow(queue_buffer).to receive(:size).and_return(3)
+        allow(cache_event_buffer).to receive(:size).and_return(2)
+        allow(cache_metric_buffer).to receive(:size).and_return(1)
+        allow(queue_buffer).to receive(:clear)
+        allow(cache_event_buffer).to receive(:clear)
+        allow(cache_metric_buffer).to receive(:clear)
 
         expect {
           Rake::Task["solid_observer:buffer:clear"].invoke
-        }.to output(/Cleared 3 events from buffer/).to_stdout
+        }.to output(/Cleared 3 queue events.*Cleared 2 cache events.*Cleared 1 cache metric buckets/m).to_stdout
 
-        expect(buffer).to have_received(:clear)
+        expect(queue_buffer).to have_received(:clear)
+        expect(cache_event_buffer).to have_received(:clear)
+        expect(cache_metric_buffer).to have_received(:clear)
       end
 
-      it "reports already empty when no events" do
-        allow(buffer).to receive(:size).and_return(0)
+      it "reports already empty when all buffers are empty" do
+        allow(queue_buffer).to receive(:size).and_return(0)
+        allow(cache_event_buffer).to receive(:size).and_return(0)
+        allow(cache_metric_buffer).to receive(:size).and_return(0)
 
         expect {
           reenable_all_tasks
           Rake::Task["solid_observer:buffer:clear"].invoke
-        }.to output(/Buffer is already empty/).to_stdout
+        }.to output(/Buffers are already empty/).to_stdout
       end
     end
 

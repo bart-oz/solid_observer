@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "cache_event_buffer"
+require_relative "services/flush_cache_metrics"
+require_relative "cache_metric_buffer"
 require_relative "cache_subscriber"
 require_relative "services/record_cache_event"
 require_relative "services/record_cache_metric"
