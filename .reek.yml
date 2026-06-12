@@ -8,8 +8,6 @@ detectors:
   TooManyInstanceVariables:
     exclude:
       - SolidObserver::Configuration
-      - SolidObserver::QueueEventBuffer
-      - SolidObserver::CacheEventBuffer
       - SolidObserver::JobsController
       - SolidObserver::EventsController
       - SolidObserver::DashboardController
@@ -22,7 +20,6 @@ detectors:
       - CreateSolidObserverQueueEvents#change
       - CreateSolidObserverMetrics#change
       - AddCompositeIndexesToQueueEvents#change
-      - SolidObserver::QueueEventBuffer#flush!
       - SolidObserver::CLI::Base#table
       - SolidObserver::CLI::Base#confirm
       - SolidObserver::CLI::Status#print_queue_depths
@@ -33,7 +30,6 @@ detectors:
       - SolidObserver::EventsController#index
       - SolidObserver::DashboardController#assign_range_and_stats
       - SolidObserver::Queries::EventsQuery#call
-      - SolidObserver::CacheEventBuffer#flush!
       - SolidObserver::ApplicationHelper#mode_badge
 
   LongParameterList:
@@ -80,8 +76,6 @@ detectors:
       - SolidObserver::CorrelationIdResolver#resolve
       - SolidObserver::CorrelationIdResolver#log_generator_error
       - SolidObserver::Services::CleanupStorage#check_storage_warnings
-      - SolidObserver::QueueEventBuffer#flush!
-      - SolidObserver::QueueEventBuffer#record_flush_failure
       - SolidObserver::Services::RecordEvent#handle_error
       - SolidObserver::CLI::Status#print_queue_stats
       - SolidObserver::CLI::Status#print_queue_table
@@ -91,7 +85,6 @@ detectors:
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::CLI::Storage#print_section_header
       - SolidObserver::CLI::Storage#print_storage_table
-      - SolidObserver::CacheEventBuffer#flush!
 
   InstanceVariableAssumption:
     exclude:
@@ -105,8 +98,6 @@ detectors:
   MissingSafeMethod:
     exclude:
       - SolidObserver::Subscriber
-      - SolidObserver::QueueEventBuffer
-      - SolidObserver::CacheEventBuffer
       - SolidObserver::Configuration
       - SolidObserver::CacheSubscriber
 
@@ -147,8 +138,6 @@ detectors:
   TooManyMethods:
     exclude:
       - SolidObserver::CLI::Jobs
-      - SolidObserver::QueueEventBuffer
-      - SolidObserver::CacheEventBuffer
       - SolidObserver::Configuration
       - SolidObserver::Engine
       - SolidObserver::Services::RecordCacheEvent

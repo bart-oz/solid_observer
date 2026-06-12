@@ -1,27 +1,29 @@
 # frozen_string_literal: true
 
+require_relative "../cache_metric_buffer"
+
 module SolidObserver
   module Services
     class RecordCacheMetric
-      def self.call(event:)
-        new(event).call
+      def self.call(event:, buffer: SolidObserver::CacheMetricBuffer.instance)
+        new(event, buffer).call
       end
 
-      def initialize(event)
+      def initialize(event, buffer)
         @event = event
+        @buffer = buffer
       end
 
       def call
-        metric = SolidObserver::CacheMetric.find_or_create_by!(
+        @buffer.increment(
           event_type: event_type,
-          period_start: period_start
+          period_start: period_start,
+          operations_count: 1,
+          hits_count: hit_increment,
+          misses_count: miss_increment,
+          errors_count: error_increment,
+          duration_total: duration_in_seconds
         )
-
-        SolidObserver::CacheMetric
-          .where(id: metric.id)
-          .update_all(update_values)
-      rescue ActiveRecord::RecordNotUnique
-        retry
       rescue => error
         Rails.logger&.warn("[SolidObserver] Cache metric recording failed: #{error.message}") if defined?(Rails)
       end
@@ -34,16 +36,6 @@ module SolidObserver
 
       def event_type
         @event.name.delete_suffix(".active_support")
-      end
-
-      def update_values
-        {
-          operations_count: Arel.sql("operations_count + 1"),
-          hits_count: Arel.sql("hits_count + #{hit_increment}"),
-          misses_count: Arel.sql("misses_count + #{miss_increment}"),
-          errors_count: Arel.sql("errors_count + #{error_increment}"),
-          duration_total: Arel.sql("duration_total + #{duration_in_seconds}")
-        }
       end
 
       def hit_increment

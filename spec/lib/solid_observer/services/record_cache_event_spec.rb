@@ -7,6 +7,18 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
   let(:payload) { {key: "user:42", hit: true, super_operation: :fetch} }
   let(:event) { ActiveSupport::Notifications::Event.new("cache_read.active_support", Time.current, Time.current + 0.01, "id", payload) }
 
+  before do
+    SolidObserver.reset_configuration!
+    SolidObserver::CacheMetricBuffer.instance.clear
+    SolidObserver::CacheMetricBuffer.instance.shutdown
+  end
+
+  after do
+    SolidObserver::CacheMetricBuffer.instance.clear
+    SolidObserver::CacheMetricBuffer.instance.shutdown
+    SolidObserver.reset_configuration!
+  end
+
   it "stores safe metadata and a non-raw key digest" do
     allow(Kernel).to receive(:rand).and_return(1.0)
     allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 1.0, cache_slow_threshold: 1.0, cache_store_errors: true)
@@ -32,6 +44,20 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
     described_class.call(event: event, buffer: buffer)
 
     expect(SolidObserver::Services::RecordCacheMetric).to have_received(:call).with(event: event)
+    expect(buffer).not_to have_received(:push)
+  end
+
+  it "emits no solid_observer_cache_metrics SQL on the notification callback path" do
+    SolidObserver.config.buffer_size = 1000
+    allow(Kernel).to receive(:rand).and_return(0.9)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 0.0, cache_slow_threshold: 10.0, cache_store_errors: true)
+
+    sql = capture_sql do
+      described_class.call(event: event, buffer: buffer)
+    end
+
+    expect(sql.grep(/solid_observer_cache_metrics/i)).to be_empty
+    expect(SolidObserver::CacheMetricBuffer.instance.size).to eq(1)
     expect(buffer).not_to have_received(:push)
   end
 
@@ -81,5 +107,17 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
       "[SolidObserver] Cache event recording failed: missing table"
     )
     expect(buffer).not_to have_received(:push)
+  end
+
+  def capture_sql
+    statements = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |_name, _started, _finished, _id, sql_payload|
+      statements << sql_payload[:sql]
+    end
+
+    yield
+    statements
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
   end
 end
