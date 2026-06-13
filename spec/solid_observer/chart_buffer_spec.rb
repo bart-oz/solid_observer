@@ -3,6 +3,13 @@
 require "spec_helper"
 
 RSpec.describe SolidObserver::ChartBuffer do
+  let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
+
+  before do
+    allow(Rails).to receive(:cache).and_return(cache_store)
+    described_class.clear
+  end
+
   after do
     described_class.clear
     SolidObserver.reset_configuration!
@@ -19,6 +26,20 @@ RSpec.describe SolidObserver::ChartBuffer do
             {t: Time.utc(2026, 5, 10, 12, 0, 0).to_i, v: 4},
             {t: Time.utc(2026, 5, 10, 12, 0, 20).to_i, v: 7}
           ]
+        )
+      end
+    end
+
+    it "shares samples across distinct instances via shared cache storage" do
+      first_instance = described_class.new
+      second_instance = described_class.new
+      sample_time = Time.utc(2026, 5, 10, 12, 0, 0)
+
+      travel_to(sample_time) do
+        first_instance.append(11, at: sample_time)
+
+        expect(second_instance.recent(60)).to eq(
+          [{t: sample_time.to_i, v: 11}]
         )
       end
     end
@@ -67,6 +88,30 @@ RSpec.describe SolidObserver::ChartBuffer do
       samples = described_class.recent(10.years.to_i)
       expect(samples.size).to eq(400)
       expect(samples).to all(include(:t, :v))
+    end
+
+    it "falls back to shared process-local storage when cache access fails" do
+      broken_cache_store = instance_double(ActiveSupport::Cache::Store)
+      first_instance = described_class.new
+      second_instance = described_class.new
+      sample_time = Time.utc(2026, 5, 10, 12, 0, 0)
+
+      allow(Rails).to receive(:cache).and_return(broken_cache_store)
+      allow(broken_cache_store).to receive(:read).and_raise(StandardError, "cache unavailable")
+      allow(broken_cache_store).to receive(:write).and_raise(StandardError, "cache unavailable")
+      allow(broken_cache_store).to receive(:delete).and_raise(StandardError, "cache unavailable")
+
+      travel_to(sample_time) do
+        first_instance.append(12, at: sample_time)
+
+        expect(second_instance.recent(60)).to eq(
+          [{t: sample_time.to_i, v: 12}]
+        )
+
+        second_instance.clear
+
+        expect(first_instance.recent(60)).to eq([])
+      end
     end
   end
 

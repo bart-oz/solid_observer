@@ -123,10 +123,10 @@ module SolidObserver
         class EventCounts
           attr_reader :error_count, :slow_count, :latest_recorded_at
 
-          def initialize
-            @error_count = 0
-            @slow_count = 0
-            @latest_recorded_at = nil
+          def initialize(error_count: 0, slow_count: 0, latest_recorded_at: nil)
+            @error_count = error_count.to_i
+            @slow_count = slow_count.to_i
+            @latest_recorded_at = latest_recorded_at
           end
 
           def record(recorded_at:, error_class:, duration:)
@@ -181,21 +181,37 @@ module SolidObserver
         attr_reader :window, :current_time
 
         def event_counts
-          counts = EventCounts.new
+          error_count, slow_count, latest_recorded_at = SolidObserver::CacheEvent.where(recorded_at: window_range).pick(
+            Arel.sql("COUNT(CASE WHEN #{error_condition_sql} THEN 1 END)"),
+            Arel.sql("COUNT(CASE WHEN #{slow_condition_sql} THEN 1 END)"),
+            Arel.sql("MAX(CASE WHEN #{tracked_condition_sql} THEN recorded_at END)")
+          )
 
-          SolidObserver::CacheEvent.where(recorded_at: window_range).pluck(
-            :recorded_at,
-            :duration,
-            :error_class
-          ).each do |recorded_at, duration, error_class|
-            counts.record(recorded_at: recorded_at, error_class: error_class, duration: duration)
-          end
-
-          counts
+          EventCounts.new(
+            error_count: error_count,
+            slow_count: slow_count,
+            latest_recorded_at: latest_recorded_at
+          )
         end
 
         def window_range
           (current_time - window)..current_time
+        end
+
+        def tracked_condition_sql
+          "(#{error_condition_sql}) OR (#{slow_condition_sql})"
+        end
+
+        def error_condition_sql
+          "error_class IS NOT NULL AND TRIM(error_class) != ''"
+        end
+
+        def slow_condition_sql
+          "(error_class IS NULL OR TRIM(error_class) = '') AND duration >= #{slow_threshold}"
+        end
+
+        def slow_threshold
+          SolidObserver.config.cache_slow_threshold.to_f
         end
       end
 
@@ -218,7 +234,8 @@ module SolidObserver
         current_time = Time.current
         dashboard_response(window: window, current_time: current_time)
       rescue => error
-        error_response(error.message)
+        Rails.logger&.error("[SolidObserver] CacheStats call failed: #{error.class} #{error.message}") if defined?(Rails)
+        error_response
       end
 
       private
@@ -308,7 +325,7 @@ module SolidObserver
         numerator.to_f / denominator
       end
 
-      def error_response(message)
+      def error_response
         {
           hit_rate: 0.0,
           throughput: 0.0,
@@ -321,7 +338,7 @@ module SolidObserver
           duration_total: 0.0,
           activity_trends: ACTIVITY_TREND_EMPTY.dup,
           stability: STABILITY_EMPTY.dup,
-          error: message
+          error: "Service temporarily unavailable"
         }
       end
     end

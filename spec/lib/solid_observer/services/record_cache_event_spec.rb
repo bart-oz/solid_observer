@@ -47,6 +47,25 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
     expect(buffer).not_to have_received(:push)
   end
 
+  it "skips SolidObserver-internal cache keys for both metrics and event storage" do
+    internal_event = ActiveSupport::Notifications::Event.new(
+      "cache_write.active_support",
+      Time.current,
+      Time.current + 0.01,
+      "id",
+      {key: "solid_observer/chart_buffer/ready_samples", hit: true, super_operation: :fetch}
+    )
+
+    allow(Kernel).to receive(:rand).and_return(0.0)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 1.0, cache_slow_threshold: 0.0, cache_store_errors: true)
+    allow(SolidObserver::Services::RecordCacheMetric).to receive(:call)
+
+    described_class.call(event: internal_event, buffer: buffer)
+
+    expect(SolidObserver::Services::RecordCacheMetric).not_to have_received(:call)
+    expect(buffer).not_to have_received(:push)
+  end
+
   it "emits no solid_observer_cache_metrics SQL on the notification callback path" do
     SolidObserver.config.buffer_size = 1000
     allow(Kernel).to receive(:rand).and_return(0.9)

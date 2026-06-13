@@ -122,7 +122,7 @@ namespace :solid_observer do
       puts "Running storage cleanup (retention: #{retention.inspect})..."
 
       deleted_count = SolidObserver::Services::CleanupStorage.call
-      puts "✓ Cleanup complete: #{deleted_count} old events deleted"
+      puts "✓ Cleanup complete: #{deleted_count} old telemetry rows deleted"
     end
 
     desc "Purge ALL SolidObserver storage data (use with caution!)"
@@ -132,10 +132,30 @@ namespace :solid_observer do
 
       confirmation = $stdin.gets&.strip&.downcase
       if confirmation == "y"
-        event_count = SolidObserver::QueueEvent.count
+        data_source_exists = lambda do |model|
+          table_name = model.table_name.to_s
+          !table_name.empty? && model.connection.data_source_exists?(table_name)
+        rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::StatementInvalid, TypeError
+          false
+        end
+
+        telemetry_models = [
+          {label: :queue_events, model: SolidObserver::QueueEvent},
+          {label: :cache_events, model: SolidObserver::CacheEvent},
+          {label: :cache_metrics, model: SolidObserver::CacheMetric}
+        ]
+
+        telemetry_counts = telemetry_models.to_h do |entry|
+          count = data_source_exists.call(entry[:model]) ? entry[:model].count : 0
+          [entry[:label], count]
+        end
         snapshot_count = SolidObserver::StorageInfo.count
 
-        SolidObserver::QueueEvent.delete_all
+        telemetry_models.each do |entry|
+          next unless data_source_exists.call(entry[:model])
+
+          entry[:model].delete_all
+        end
         SolidObserver::StorageInfo.delete_all
 
         connection = SolidObserver::QueueEvent.connection
@@ -144,12 +164,23 @@ namespace :solid_observer do
           connection.execute("VACUUM")
           puts "✓ Database vacuumed to reclaim disk space"
         when "postgresql"
-          connection.execute("ANALYZE solid_observer_queue_events")
-          connection.execute("ANALYZE solid_observer_storage_info")
+          [
+            SolidObserver::QueueEvent.table_name,
+            SolidObserver::StorageInfo.table_name,
+            (SolidObserver::CacheEvent.table_name if data_source_exists.call(SolidObserver::CacheEvent)),
+            (SolidObserver::CacheMetric.table_name if data_source_exists.call(SolidObserver::CacheMetric))
+          ].compact.each do |table_name|
+            connection.execute("ANALYZE #{table_name}")
+          end
           puts "✓ Database tables analyzed"
         end
 
-        puts "✓ Purged #{event_count} events and #{snapshot_count} storage snapshots"
+        puts(
+          "✓ Purged #{telemetry_counts.fetch(:queue_events)} queue events, " \
+          "#{telemetry_counts.fetch(:cache_events)} cache events, " \
+          "#{telemetry_counts.fetch(:cache_metrics)} cache metrics, " \
+          "and #{snapshot_count} storage snapshots"
+        )
       else
         puts "Aborted"
       end

@@ -5,6 +5,57 @@ require_relative "database_size"
 module SolidObserver
   module Services
     class StorageInfoSnapshot
+      class RecordCount
+        def initialize(connection, table_name)
+          @connection = connection
+          @table_name = table_name
+        end
+
+        def solid_cache_count
+          case adapter_key
+          when :postgresql then postgresql_approximate_count
+          when :mysql then mysql_approximate_count
+          else
+            yield
+          end
+        end
+
+        private
+
+        attr_reader :connection, :table_name
+
+        def adapter_key
+          case connection.adapter_name.to_s.downcase
+          when /postgres|postgis/ then :postgresql
+          when "mysql2", "trilogy", "mysql" then :mysql
+          else
+            :other
+          end
+        end
+
+        def postgresql_approximate_count
+          quoted_table = connection.quote(table_name)
+
+          connection.query_value(<<~SQL.squish)&.to_i || 0
+            SELECT COALESCE(
+              (SELECT reltuples::bigint FROM pg_class WHERE oid = to_regclass(#{quoted_table})),
+              0
+            )
+          SQL
+        end
+
+        def mysql_approximate_count
+          quoted_table = connection.quote(table_name)
+
+          connection.query_value(<<~SQL)&.to_i || 0
+            SELECT COALESCE(table_rows, 0)
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+              AND table_name = #{quoted_table}
+          SQL
+        end
+      end
+
       Component = Struct.new(:key, :label, :record_label, :model, :enabled, keyword_init: true) do
         def enabled?
           enabled.call
@@ -16,14 +67,6 @@ module SolidObserver
 
         def storage_model
           model.call
-        end
-
-        def data_source_exists?(connection, table_name)
-          connection.data_source_exists?(table_name)
-        end
-
-        def database_size(connection, table_name)
-          DatabaseSize.call(connection: connection, table_name: table_name)
         end
 
         def snapshot
@@ -71,16 +114,24 @@ module SolidObserver
           record_model = storage_model
           connection = record_model.connection
           table_name = record_model.table_name.to_s
-          return table_unavailable_snapshot if table_name.empty? || !data_source_exists?(connection, table_name)
+          return unavailable_snapshot(reason: "Table unavailable") unless data_source_available?(connection, table_name)
 
           available_snapshot(
-            db_size_bytes: database_size(connection, table_name),
-            event_count: record_model.count
+            db_size_bytes: DatabaseSize.call(connection: connection, table_name: table_name),
+            event_count: snapshot_event_count(record_model, connection, table_name)
           )
         end
 
-        def table_unavailable_snapshot
-          unavailable_snapshot(reason: "Table unavailable")
+        def data_source_available?(connection, table_name)
+          !table_name.empty? && connection.data_source_exists?(table_name)
+        end
+
+        def snapshot_event_count(record_model, connection, table_name)
+          record_count = RecordCount.new(connection, table_name)
+          exact_count = -> { record_model.count }
+          return exact_count.call unless solid_cache?
+
+          record_count.solid_cache_count(&exact_count)
         end
       end
 

@@ -5,6 +5,8 @@ require "digest"
 module SolidObserver
   module Services
     class RecordCacheEvent
+      INTERNAL_CACHE_KEY_PREFIX = "solid_observer/"
+
       def self.call(event:, buffer:)
         new(event, buffer).call
       end
@@ -15,6 +17,8 @@ module SolidObserver
       end
 
       def call
+        return if internal_cache_event?
+
         record_metric_and_event
       rescue => error
         raise error if error.is_a?(NameError)
@@ -136,6 +140,25 @@ module SolidObserver
 
       def payload
         @event.payload || {}
+      end
+
+      def internal_cache_event?
+        internal_cache_key?(payload[:key])
+      end
+
+      def internal_cache_key?(key)
+        case key
+        when Array
+          nested_internal_cache_key?(key)
+        when Hash
+          nested_internal_cache_key?(key.flatten(1))
+        else
+          key.to_s.start_with?(INTERNAL_CACHE_KEY_PREFIX)
+        end
+      end
+
+      def nested_internal_cache_key?(entries)
+        entries.any? { |entry| internal_cache_key?(entry) }
       end
     end
   end
