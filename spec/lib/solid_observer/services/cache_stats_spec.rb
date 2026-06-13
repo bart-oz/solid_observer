@@ -155,6 +155,32 @@ RSpec.describe SolidObserver::Services::CacheStats do
       )
     end
 
+    it "keeps latest_recorded_at scoped to slow or errored events" do
+      slow_recorded_at = 4.minutes.ago
+      SolidObserver::CacheEvent.create!(
+        event_type: "cache_write",
+        key_digest: "slow-event",
+        duration: 0.25,
+        metadata: "{}",
+        recorded_at: slow_recorded_at
+      )
+      SolidObserver::CacheEvent.create!(
+        event_type: "cache_write",
+        key_digest: "fast-event",
+        duration: 0.01,
+        metadata: "{}",
+        recorded_at: 1.minute.ago
+      )
+
+      expect(stability_data).to include(
+        available: true,
+        state: :degraded,
+        error_count: 0,
+        slow_count: 1,
+        latest_recorded_at: slow_recorded_at
+      )
+    end
+
     it "classifies the range as critical when error events are present" do
       SolidObserver::CacheEvent.create!(
         event_type: "cache_write",
@@ -254,6 +280,63 @@ RSpec.describe SolidObserver::Services::CacheStats do
       errors_count: 0,
       duration_total: 0.0
     )
-    expect(stats[:error]).to eq("missing table")
+    expect(stats[:error]).to eq("Service temporarily unavailable")
+  end
+
+  it "degrades stability on ActiveRecord::StatementInvalid from cache events query, preserving other data" do
+    allow(SolidObserver::CacheEvent).to receive(:where).and_raise(
+      ActiveRecord::StatementInvalid.new("no such table: solid_observer_cache_events")
+    )
+
+    stats = described_class.call(window: 5.minutes)
+
+    expect(stats).not_to have_key(:error)
+    expect(stats[:stability]).to include(available: false, state: :stable)
+  end
+
+  it "preserves metric totals and trends when only the cache events (stability) query fails" do
+    now = Time.current
+    SolidObserver::CacheMetric.create!(
+      event_type: "cache_read",
+      period_start: now.beginning_of_minute,
+      operations_count: 100,
+      hits_count: 70,
+      misses_count: 30,
+      errors_count: 5,
+      duration_total: 12.5
+    )
+
+    allow(SolidObserver::CacheEvent).to receive(:where).and_raise(
+      ActiveRecord::StatementInvalid.new("no such table: solid_observer_cache_events")
+    )
+
+    stats = described_class.call(window: 5.minutes)
+
+    expect(stats).not_to have_key(:error)
+    expect(stats[:operations_count]).to eq(100)
+    expect(stats[:hits_count]).to eq(70)
+    expect(stats[:hit_rate]).to be > 0.0
+    expect(stats[:throughput]).to be > 0.0
+    expect(stats[:stability]).to include(available: false, state: :stable)
+  end
+
+  it "sanitizes non-ActiveRecord errors in fallback" do
+    allow(SolidObserver::CacheMetric).to receive(:where).and_raise(
+      TypeError.new("no implicit conversion of nil into String")
+    )
+
+    stats = described_class.call(window: 5.minutes)
+
+    expect(stats[:error]).to eq("Service temporarily unavailable")
+  end
+
+  it "sanitizes generic RuntimeError in fallback without leaking message" do
+    allow(SolidObserver::CacheMetric).to receive(:where).and_raise(
+      RuntimeError.new("PG::DuplicateTable: relation \"cache_entries\" already exists")
+    )
+
+    stats = described_class.call(window: 5.minutes)
+
+    expect(stats[:error]).to eq("Service temporarily unavailable")
   end
 end

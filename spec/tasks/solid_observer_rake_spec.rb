@@ -331,7 +331,7 @@ RSpec.describe "solid_observer rake tasks" do
 
         expect {
           Rake::Task["solid_observer:storage:cleanup"].invoke
-        }.to output(/Running storage cleanup.*Cleanup complete: 42 old events deleted/m).to_stdout
+        }.to output(/Running storage cleanup.*Cleanup complete: 42 old telemetry rows deleted/m).to_stdout
 
         expect(SolidObserver::Services::CleanupStorage).to have_received(:call)
       end
@@ -341,13 +341,22 @@ RSpec.describe "solid_observer rake tasks" do
       before do
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(100)
         allow(SolidObserver::QueueEvent).to receive(:delete_all)
+        allow(SolidObserver::CacheEvent).to receive(:count).and_return(40)
+        allow(SolidObserver::CacheEvent).to receive(:delete_all)
+        allow(SolidObserver::CacheMetric).to receive(:count).and_return(25)
+        allow(SolidObserver::CacheMetric).to receive(:delete_all)
         allow(SolidObserver::StorageInfo).to receive(:count).and_return(10)
         allow(SolidObserver::StorageInfo).to receive(:delete_all)
 
         connection = instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter)
         allow(SolidObserver::QueueEvent).to receive(:connection).and_return(connection)
+        allow(SolidObserver::CacheEvent).to receive(:connection).and_return(connection)
+        allow(SolidObserver::CacheMetric).to receive(:connection).and_return(connection)
         allow(connection).to receive(:execute)
         allow(connection).to receive(:adapter_name).and_return("SQLite")
+        allow(connection).to receive(:data_source_exists?).with("solid_observer_queue_events").and_return(true)
+        allow(connection).to receive(:data_source_exists?).with("solid_observer_cache_events").and_return(true)
+        allow(connection).to receive(:data_source_exists?).with("solid_observer_cache_metrics").and_return(true)
       end
 
       it "purges data when user confirms with y" do
@@ -355,9 +364,11 @@ RSpec.describe "solid_observer rake tasks" do
 
         expect {
           Rake::Task["solid_observer:storage:purge"].invoke
-        }.to output(/Purged 100 events and 10 storage snapshots/m).to_stdout
+        }.to output(/Purged 100 queue events, 40 cache events, 25 cache metrics, and 10 storage snapshots/m).to_stdout
 
         expect(SolidObserver::QueueEvent).to have_received(:delete_all)
+        expect(SolidObserver::CacheEvent).to have_received(:delete_all)
+        expect(SolidObserver::CacheMetric).to have_received(:delete_all)
         expect(SolidObserver::StorageInfo).to have_received(:delete_all)
       end
 

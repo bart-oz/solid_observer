@@ -124,6 +124,7 @@ RSpec.describe SolidObserver::Services::StorageInfoSnapshot do
 
       allow(SolidCache::Entry).to receive(:connection).and_return(solid_cache_connection)
       allow(SolidCache::Entry).to receive(:table_name).and_return("host_app_cache_entries")
+      allow(solid_cache_connection).to receive(:adapter_name).and_return("SQLite")
       allow(SolidCache::Entry).to receive(:count).and_return(7)
       allow(solid_cache_connection).to receive(:data_source_exists?).with("host_app_cache_entries").and_return(true)
       allow(SolidObserver::Services::DatabaseSize).to receive(:call)
@@ -151,6 +152,26 @@ RSpec.describe SolidObserver::Services::StorageInfoSnapshot do
         .with(connection: solid_cache_connection, table_name: "host_app_cache_entries")
       expect(SolidCache::Record).not_to have_received(:connection)
       expect(SolidCache::Record).not_to have_received(:count)
+    end
+
+    it "uses adapter-aware approximate PostgreSQL counts for SolidCache entries" do
+      allow(solid_cache_connection).to receive(:adapter_name).and_return("PostgreSQL")
+      allow(solid_cache_connection).to receive(:quote).with("host_app_cache_entries").and_return("'host_app_cache_entries'")
+      allow(solid_cache_connection).to receive(:query_value).and_return("1234")
+
+      snapshots = described_class.call
+      solid_cache = snapshots.find { |snapshot| snapshot[:component] == "solid_cache" }
+
+      expect(solid_cache).to include(
+        label: "SolidCache",
+        available: true,
+        db_size_bytes: 300,
+        event_count: 1234,
+        record_label: "cache rows",
+        unavailable_reason: nil
+      )
+      expect(solid_cache_connection).to have_received(:query_value).with(/pg_class/)
+      expect(SolidCache::Entry).not_to have_received(:count)
     end
 
     it "returns an unavailable solid cache snapshot when the concrete model raises PostgreSQL-style TypeError" do
