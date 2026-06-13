@@ -164,6 +164,7 @@ module SolidObserver
         ActiveRecord::StatementInvalid,
         *([PG::ConnectionBad] if defined?(PG::ConnectionBad)),
         *([Mysql2::Error::ConnectionError] if defined?(Mysql2::Error::ConnectionError)),
+        *([Trilogy::Error] if defined?(Trilogy::Error)),
         *([SQLite3::CantOpenException] if defined?(SQLite3::CantOpenException))
       ].freeze
 

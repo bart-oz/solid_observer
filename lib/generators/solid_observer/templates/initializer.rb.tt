@@ -9,7 +9,16 @@ SolidObserver.configure do |config|
   # Recommended: false in production, true in development/staging
   config.ui_enabled = !Rails.env.production?
 
-  # Authentication for web UI — set a username to enable HTTP Basic Auth
+  # Production dashboard exposure is the host app's responsibility. If you mount
+  # the dashboard in production, wrap the mount in your existing admin auth
+  # constraint, for example in config/routes.rb:
+  #
+  #   authenticate :user, ->(user) { user.admin? } do
+  #     mount SolidObserver::Engine, at: "/solid_observer"
+  #   end
+  #
+  # Built-in HTTP Basic Auth is enabled only when BOTH credentials are present.
+  # Setting only one credential disables Basic Auth and logs a boot warning.
   # config.ui_username = "admin"
   # config.ui_password = "secret"
 

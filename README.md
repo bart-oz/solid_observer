@@ -182,6 +182,18 @@ The install generator mounts it for you. To mount manually:
 mount SolidObserver::Engine, at: "/solid_observer"
 ```
 
+Production dashboard exposure is the host application's responsibility. If you
+enable and mount the dashboard in production, wrap the mount in your existing
+admin authentication/authorization constraint (example shown for apps that
+already provide an `authenticate` route helper):
+
+```ruby
+# config/routes.rb
+authenticate :user, ->(user) { user.admin? } do
+  mount SolidObserver::Engine, at: "/solid_observer"
+end
+```
+
 ### Auth Configuration
 
 ```ruby
@@ -207,6 +219,7 @@ For production hardening (fail-loud on missing env var vs. fail-open), see [Conf
 - **API-only apps** — the Web UI works without manual configuration. The engine ships its own Cookies/Session/Flash middleware stack scoped to `/solid_observer/*`.
 - **Host-app callbacks are not inherited.** Use `ui_username` / `ui_password` for built-in HTTP Basic Auth.
 - **Auth misconfiguration is fail-open, but loud.** If `ui_username` is set but `ui_password` resolves to `nil`, the UI ships unauthenticated and logs a boot `WARNING`.
+- **HTTP Basic Auth requires both credentials.** Setting only `ui_username` or only `ui_password` disables built-in auth; protect production mounts at the host-app route boundary.
 
 See the full component breakdown in [Components](#components) below.
 
@@ -279,6 +292,13 @@ The Storage page aggregates per-component health rows: Queue Observer database, 
 </p>
 
 For adapter notes and multi-adapter setup, see [Database Setup](#database-setup-persistence-mode) below.
+
+### Storage unavailable diagnostics
+
+The dashboard is admin/developer-facing. When SolidObserver storage is not
+reachable, the current default 503 error page includes the raw exception class
+and message so maintainers can diagnose adapter, credential, migration, or
+database availability problems. Do not expose the dashboard to untrusted users.
 
 ## Configuration
 
