@@ -227,6 +227,11 @@ RSpec.describe SolidObserver::ApplicationController, type: :controller do
       expect(rescue_classes(temp_controller_class)).to include("Mysql2::Error::ConnectionError")
     end
 
+    it "registers Trilogy::Error when defined at class load" do
+      stub_const("Trilogy::Error", Class.new(StandardError))
+      expect(rescue_classes(temp_controller_class)).to include("Trilogy::Error")
+    end
+
     it "registers SQLite3::CantOpenException when defined at class load" do
       stub_const("SQLite3::CantOpenException", Class.new(StandardError))
       expect(rescue_classes(temp_controller_class)).to include("SQLite3::CantOpenException")
@@ -235,11 +240,13 @@ RSpec.describe SolidObserver::ApplicationController, type: :controller do
     it "skips adapter classes that are not defined at class load" do
       hide_const("PG::ConnectionBad")
       hide_const("Mysql2::Error::ConnectionError")
+      hide_const("Trilogy::Error")
       hide_const("SQLite3::CantOpenException")
 
       classes = rescue_classes(temp_controller_class)
       expect(classes).not_to include("PG::ConnectionBad")
       expect(classes).not_to include("Mysql2::Error::ConnectionError")
+      expect(classes).not_to include("Trilogy::Error")
     end
   end
 

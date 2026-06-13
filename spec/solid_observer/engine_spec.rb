@@ -350,6 +350,16 @@ RSpec.describe SolidObserver::Engine do
       described_class.activate_subscribers
     end
 
+    it "handles Trilogy::Error by skipping activation" do
+      stub_const("Trilogy::Error", Class.new(StandardError))
+      allow(pool).to receive(:with_connection).and_raise(Trilogy::Error)
+
+      expect(logger).to receive(:info).with(/not reachable/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
+
+      described_class.activate_subscribers
+    end
+
     it "handles SQLite3::CantOpenException by skipping activation" do
       stub_const("SQLite3::CantOpenException", Class.new(StandardError))
       allow(pool).to receive(:with_connection).and_raise(SQLite3::CantOpenException)

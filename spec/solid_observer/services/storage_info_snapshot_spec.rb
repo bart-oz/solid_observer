@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "open3"
 require "spec_helper"
 
 RSpec.describe SolidObserver::Services::StorageInfoSnapshot do
@@ -112,6 +113,24 @@ RSpec.describe SolidObserver::Services::StorageInfoSnapshot do
       event_count: nil,
       unavailable_reason: "Storage unavailable"
     )
+  end
+
+  it "includes Trilogy::Error in connection rescues when Trilogy is loaded before the service" do
+    script = <<~RUBY
+      require "active_record"
+      module Trilogy
+        Error = Class.new(StandardError)
+      end
+      require "solid_observer/services/storage_info_snapshot"
+
+      errors = SolidObserver::Services::StorageInfoSnapshot::CONNECTION_ERRORS
+      abort "Trilogy::Error missing" unless errors.include?(Trilogy::Error)
+    RUBY
+
+    project_root = File.expand_path("../../..", __dir__)
+    _stdout, stderr, status = Open3.capture3(Gem.ruby, "-Ilib", "-e", script, chdir: project_root)
+
+    expect(status).to be_success, stderr
   end
 
   context "when SolidCache::Entry is available" do

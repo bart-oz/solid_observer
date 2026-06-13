@@ -35,7 +35,7 @@ module SolidObserver
           period_start: period_start
         )
 
-        SolidObserver::CacheMetric.where(id: metric.id).update_all(update_values(metric_data))
+        SolidObserver::CacheMetric.where(id: metric.id).update_counters(update_values(metric_data))
       end
 
       def update_values(metric_data)
@@ -49,12 +49,7 @@ module SolidObserver
       end
 
       def increment_expression(column, metric_data)
-        value = quoted_value(metric_data.fetch(column, 0))
-        Arel.sql("#{column} + #{value}")
-      end
-
-      def quoted_value(value)
-        SolidObserver::CacheMetric.connection.quote(value)
+        metric_data.fetch(column, 0)
       end
     end
   end
