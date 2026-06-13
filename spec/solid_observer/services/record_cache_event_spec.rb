@@ -98,6 +98,106 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
     expect(buffer).not_to have_received(:push)
   end
 
+  it "normalizes Hash keys before hashing" do
+    hash_event = ActiveSupport::Notifications::Event.new(
+      "cache_read.active_support",
+      Time.current,
+      Time.current + 0.01,
+      "id",
+      {key: {b: 2, a: 1}, hit: true}
+    )
+
+    allow(Kernel).to receive(:rand).and_return(0.0)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 1.0, cache_slow_threshold: 1.0, cache_store_errors: true)
+
+    described_class.call(event: hash_event, buffer: buffer)
+
+    expect(buffer).to have_received(:push).with(hash_including(
+      key_digest: Digest::SHA256.hexdigest("a,b")
+    ))
+  end
+
+  it "normalizes Array keys before hashing" do
+    array_event = ActiveSupport::Notifications::Event.new(
+      "cache_read_multi.active_support",
+      Time.current,
+      Time.current + 0.01,
+      "id",
+      {key: ["b", "a"], hits: ["a"]}
+    )
+
+    allow(Kernel).to receive(:rand).and_return(0.0)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 1.0, cache_slow_threshold: 1.0, cache_store_errors: true)
+
+    described_class.call(event: array_event, buffer: buffer)
+
+    expect(buffer).to have_received(:push).with(hash_including(
+      key_digest: Digest::SHA256.hexdigest("a,b")
+    ))
+  end
+
+  it "records hit state and hits_count for multi-key operations" do
+    multi_key_event = ActiveSupport::Notifications::Event.new(
+      "cache_read_multi.active_support",
+      Time.current,
+      Time.current + 0.01,
+      "id",
+      {key: ["a", "b"], hits: ["a"]}
+    )
+
+    allow(Kernel).to receive(:rand).and_return(0.0)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 1.0, cache_slow_threshold: 1.0, cache_store_errors: true)
+
+    described_class.call(event: multi_key_event, buffer: buffer)
+
+    expect(buffer).to have_received(:push).with(hash_including(
+      hit: true,
+      metadata: satisfy { |json|
+        JSON.parse(json).slice("hits_count", "key_size") == {"hits_count" => 1, "key_size" => 2}
+      }
+    ))
+  end
+
+  it "records exception_object details on stored events" do
+    error_event = ActiveSupport::Notifications::Event.new(
+      "cache_read.active_support",
+      Time.current,
+      Time.current + 0.01,
+      "id",
+      {key: "user:42", exception_object: StandardError.new("Cache timeout")}
+    )
+
+    allow(Kernel).to receive(:rand).and_return(0.9)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 0.0, cache_slow_threshold: 10.0, cache_store_errors: true)
+
+    described_class.call(event: error_event, buffer: buffer)
+
+    expect(buffer).to have_received(:push).with(hash_including(
+      error_class: "StandardError",
+      error_message: "Cache timeout"
+    ))
+  end
+
+  it "records explicit exception payload details on stored events" do
+    error_event = ActiveSupport::Notifications::Event.new(
+      "cache_read.active_support",
+      Time.current,
+      Time.current + 0.01,
+      "id",
+      {key: "user:42", exception: ["StandardError", "Cache timeout"]}
+    )
+
+    allow(Kernel).to receive(:rand).and_return(0.9)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 0.0, cache_slow_threshold: 10.0, cache_store_errors: true)
+
+    described_class.call(event: error_event, buffer: buffer)
+
+    expect(buffer).to have_received(:push).with(hash_including(
+      error_class: "StandardError",
+      error_message: "Cache timeout"
+    ))
+  end
+
   it "re-raises NameError wiring failures" do
     allow(SolidObserver::Services::RecordCacheMetric).to receive(:call).and_raise(
       NameError.new("uninitialized constant SolidObserver::Services::RecordCacheMetric")

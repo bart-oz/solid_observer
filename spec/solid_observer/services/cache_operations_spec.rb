@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require_relative "../../../../lib/solid_observer/services/cache_operations"
+require_relative "../../../lib/solid_observer/services/cache_operations"
 
 RSpec.describe SolidObserver::Services::CacheOperations do
   let(:logger) { instance_double(Logger, warn: nil) }

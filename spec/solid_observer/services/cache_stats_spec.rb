@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require_relative "../../../../lib/solid_observer/services/cache_stats"
+require_relative "../../../lib/solid_observer/services/cache_stats"
 
 RSpec.describe SolidObserver::Services::CacheStats do
   before(:all) do

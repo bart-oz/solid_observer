@@ -74,7 +74,7 @@ RSpec.describe SolidObserver::Services::FlushCacheMetrics do
   end
 
   it "uses ActiveRecord counter arithmetic without hand-built SQL literals" do
-    source = File.read(File.expand_path("../../../../lib/solid_observer/services/flush_cache_metrics.rb", __dir__))
+    source = File.read(File.expand_path("../../../lib/solid_observer/services/flush_cache_metrics.rb", __dir__))
 
     expect(source).to include("update_counters")
     expect(source).not_to include("Arel.sql")

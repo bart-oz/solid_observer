@@ -5,9 +5,11 @@ require "rake"
 
 RSpec.describe "solid_observer rake tasks" do
   before(:all) do
-    Rake.application = Rake::Application.new
-    Rake::Task.define_task(:environment)
-    Rake.application.rake_require("solid_observer", [File.expand_path("../../lib/tasks", __dir__)])
+    unless Rake::Task.task_defined?("solid_observer:status")
+      Rake.application = Rake::Application.new
+      Rake::Task.define_task(:environment)
+      load File.expand_path("../../lib/tasks/solid_observer.rake", __dir__)
+    end
   end
 
   def reenable_all_tasks
@@ -41,6 +43,10 @@ RSpec.describe "solid_observer rake tasks" do
 
     it "defines solid_observer:install:migrations task" do
       expect(Rake::Task.task_defined?("solid_observer:install:migrations")).to be true
+    end
+
+    it "defines solid_observer:version task" do
+      expect(Rake::Task.task_defined?("solid_observer:version")).to be true
     end
 
     it "defines solid_observer:db:create task" do
@@ -154,6 +160,53 @@ RSpec.describe "solid_observer rake tasks" do
         }.to output(
           "No new SolidObserver migrations to copy (all already present in db/solid_observer_migrate/)\n"
         ).to_stdout
+      end
+    end
+
+    describe "solid_observer:version" do
+      it "prints the gem, Ruby, and Rails versions" do
+        expect {
+          Rake::Task["solid_observer:version"].invoke
+        }.to output(
+          "SolidObserver #{SolidObserver::VERSION}\n" \
+          "Ruby: #{SolidObserver::RUBY_MINIMUM_VERSION}+\n" \
+          "Rails: #{SolidObserver::RAILS_MINIMUM_VERSION}+\n"
+        ).to_stdout
+      end
+    end
+
+    describe "solid_observer:db:create" do
+      it "creates the solid_observer_queue database config" do
+        database_config = instance_double(
+          ActiveRecord::DatabaseConfigurations::HashConfig,
+          name: "solid_observer_queue",
+          env_name: "test",
+          database: "db/solid_observer_queue.sqlite3"
+        )
+        configurations = instance_double(ActiveRecord::DatabaseConfigurations, configs_for: database_config)
+
+        allow(ActiveRecord::Base).to receive(:configurations).and_return(configurations)
+        allow(ActiveRecord::Tasks::DatabaseTasks).to receive(:create)
+
+        expect {
+          Rake::Task["solid_observer:db:create"].invoke
+        }.to output("Created database 'db/solid_observer_queue.sqlite3'\n").to_stdout
+
+        expect(ActiveRecord::Tasks::DatabaseTasks).to have_received(:create).with(
+          have_attributes(name: "solid_observer_queue", env_name: "test", database: "db/solid_observer_queue.sqlite3")
+        )
+      end
+    end
+
+    describe "solid_observer:db:migrate" do
+      it "runs database migrations" do
+        allow(ActiveRecord::Tasks::DatabaseTasks).to receive(:migrate)
+
+        expect {
+          Rake::Task["solid_observer:db:migrate"].invoke
+        }.to output("Migrations complete\n").to_stdout
+
+        expect(ActiveRecord::Tasks::DatabaseTasks).to have_received(:migrate)
       end
     end
 
@@ -338,6 +391,8 @@ RSpec.describe "solid_observer rake tasks" do
     end
 
     describe "solid_observer:storage:purge" do
+      let(:connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
+
       before do
         allow(SolidObserver::QueueEvent).to receive(:count).and_return(100)
         allow(SolidObserver::QueueEvent).to receive(:delete_all)
@@ -348,7 +403,6 @@ RSpec.describe "solid_observer rake tasks" do
         allow(SolidObserver::StorageInfo).to receive(:count).and_return(10)
         allow(SolidObserver::StorageInfo).to receive(:delete_all)
 
-        connection = instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter)
         allow(SolidObserver::QueueEvent).to receive(:connection).and_return(connection)
         allow(SolidObserver::CacheEvent).to receive(:connection).and_return(connection)
         allow(SolidObserver::CacheMetric).to receive(:connection).and_return(connection)
@@ -381,6 +435,21 @@ RSpec.describe "solid_observer rake tasks" do
         }.to output(/Aborted/).to_stdout
 
         expect(SolidObserver::QueueEvent).not_to have_received(:delete_all)
+      end
+
+      it "analyzes tables after purging on PostgreSQL" do
+        allow(connection).to receive(:adapter_name).and_return("PostgreSQL")
+        allow($stdin).to receive(:gets).and_return("y\n")
+
+        expect {
+          reenable_all_tasks
+          Rake::Task["solid_observer:storage:purge"].invoke
+        }.to output(/Database tables analyzed.*Purged 100 queue events, 40 cache events, 25 cache metrics, and 10 storage snapshots/m).to_stdout
+
+        expect(connection).to have_received(:execute).with("ANALYZE solid_observer_queue_events")
+        expect(connection).to have_received(:execute).with("ANALYZE solid_observer_storage_info")
+        expect(connection).to have_received(:execute).with("ANALYZE solid_observer_cache_events")
+        expect(connection).to have_received(:execute).with("ANALYZE solid_observer_cache_metrics")
       end
     end
   end
