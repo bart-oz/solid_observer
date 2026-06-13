@@ -7,7 +7,7 @@ module SolidObserver
   # will be configured by the Engine (similar to BaseEvent) when metrics are
   # fully implemented.
   #
-  class BaseMetric < ActiveRecord::Base
+  class BaseMetric < BaseRecord
     self.abstract_class = true
     self.table_name = "solid_observer_metrics"
 

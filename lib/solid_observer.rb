@@ -17,6 +17,7 @@ require_relative "solid_observer/queue_stats"
 require_relative "solid_observer/engine" if defined?(Rails::Engine)
 
 ActiveSupport.on_load(:active_record) do
+  require_relative "solid_observer/base_record"
   require_relative "solid_observer/base_event"
   require_relative "solid_observer/base_metric"
   require_relative "solid_observer/queries/job_executions_query"

@@ -11,7 +11,6 @@ module SolidObserver
 
     def index
       @component = selected_component
-      return assign_cache_dashboard if @component == "cache"
 
       return unless @component == "queue" && SolidObserver.config.solid_queue_enabled?
 
@@ -52,12 +51,6 @@ module SolidObserver
 
     def load_persistence_data
       @recent_events = QueueEvent.recent(10)
-    end
-
-    def assign_cache_dashboard
-      SolidObserver::CacheDashboardController.cache_dashboard_assignments(range_param: request_range_param).each do |name, value|
-        instance_variable_set("@#{name}", value)
-      end
     end
 
     def request_range_param

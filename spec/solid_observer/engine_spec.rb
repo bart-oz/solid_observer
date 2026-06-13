@@ -212,8 +212,7 @@ RSpec.describe SolidObserver::Engine do
     it "does not raise or connect models when ActiveRecord is absent" do
       hide_const("ActiveRecord")
 
-      expect(SolidObserver::BaseEvent).not_to receive(:connects_to)
-      expect(SolidObserver::BaseMetric).not_to receive(:connects_to)
+      expect(SolidObserver::BaseRecord).not_to receive(:connects_to)
 
       expect { described_class.configure_database_connection }.not_to raise_error
     end
@@ -225,8 +224,7 @@ RSpec.describe SolidObserver::Engine do
         .with(env_name: Rails.env, name: "solid_observer_queue")
         .and_return(nil)
 
-      expect(SolidObserver::BaseEvent).not_to receive(:connects_to)
-      expect(SolidObserver::BaseMetric).not_to receive(:connects_to)
+      expect(SolidObserver::BaseRecord).not_to receive(:connects_to)
 
       described_class.configure_database_connection
     end
@@ -242,8 +240,7 @@ RSpec.describe SolidObserver::Engine do
         .with(env_name: Rails.env, name: "solid_observer_queue")
         .and_return(Object.new)
 
-      expect(SolidObserver::BaseEvent).to receive(:connects_to).with(**connection_config)
-      expect(SolidObserver::BaseMetric).to receive(:connects_to).with(**connection_config)
+      expect(SolidObserver::BaseRecord).to receive(:connects_to).with(**connection_config)
 
       described_class.configure_database_connection
     end
@@ -255,7 +252,7 @@ RSpec.describe SolidObserver::Engine do
     let(:connection) { instance_double(ActiveRecord::ConnectionAdapters::AbstractAdapter) }
 
     before do
-      allow(SolidObserver::BaseEvent).to receive(:connection_pool).and_return(pool)
+      allow(SolidObserver::BaseRecord).to receive(:connection_pool).and_return(pool)
       allow(pool).to receive(:schema_cache).and_return(cache)
       allow(pool).to receive(:with_connection).and_yield(connection)
       allow(cache).to receive(:data_source_exists?).and_return(false)
@@ -377,8 +374,8 @@ RSpec.describe SolidObserver::Engine do
       described_class.activate_subscribers
     end
 
-    it "uses BaseEvent connection pool and never uses ActiveRecord::Base connection APIs" do
-      expect(SolidObserver::BaseEvent).to receive(:connection_pool).and_return(pool)
+    it "uses BaseRecord connection pool and never uses ActiveRecord::Base connection APIs" do
+      expect(SolidObserver::BaseRecord).to receive(:connection_pool).and_return(pool)
       expect(ActiveRecord::Base).not_to receive(:connection)
       expect(ActiveRecord::Base).not_to receive(:connection_pool)
       expect(SolidObserver::Subscriber).to receive(:subscribe!)

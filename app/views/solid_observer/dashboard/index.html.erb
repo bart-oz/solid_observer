@@ -1,8 +1,5 @@
 <% content_for :title, "Dashboard" %>
 
-<% if @component == "cache" %>
-  <%= render template: "solid_observer/cache_dashboard/index" %>
-<% else %>
 <div class="so-dashboard">
   <% queue_enabled = SolidObserver.config.solid_queue_enabled? %>
   <% queue_status_class = queue_enabled ? "so-badge--success" : "so-badge--warning" %>
@@ -140,4 +137,3 @@
   <% end %>
   <% end %>
 </div>
-<% end %>

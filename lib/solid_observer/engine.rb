@@ -57,8 +57,7 @@ module SolidObserver
           database: {writing: :solid_observer_queue, reading: :solid_observer_queue}
         }
 
-        SolidObserver::BaseEvent.connects_to(**connection_config)
-        SolidObserver::BaseMetric.connects_to(**connection_config)
+        SolidObserver::BaseRecord.connects_to(**connection_config)
       end
 
       def active_record_available?
@@ -111,7 +110,7 @@ module SolidObserver
       end
 
       def data_source_status(table_name)
-        pool = SolidObserver::BaseEvent.connection_pool
+        pool = SolidObserver::BaseRecord.connection_pool
 
         return :present if cached_data_source_exists?(pool, table_name)
 

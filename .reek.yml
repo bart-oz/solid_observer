@@ -11,6 +11,7 @@ detectors:
       - SolidObserver::JobsController
       - SolidObserver::EventsController
       - SolidObserver::DashboardController
+      - SolidObserver::CacheDashboardController
       - SolidObserver::Params::EventsFilter
 
   TooManyStatements:
@@ -31,6 +32,7 @@ detectors:
       - SolidObserver::DashboardController#assign_range_and_stats
       - SolidObserver::Queries::EventsQuery#call
       - SolidObserver::ApplicationHelper#mode_badge
+      - SolidObserver::CacheDashboardController#assign_cache_dashboard
 
   LongParameterList:
     exclude:

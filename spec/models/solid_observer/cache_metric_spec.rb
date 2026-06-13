@@ -20,8 +20,8 @@ RSpec.describe SolidObserver::CacheMetric do
 
   before { described_class.delete_all }
 
-  it "inherits from BaseMetric" do
-    expect(described_class.superclass).to eq(SolidObserver::BaseMetric)
+  it "inherits from BaseRecord" do
+    expect(described_class.superclass).to eq(SolidObserver::BaseRecord)
   end
 
   it "uses solid_observer_cache_metrics table" do

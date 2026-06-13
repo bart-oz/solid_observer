@@ -40,13 +40,10 @@ RSpec.describe "SolidObserver dashboard routes", type: :request do
     expect(body).to include("Right now")
   end
 
-  it "supports cache dashboard route when cache component is enabled" do
-    stub_const("SolidCache", Module.new)
-    SolidObserver.config.observe_cache = true
-
-    status, body = call_action("/solid_observer/cache")
-
-    expect(status).to eq(200)
-    expect(body).to include("Dashboard")
+  it "does not reference CacheDashboardController by name" do
+    controller_source = File.read(
+      File.expand_path("../../../app/controllers/solid_observer/dashboard_controller.rb", __dir__)
+    )
+    expect(controller_source).not_to include("CacheDashboardController")
   end
 end
