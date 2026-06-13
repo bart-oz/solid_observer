@@ -13,7 +13,7 @@ SolidObserver.configure do |config|
   # config.ui_username = "admin"
   # config.ui_password = "secret"
 
-  # Base controller for UI (customize authorization)
+  # Base controller used only to detect API-only rendering compatibility
   # config.ui_base_controller = "ApplicationController"
 
   # === Queue Observability (v0.1.0) ===

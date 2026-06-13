@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "open3"
 require "spec_helper"
 
 RSpec.describe SolidObserver::Engine do
@@ -15,6 +16,35 @@ RSpec.describe SolidObserver::Engine do
 
   it "isolates namespace to SolidObserver" do
     expect(described_class.isolated?).to be true
+  end
+
+  describe "load order" do
+    it "defers ActiveRecord-backed constants until ActiveRecord::Base loads" do
+      script = <<~RUBY
+        require "rails"
+        require "active_record/railtie"
+        require "solid_observer"
+
+        abort "BaseEvent loaded too early" if SolidObserver.const_defined?(:BaseEvent, false)
+
+        ActiveRecord::Base
+
+        abort "BaseEvent missing" unless SolidObserver.const_defined?(:BaseEvent, false)
+        abort "BaseEvent superclass mismatch" unless SolidObserver::BaseEvent < ActiveRecord::Base
+      RUBY
+
+      project_root = File.expand_path("../..", __dir__)
+      _stdout, stderr, status = Open3.capture3(
+        Gem.ruby, "-Ilib", "-e", script, chdir: project_root
+      )
+
+      expect(status).to be_success, stderr
+    end
+
+    it "does not define load-time availability constants" do
+      expect(described_class.const_defined?(:SOLID_QUEUE_AVAILABLE, false)).to be false
+      expect(described_class.const_defined?(:SOLID_CACHE_AVAILABLE, false)).to be false
+    end
   end
 
   describe "engine-scoped middleware stack" do
@@ -176,6 +206,49 @@ RSpec.describe SolidObserver::Engine do
     end
   end
 
+  describe ".configure_database_connection" do
+    after { SolidObserver.reset_configuration! }
+
+    it "does not raise or connect models when ActiveRecord is absent" do
+      hide_const("ActiveRecord")
+
+      expect(SolidObserver::BaseEvent).not_to receive(:connects_to)
+      expect(SolidObserver::BaseMetric).not_to receive(:connects_to)
+
+      expect { described_class.configure_database_connection }.not_to raise_error
+    end
+
+    it "does not connect observer models when the observer queue database is not configured" do
+      configurations = instance_double(ActiveRecord::DatabaseConfigurations)
+      allow(ActiveRecord::Base).to receive(:configurations).and_return(configurations)
+      allow(configurations).to receive(:configs_for)
+        .with(env_name: Rails.env, name: "solid_observer_queue")
+        .and_return(nil)
+
+      expect(SolidObserver::BaseEvent).not_to receive(:connects_to)
+      expect(SolidObserver::BaseMetric).not_to receive(:connects_to)
+
+      described_class.configure_database_connection
+    end
+
+    it "connects observer models when the observer queue database is configured" do
+      configurations = instance_double(ActiveRecord::DatabaseConfigurations)
+      connection_config = {
+        database: {writing: :solid_observer_queue, reading: :solid_observer_queue}
+      }
+
+      allow(ActiveRecord::Base).to receive(:configurations).and_return(configurations)
+      allow(configurations).to receive(:configs_for)
+        .with(env_name: Rails.env, name: "solid_observer_queue")
+        .and_return(Object.new)
+
+      expect(SolidObserver::BaseEvent).to receive(:connects_to).with(**connection_config)
+      expect(SolidObserver::BaseMetric).to receive(:connects_to).with(**connection_config)
+
+      described_class.configure_database_connection
+    end
+  end
+
   describe ".activate_subscribers" do
     let(:pool) { instance_double(ActiveRecord::ConnectionAdapters::ConnectionPool) }
     let(:cache) { instance_double(ActiveRecord::ConnectionAdapters::SchemaCache) }
@@ -188,6 +261,7 @@ RSpec.describe SolidObserver::Engine do
       allow(cache).to receive(:data_source_exists?).and_return(false)
       allow(connection).to receive(:data_source_exists?).and_return(true)
       allow(SolidObserver::Subscriber).to receive(:subscribe!)
+      allow(SolidObserver::CacheSubscriber).to receive(:subscribe!)
     end
 
     after { SolidObserver.reset_configuration! }
@@ -285,6 +359,20 @@ RSpec.describe SolidObserver::Engine do
 
       expect(logger).to receive(:info).with(/not reachable/)
       expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
+
+      described_class.activate_subscribers
+    end
+
+    it "keeps cache activation independent when the enabled queue table is missing" do
+      stub_const("SolidCache", Module.new)
+      SolidObserver.config.observe_cache = true
+      allow(cache).to receive(:data_source_exists?).with(pool, "solid_observer_queue_events").and_return(false)
+      allow(connection).to receive(:data_source_exists?).with("solid_observer_queue_events").and_return(false)
+      allow(cache).to receive(:data_source_exists?).with(pool, "solid_observer_cache_events").and_return(true)
+
+      expect(logger).to receive(:info).with(/missing: solid_observer_queue_events/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
+      expect(SolidObserver::CacheSubscriber).to receive(:subscribe!)
 
       described_class.activate_subscribers
     end
