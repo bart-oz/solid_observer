@@ -178,6 +178,13 @@ RSpec.describe SolidObserver::ApplicationController, type: :controller do
   end
 
   describe "API-only app compatibility" do
+    it "does not inherit from configured ui_base_controller" do
+      stub_const("FakeApiController", Class.new(ActionController::API))
+      SolidObserver.config.ui_base_controller = "FakeApiController"
+
+      expect(described_class.superclass).to eq(ActionController::Base)
+    end
+
     it "detects an API-only base controller correctly" do
       stub_const("FakeApiController", Class.new(ActionController::API))
       expect(FakeApiController.ancestors).to include(ActionController::API)
@@ -186,6 +193,13 @@ RSpec.describe SolidObserver::ApplicationController, type: :controller do
     it "does not detect a standard base controller as API-only" do
       stub_const("FakeStandardController", Class.new(ActionController::Base))
       expect(FakeStandardController.ancestors).not_to include(ActionController::API)
+    end
+
+    it "documents ui_base_controller as API-only rendering compatibility" do
+      template = File.read(File.expand_path("../../lib/generators/solid_observer/templates/initializer.rb.tt", __dir__))
+
+      expect(template).to include("Base controller used only to detect API-only rendering compatibility")
+      expect(template).not_to include("customize authorization")
     end
   end
 
@@ -234,7 +248,11 @@ RSpec.describe SolidObserver::ApplicationController, type: :controller do
       Class.new(SolidObserver::ApplicationController) do
         append_view_path File.expand_path("../../app/views", __dir__)
 
-        helper_method :root_path, :jobs_path, :events_path, :storage_path
+        helper_method :root_path,
+          :jobs_path,
+          :events_path,
+          :storage_path,
+          :live_poll_script_path
 
         class << self
           attr_accessor :error_to_raise
@@ -258,6 +276,10 @@ RSpec.describe SolidObserver::ApplicationController, type: :controller do
 
         def storage_path
           "/solid_observer/storage"
+        end
+
+        def live_poll_script_path
+          "/solid_observer/live_poll.js"
         end
       end
     end

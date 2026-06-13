@@ -1,21 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "cache_event_buffer"
-require_relative "services/flush_cache_metrics"
-require_relative "cache_metric_buffer"
-require_relative "cache_subscriber"
-require_relative "services/record_cache_event"
-require_relative "services/record_cache_metric"
-require_relative "services/flush_cache_event_buffer"
-require_relative "services/cache_stats"
-require_relative "services/cache_operations"
-
 module SolidObserver
   class Engine < ::Rails::Engine
     isolate_namespace SolidObserver
-
-    SOLID_QUEUE_AVAILABLE = defined?(::SolidQueue)
-    SOLID_CACHE_AVAILABLE = defined?(::SolidCache)
 
     middleware.use ActionDispatch::Cookies
     middleware.use ActionDispatch::Session::CookieStore, key: "_solid_observer_session"
@@ -48,16 +35,17 @@ module SolidObserver
 
       def activate_subscribers
         return activate_subscribers_in_realtime if SolidObserver.config.realtime_mode?
-        return if activation_skipped_for_table_status_for_enabled_components?
 
         Rails.logger.info "[SolidObserver] Activating event subscribers"
-        Subscriber.subscribe! if should_activate_queue_subscriber?
-        CacheSubscriber.subscribe! if should_activate_cache_subscriber?
+        activate_queue_subscriber
+        activate_cache_subscriber
       end
 
       private
 
       def queue_db_config
+        return unless active_record_available?
+
         ActiveRecord::Base.configurations.configs_for(
           env_name: Rails.env,
           name: "solid_observer_queue"
@@ -73,30 +61,32 @@ module SolidObserver
         SolidObserver::BaseMetric.connects_to(**connection_config)
       end
 
+      def active_record_available?
+        defined?(::ActiveRecord::Base)
+      end
+
       def activate_subscribers_in_realtime
         Rails.logger.info "[SolidObserver] Starting in real-time mode (no persistence)"
         Subscriber.subscribe! if should_activate_queue_subscriber?
         CacheSubscriber.subscribe! if should_activate_cache_subscriber?
       end
 
-      def activation_skipped_for_table_status_for_enabled_components?
-        enabled_tables = []
-        enabled_tables << "solid_observer_queue_events" if should_activate_queue_subscriber?
-        enabled_tables << "solid_observer_cache_events" if should_activate_cache_subscriber?
-
-        enabled_tables.any? { |table_name| skip_activation_for_missing_table?(table_name) }
+      def activate_queue_subscriber
+        activate_subscriber_for_table("solid_observer_queue_events", Subscriber) if should_activate_queue_subscriber?
       end
 
-      def skip_activation_for_missing_table?(table_name)
+      def activate_cache_subscriber
+        activate_subscriber_for_table("solid_observer_cache_events", CacheSubscriber) if should_activate_cache_subscriber?
+      end
+
+      def activate_subscriber_for_table(table_name, subscriber)
         case table_status(table_name)
         when :absent
           log_activation_skip("Tables not found (missing: #{table_name}). Run: rails solid_observer:install:migrations && rails db:migrate")
-          true
         when :unknown
           log_activation_skip("Database not reachable at boot. Skipping subscriber activation.")
-          true
         else
-          false
+          subscriber.subscribe!
         end
       end
 
@@ -113,13 +103,19 @@ module SolidObserver
       end
 
       def table_status(table_name)
+        return :unknown unless active_record_available?
+
+        data_source_status(table_name)
+      rescue *boot_connection_errors
+        :unknown
+      end
+
+      def data_source_status(table_name)
         pool = SolidObserver::BaseEvent.connection_pool
 
         return :present if cached_data_source_exists?(pool, table_name)
 
         data_source_exists_in_db?(pool, table_name) ? :present : :absent
-      rescue *boot_connection_errors
-        :unknown
       end
 
       def cached_data_source_exists?(pool, table_name)
@@ -134,6 +130,8 @@ module SolidObserver
       end
 
       def boot_connection_errors
+        return [] unless active_record_available?
+
         [
           ActiveRecord::NoDatabaseError,
           ActiveRecord::ConnectionNotEstablished,
