@@ -37,6 +37,13 @@ RSpec.describe SolidObserver::DashboardController do
     it "inherits from ApplicationController" do
       expect(described_class.superclass).to eq(SolidObserver::ApplicationController)
     end
+
+    it "does not reference CacheDashboardController by name" do
+      controller_source = File.read(
+        File.expand_path("../../app/controllers/solid_observer/dashboard_controller.rb", __dir__)
+      )
+      expect(controller_source).not_to include("CacheDashboardController")
+    end
   end
 
   describe "#index" do

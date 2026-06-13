@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 module SolidObserver
-  class CacheMetric < BaseMetric
+  class CacheMetric < BaseRecord
     self.table_name = "solid_observer_cache_metrics"
-    clear_validators!
 
     validates :event_type, presence: true, length: {maximum: 64}
     validates :period_start, presence: true

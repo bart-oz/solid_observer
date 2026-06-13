@@ -7,8 +7,8 @@ RSpec.describe SolidObserver::BaseEvent do
     expect(described_class.abstract_class?).to be true
   end
 
-  it "inherits from ActiveRecord::Base" do
-    expect(described_class.ancestors).to include(ActiveRecord::Base)
+  it "inherits from BaseRecord" do
+    expect(described_class.superclass).to eq(SolidObserver::BaseRecord)
   end
 
   it "cannot be instantiated directly" do

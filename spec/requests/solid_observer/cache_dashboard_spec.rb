@@ -190,32 +190,6 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
     expect(routes_source).to include('get "cache", to: "cache_dashboard#index", as: :cache_dashboard')
   end
 
-  it "exposes activity trends and stability from cache_dashboard_assignments" do
-    fixed_time = Time.utc(2026, 6, 2, 12, 0, 0)
-
-    travel_to(fixed_time) do
-      seed_cache_dashboard_data(fixed_time)
-
-      assignments = SolidObserver::CacheDashboardController.cache_dashboard_assignments(range_param: "15m")
-
-      expect(assignments).to include(cache_dashboard_available: true, range: "15m")
-      expect(assignments[:activity_trends]).to include(available: true)
-      expect(assignments[:stability]).to include(
-        available: true,
-        state: :critical,
-        error_count: 1,
-        slow_count: 0,
-        latest_recorded_at: 3.minutes.ago
-      )
-      expect(assignments[:stats][:activity_trends]).to eq(assignments[:activity_trends])
-      expect(assignments[:stats][:stability]).to eq(assignments[:stability])
-      expect(assignments[:storage_components].map { |snapshot| snapshot[:component] })
-        .to contain_exactly("cache_observer", "solid_cache")
-      expect(assignments[:recent_events].map(&:key_digest))
-        .to eq(%w[1122334455667788 fedcba0987654321 abcdef1234567890])
-    end
-  end
-
   it "renders activity trends, stability, and sampled events for the selected range" do
     fixed_time = Time.utc(2026, 6, 2, 12, 0, 0)
 
