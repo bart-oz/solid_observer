@@ -8,6 +8,7 @@
     <% all_queue_names = (queues.keys | performed_by_queue.keys | failed_by_queue.keys).sort %>
     <% if all_queue_names.any? %>
       <table class="so-table so-table--card">
+        <caption class="sr-only">Queue throughput list</caption>
         <thead>
           <tr>
             <th>Queue</th>

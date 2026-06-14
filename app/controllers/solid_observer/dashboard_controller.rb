@@ -19,6 +19,7 @@ module SolidObserver
     end
 
     def live_poll
+      expires_in 1.day, public: true
       send_file(
         SolidObserver::Engine.root.join("app/assets/javascripts/solid_observer/live_poll.js"),
         type: "application/javascript; charset=utf-8",
