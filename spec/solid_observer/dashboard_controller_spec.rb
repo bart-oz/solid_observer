@@ -249,6 +249,18 @@ RSpec.describe SolidObserver::DashboardController do
       "Basic #{token}"
     end
 
+    it "sets HTTP caching headers" do
+      status, headers, _body = call_controller_action(
+        :live_poll,
+        "/solid_observer/live_poll.js",
+        {"HTTP_X_REQUESTED_WITH" => "XMLHttpRequest"}
+      )
+
+      expect(status).to eq(200)
+      expect(headers["Cache-Control"]).to include("public")
+      expect(headers["Cache-Control"]).to include("max-age")
+    end
+
     it "returns javascript without layout chrome" do
       status, headers, body = call_controller_action(
         :live_poll,

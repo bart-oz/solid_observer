@@ -10,7 +10,7 @@
   var checkbox, rangeSelect, refreshBtn, helpBtn, helpPanel, helpWrapper, freshnessEl;
   var hoverActive = false;
   var sparks = {};
-  var url = "/solid_observer/poll_data";
+  var url;
   var inFlight = false;
   var timerId = null;
   var lastFullSnapshot = null;
@@ -20,6 +20,8 @@
   function init() {
     var wrapper = document.querySelector("[data-so-live]");
     if (!wrapper) return;
+
+    url = wrapper.getAttribute("data-so-poll-url") || "/solid_observer/poll_data";
 
     checkbox = wrapper.querySelector('[data-so-live-toggle]');
     if (!checkbox) return;
