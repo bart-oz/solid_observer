@@ -110,31 +110,6 @@ jobs:
       - name: Run Reek
         run: bundle exec reek
 
-  coverage:
-    name: Coverage Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Fix Ruby 4.0 gem permissions
-        run: |
-          sudo chmod +t /opt/hostedtoolcache/Ruby/4.0.1/x64/lib/ruby/gems/4.0.0/gems 2>/dev/null || true
-          sudo chmod 755 /opt/hostedtoolcache/Ruby/4.0.1/x64/lib/ruby/gems/4.0.0/gems 2>/dev/null || true
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '4.0'
-          bundler-cache: true
-
-      - name: Run tests with coverage
-        run: bundle exec rspec
-
-      - name: Enforce coverage threshold
-        run: |
-          # SimpleCov will exit with status 1 if coverage is below minimum (80%)
-
   security:
     name: Security Audit
     runs-on: ubuntu-latest

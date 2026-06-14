@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require_relative "../../support/shared_examples_for_event_buffer"
+require_relative "../support/shared_examples_for_event_buffer"
 
 RSpec.describe SolidObserver::CacheEventBuffer do
   it_behaves_like "an event buffer",

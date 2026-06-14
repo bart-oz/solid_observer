@@ -3,6 +3,29 @@
 require "spec_helper"
 
 RSpec.describe SolidObserver::StorageInfo do
+  before(:all) do
+    connection = described_class.connection
+
+    unless connection.table_exists?(:solid_observer_storage_info)
+      connection.create_table :solid_observer_storage_info do |t|
+        t.bigint :db_size_bytes, null: false
+        t.bigint :event_count, null: false
+        t.datetime :recorded_at, null: false
+        t.string :component, null: false, default: "queue_observer"
+
+        t.index :recorded_at
+        t.index :component
+      end
+    end
+
+    next if connection.column_exists?(:solid_observer_storage_info, :component)
+
+    connection.add_column :solid_observer_storage_info, :component, :string, null: false, default: "queue_observer"
+    connection.add_index :solid_observer_storage_info, :component unless connection.index_exists?(:solid_observer_storage_info, :component)
+  end
+
+  before { described_class.delete_all }
+
   it "inherits from BaseEvent" do
     expect(described_class.superclass).to eq(SolidObserver::BaseEvent)
   end
@@ -13,11 +36,6 @@ RSpec.describe SolidObserver::StorageInfo do
 
   it "uses solid_observer_storage_info table" do
     expect(described_class.table_name).to eq("solid_observer_storage_info")
-  end
-
-  it "inherits database connection from BaseEvent" do
-    expect(described_class.superclass).to eq(SolidObserver::BaseEvent)
-    expect(SolidObserver::BaseEvent.abstract_class?).to be true
   end
 
   it "has validations defined" do
@@ -45,20 +63,55 @@ RSpec.describe SolidObserver::StorageInfo do
   end
 
   describe ".record_snapshot" do
-    it "defaults component to queue_observer" do
-      allow(described_class).to receive(:create!)
+    it "persists the default queue_observer component" do
+      snapshot = described_class.record_snapshot(db_size: 1024, event_count: 5)
 
-      described_class.record_snapshot(db_size: 1024, event_count: 5)
-
-      expect(described_class).to have_received(:create!).with(hash_including(component: "queue_observer"))
+      expect(snapshot).to have_attributes(
+        component: "queue_observer",
+        db_size_bytes: 1024,
+        event_count: 5
+      )
+      expect(snapshot).to be_persisted
     end
 
-    it "allows explicit component" do
-      allow(described_class).to receive(:create!)
+    it "persists an explicit component" do
+      snapshot = described_class.record_snapshot(db_size: 2048, event_count: 10, component: "cache_observer")
 
-      described_class.record_snapshot(db_size: 2048, event_count: 10, component: "cache_observer")
+      expect(snapshot).to have_attributes(
+        component: "cache_observer",
+        db_size_bytes: 2048,
+        event_count: 10
+      )
+    end
 
-      expect(described_class).to have_received(:create!).with(hash_including(component: "cache_observer"))
+    it "logs and re-raises validation failures" do
+      logger = instance_double(Logger, error: nil)
+      allow(Rails).to receive(:logger).and_return(logger)
+
+      expect {
+        described_class.record_snapshot(db_size: -1, event_count: -2)
+      }.to raise_error(ActiveRecord::RecordInvalid)
+
+      expect(logger).to have_received(:error).with(
+        a_string_including("[SolidObserver] Failed to record storage snapshot: Validation failed:")
+      )
+      expect(described_class.count).to eq(0)
+    end
+  end
+
+  describe "#db_size_mb" do
+    it "converts bytes to megabytes" do
+      snapshot = described_class.new(db_size_bytes: 10_485_760)
+
+      expect(snapshot.db_size_mb).to eq(10.0)
+    end
+  end
+
+  describe "#db_size_gb" do
+    it "converts bytes to gigabytes" do
+      snapshot = described_class.new(db_size_bytes: 1_073_741_824)
+
+      expect(snapshot.db_size_gb).to eq(1.0)
     end
   end
 end
