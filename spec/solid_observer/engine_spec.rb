@@ -291,6 +291,7 @@ RSpec.describe SolidObserver::Engine do
       allow(connection).to receive(:data_source_exists?).and_return(true)
       allow(SolidObserver::Subscriber).to receive(:subscribe!)
       allow(SolidObserver::CacheSubscriber).to receive(:subscribe!)
+      allow(SolidObserver::CableSubscriber).to receive(:subscribe!)
     end
 
     after { SolidObserver.reset_configuration! }
@@ -412,6 +413,33 @@ RSpec.describe SolidObserver::Engine do
       expect(logger).to receive(:info).with(/missing: solid_observer_queue_events/)
       expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
       expect(SolidObserver::CacheSubscriber).to receive(:subscribe!)
+
+      described_class.activate_subscribers
+    end
+
+    it "keeps cable activation independent when the enabled queue/cache tables are missing" do
+      stub_const("SolidCable", Module.new)
+      SolidObserver.config.observe_cable = true
+      allow(cache).to receive(:data_source_exists?).with(pool, "solid_observer_queue_events").and_return(false)
+      allow(connection).to receive(:data_source_exists?).with("solid_observer_queue_events").and_return(false)
+      allow(cache).to receive(:data_source_exists?).with(pool, "solid_observer_cache_events").and_return(false)
+      allow(connection).to receive(:data_source_exists?).with("solid_observer_cache_events").and_return(false)
+      allow(cache).to receive(:data_source_exists?).with(pool, "solid_observer_cable_events").and_return(true)
+
+      expect(logger).to receive(:info).with(/missing: solid_observer_queue_events/)
+      expect(SolidObserver::Subscriber).not_to receive(:subscribe!)
+      expect(SolidObserver::CacheSubscriber).not_to receive(:subscribe!)
+      expect(SolidObserver::CableSubscriber).to receive(:subscribe!)
+
+      described_class.activate_subscribers
+    end
+
+    it "activates cable subscriber in realtime mode when cable is enabled" do
+      stub_const("SolidCable", Module.new)
+      SolidObserver.config.observe_cable = true
+      SolidObserver.config.storage_mode = :realtime
+
+      expect(SolidObserver::CableSubscriber).to receive(:subscribe!)
 
       described_class.activate_subscribers
     end

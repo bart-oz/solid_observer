@@ -49,7 +49,8 @@ module SolidObserver
       :flush_interval,
       :max_buffer_size,
       :buffer_overflow_strategy,
-      :filter_cache_ttl
+      :filter_cache_ttl,
+      :cable_sampling_rate
 
     # Correlation Settings
     attr_accessor :correlation_id_generator
@@ -58,13 +59,13 @@ module SolidObserver
       @ui_enabled, @ui_base_controller, @ui_username, @ui_password,
         @storage_mode, @observe_queue, @observe_cache, @observe_cable,
         @event_retention, @metrics_retention, @max_db_size, @warning_threshold,
-        @sampling_rate, @cache_sampling_rate, @cache_slow_threshold, @cache_store_errors,
+        @sampling_rate, @cache_sampling_rate, @cable_sampling_rate, @cache_slow_threshold, @cache_store_errors,
         @buffer_size, @flush_interval,
         @max_buffer_size, @buffer_overflow_strategy, @filter_cache_ttl,
         @correlation_id_generator = !production?, "::ApplicationController", nil, nil,
           :persistence, true, false, false,
           30.days, 90.days, 1.gigabyte, 0.8,
-          1.0, 0.1, 0.1, true, 1000, 10.seconds,
+          1.0, 0.1, 0.1, 0.1, true, 1000, 10.seconds,
           10_000, :drop_old, 1.minute,
           nil
     end
@@ -114,6 +115,11 @@ module SolidObserver
     def sampling_rate=(value)
       validate_rate!(:sampling_rate, value)
       @sampling_rate = value
+    end
+
+    def cable_sampling_rate=(value)
+      validate_rate!(:cable_sampling_rate, value)
+      @cable_sampling_rate = value
     end
 
     def warning_threshold=(value)

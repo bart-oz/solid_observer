@@ -9,6 +9,7 @@ RSpec.describe SolidObserver::Configuration do
     config = described_class.new
 
     expect(config.sampling_rate).to eq(1.0)
+    expect(config.cable_sampling_rate).to eq(0.1)
     expect(config.buffer_size).to eq(1000)
     expect(config.max_buffer_size).to eq(10_000)
     expect(config.buffer_overflow_strategy).to eq(:drop_old)
@@ -185,6 +186,39 @@ RSpec.describe SolidObserver::Configuration do
 
       expect { config.buffer_overflow_strategy = :invalid }.to raise_error(
         ArgumentError, "buffer_overflow_strategy must be :drop_old or :drop_new"
+      )
+    end
+  end
+
+  describe "#cable_sampling_rate=" do
+    it "accepts values between 0.0 and 1.0" do
+      config = described_class.new
+      config.cable_sampling_rate = 0.5
+
+      expect(config.cable_sampling_rate).to eq(0.5)
+    end
+
+    it "rejects values below 0.0" do
+      config = described_class.new
+
+      expect { config.cable_sampling_rate = -0.1 }.to raise_error(
+        ArgumentError, "cable_sampling_rate must be a number between 0.0 and 1.0"
+      )
+    end
+
+    it "rejects values above 1.0" do
+      config = described_class.new
+
+      expect { config.cable_sampling_rate = 1.1 }.to raise_error(
+        ArgumentError, "cable_sampling_rate must be a number between 0.0 and 1.0"
+      )
+    end
+
+    it "rejects non-numeric values" do
+      config = described_class.new
+
+      expect { config.cable_sampling_rate = "half" }.to raise_error(
+        ArgumentError, "cable_sampling_rate must be a number between 0.0 and 1.0"
       )
     end
   end
