@@ -95,12 +95,20 @@ module SolidObserver
       !!defined?(::SolidCache)
     end
 
+    def solid_cable_available?
+      !!defined?(::SolidCable)
+    end
+
     def solid_queue_enabled?
       observe_queue
     end
 
     def solid_cache_enabled?
       observe_cache && solid_cache_available?
+    end
+
+    def solid_cable_enabled?
+      observe_cable && solid_cable_available?
     end
 
     def sampling_rate=(value)

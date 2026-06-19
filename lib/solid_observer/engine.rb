@@ -22,6 +22,13 @@ module SolidObserver
         Rails.logger.warn "[SolidObserver] SolidCache not detected. Cache observability features will be disabled."
       end
 
+      def check_solid_cable_availability
+        return if defined?(::SolidCable)
+        return unless SolidObserver.config.observe_cable
+
+        Rails.logger.warn "[SolidObserver] SolidCable not detected. Cable observability features will be disabled."
+      end
+
       def check_ui_authentication
         Services::UiAuthCheck.call(config: SolidObserver.config)
       end
@@ -146,6 +153,7 @@ module SolidObserver
     config.before_initialize do
       Engine.check_solid_queue_availability
       Engine.check_solid_cache_availability
+      Engine.check_solid_cable_availability
     end
 
     config.after_initialize do

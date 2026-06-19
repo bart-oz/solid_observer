@@ -44,6 +44,7 @@ RSpec.describe SolidObserver::Engine do
     it "does not define load-time availability constants" do
       expect(described_class.const_defined?(:SOLID_QUEUE_AVAILABLE, false)).to be false
       expect(described_class.const_defined?(:SOLID_CACHE_AVAILABLE, false)).to be false
+      expect(described_class.const_defined?(:SOLID_CABLE_AVAILABLE, false)).to be false
     end
   end
 
@@ -128,6 +129,37 @@ RSpec.describe SolidObserver::Engine do
       expect(logger).not_to receive(:warn).with(/SolidCache not detected/)
 
       described_class.check_solid_cache_availability
+    end
+  end
+
+  describe ".check_solid_cable_availability" do
+    after { SolidObserver.reset_configuration! }
+
+    it "warns when SolidCable is not defined and cable observation is enabled" do
+      hide_const("SolidCable")
+      SolidObserver.config.observe_cable = true
+
+      expect(logger).to receive(:warn).with(/SolidCable not detected/)
+
+      described_class.check_solid_cable_availability
+    end
+
+    it "does not warn when SolidCable is not defined and cable observation is disabled" do
+      hide_const("SolidCable")
+      SolidObserver.config.observe_cable = false
+
+      expect(logger).not_to receive(:warn).with(/SolidCable not detected/)
+
+      described_class.check_solid_cable_availability
+    end
+
+    it "does not warn when SolidCable is defined" do
+      stub_const("SolidCable", Module.new)
+      SolidObserver.config.observe_cable = true
+
+      expect(logger).not_to receive(:warn).with(/SolidCable not detected/)
+
+      described_class.check_solid_cable_availability
     end
   end
 

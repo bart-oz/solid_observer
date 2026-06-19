@@ -283,6 +283,10 @@ bin/rails solid_observer:cache:clear  # Clear all SolidCache entries (with confi
 bin/rails solid_observer:cache:prune  # Prune expired SolidCache entries
 ```
 
+### Solid Cable Observability (Coming in v0.5.0+)
+
+Cable observability is optional and will require SolidCable in the host app. Setting `config.observe_cable = true` has no effect until the v0.5.0 subscriber implementation lands, and SolidObserver does not add any SolidCable dependency or setup in this release.
+
 ### Storage
 
 The Storage page aggregates per-component health rows: Queue Observer database, Cache Observer, and SolidCache table sizes. Each row reports size, record counts, and a status indicator.
