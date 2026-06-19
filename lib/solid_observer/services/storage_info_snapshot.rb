@@ -65,6 +65,10 @@ module SolidObserver
           key == "solid_cache"
         end
 
+        def solid_cable?
+          key == "solid_cable"
+        end
+
         def storage_model
           model.call
         end
@@ -72,13 +76,14 @@ module SolidObserver
         def snapshot
           return unless enabled?
           return unavailable_snapshot(reason: "SolidCache is unavailable") if unavailable_solid_cache?
+          return unavailable_snapshot(reason: "SolidCable is unavailable") if solid_cable? && !defined?(::SolidCable::Message)
 
           existing_data_source_snapshot
         rescue *StorageInfoSnapshot::CONNECTION_ERRORS, TypeError
           unavailable_snapshot(reason: "Storage unavailable")
         end
 
-        def available_snapshot(db_size_bytes:, event_count:)
+        def available_snapshot(db_size_bytes:, event_count:, **extras)
           {
             component: key,
             label: label,
@@ -88,7 +93,7 @@ module SolidObserver
             record_label: record_label,
             recorded_at: Time.current,
             unavailable_reason: nil
-          }
+          }.merge(extras)
         end
 
         def unavailable_snapshot(reason:)
@@ -116,22 +121,39 @@ module SolidObserver
           table_name = record_model.table_name.to_s
           return unavailable_snapshot(reason: "Table unavailable") unless data_source_available?(connection, table_name)
 
+          build_available_snapshot(record_model, connection, table_name)
+        end
+
+        def build_available_snapshot(record_model, connection, table_name)
+          count = -> { record_model.count }
+          event_count = solid_cache? ? RecordCount.new(connection, table_name).solid_cache_count(&count) : count.call
+
           available_snapshot(
             db_size_bytes: DatabaseSize.call(connection: connection, table_name: table_name),
-            event_count: snapshot_event_count(record_model, connection, table_name)
+            event_count: event_count,
+            **extras_for(record_model)
           )
+        end
+
+        def extras_for(record_model)
+          solid_cable? ? solid_cable_extras(record_model) : {}
         end
 
         def data_source_available?(connection, table_name)
           !table_name.empty? && connection.data_source_exists?(table_name)
         end
 
-        def snapshot_event_count(record_model, connection, table_name)
-          record_count = RecordCount.new(connection, table_name)
-          exact_count = -> { record_model.count }
-          return exact_count.call unless solid_cache?
+        def solid_cable_extras(record_model)
+          {
+            trimmable_count: safe_query { record_model.trimmable.count },
+            oldest_message_age_seconds: safe_query { (Time.current - record_model.minimum(:created_at).to_time).to_i }
+          }
+        end
 
-          record_count.solid_cache_count(&exact_count)
+        def safe_query
+          yield
+        rescue *StorageInfoSnapshot::CONNECTION_ERRORS, TypeError, NoMethodError
+          nil
         end
       end
 
@@ -156,6 +178,20 @@ module SolidObserver
           record_label: "cache rows",
           model: -> { ::SolidCache::Entry },
           enabled: -> { SolidObserver.config.solid_cache_enabled? }
+        ),
+        Component.new(
+          key: "cable_observer",
+          label: "SolidObserver Cable telemetry",
+          record_label: "observer events",
+          model: -> { SolidObserver::CableEvent },
+          enabled: -> { SolidObserver.config.solid_cable_enabled? }
+        ),
+        Component.new(
+          key: "solid_cable",
+          label: "Solid Cable messages",
+          record_label: "messages",
+          model: -> { ::SolidCable::Message },
+          enabled: -> { SolidObserver.config.solid_cable_enabled? }
         )
       ].freeze
 

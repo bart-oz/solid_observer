@@ -6,7 +6,7 @@ module SolidObserver
 
     MB_TO_BYTES = 1_048_576
     GB_TO_BYTES = 1_073_741_824
-    COMPONENTS = %w[queue_observer cache_observer solid_cache].freeze
+    COMPONENTS = %w[queue_observer cache_observer solid_cache cable_observer solid_cable].freeze
 
     validates :db_size_bytes, presence: true, numericality: {only_integer: true, greater_than_or_equal_to: 0}
     validates :event_count, presence: true, numericality: {only_integer: true, greater_than_or_equal_to: 0}
