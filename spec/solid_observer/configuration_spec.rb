@@ -190,6 +190,83 @@ RSpec.describe SolidObserver::Configuration do
     end
   end
 
+  describe "cable stability thresholds" do
+    it "sets sensible defaults" do
+      config = described_class.new
+
+      expect(config.cable_rejection_threshold).to eq(0.05)
+      expect(config.cable_backlog_threshold).to eq(0.10)
+      expect(config.cable_error_threshold).to eq(0.0)
+    end
+
+    describe "#cable_rejection_threshold=" do
+      it "accepts values between 0.0 and 1.0" do
+        config = described_class.new
+        config.cable_rejection_threshold = 0.03
+
+        expect(config.cable_rejection_threshold).to eq(0.03)
+      end
+
+      it "rejects values below 0.0" do
+        config = described_class.new
+
+        expect { config.cable_rejection_threshold = -0.1 }.to raise_error(
+          ArgumentError, "cable_rejection_threshold must be a number between 0.0 and 1.0"
+        )
+      end
+
+      it "rejects values above 1.0" do
+        config = described_class.new
+
+        expect { config.cable_rejection_threshold = 1.1 }.to raise_error(
+          ArgumentError, "cable_rejection_threshold must be a number between 0.0 and 1.0"
+        )
+      end
+    end
+
+    describe "#cable_backlog_threshold=" do
+      it "accepts values between 0.0 and 1.0" do
+        config = described_class.new
+        config.cable_backlog_threshold = 0.2
+
+        expect(config.cable_backlog_threshold).to eq(0.2)
+      end
+
+      it "rejects values above 1.0" do
+        config = described_class.new
+
+        expect { config.cable_backlog_threshold = 1.5 }.to raise_error(
+          ArgumentError, "cable_backlog_threshold must be a number between 0.0 and 1.0"
+        )
+      end
+    end
+
+    describe "#cable_error_threshold=" do
+      it "accepts non-negative numeric values" do
+        config = described_class.new
+        config.cable_error_threshold = 5
+
+        expect(config.cable_error_threshold).to eq(5)
+      end
+
+      it "rejects negative values" do
+        config = described_class.new
+
+        expect { config.cable_error_threshold = -1 }.to raise_error(
+          ArgumentError, "cable_error_threshold must be a non-negative number"
+        )
+      end
+
+      it "rejects non-numeric values" do
+        config = described_class.new
+
+        expect { config.cable_error_threshold = "none" }.to raise_error(
+          ArgumentError, "cable_error_threshold must be a non-negative number"
+        )
+      end
+    end
+  end
+
   describe "#cable_sampling_rate=" do
     it "accepts values between 0.0 and 1.0" do
       config = described_class.new

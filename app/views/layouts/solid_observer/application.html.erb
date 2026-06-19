@@ -398,7 +398,8 @@
     .so-cache-controls { max-width: 820px; }
     .so-cache-dashboard__intro,
     .so-cache-controls__intro,
-    .so-queue-overview__intro {
+    .so-queue-overview__intro,
+    .so-cable-dashboard__intro {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -407,16 +408,19 @@
     }
     .so-cache-dashboard__hint,
     .so-cache-controls__hint,
-    .so-queue-overview__hint {
+    .so-queue-overview__hint,
+    .so-cable-dashboard__hint {
       font-size: 0.875rem;
       color: var(--so-text-subtle);
       line-height: 1.5;
     }
-    .so-cache-dashboard__range-form {
+    .so-cache-dashboard__range-form,
+    .so-cable-dashboard__range-form {
       align-items: center;
       margin-bottom: 2rem;
     }
     .so-cache-dashboard__range-form select,
+    .so-cable-dashboard__range-form select,
     .so-dashboard-toolbar select {
       padding: 0.4rem 0.6rem;
       border: 1px solid var(--so-border);
@@ -425,11 +429,13 @@
       background: var(--so-card-bg);
       color: var(--so-text);
     }
-    .so-cache-dashboard__chart-empty {
+    .so-cache-dashboard__chart-empty,
+    .so-cable-dashboard__chart-empty {
       max-width: 420px;
       margin-bottom: 0;
     }
-    .so-cache-dashboard__digest {
+    .so-cache-dashboard__digest,
+    .so-cable-dashboard__digest {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       white-space: nowrap;
     }
@@ -564,7 +570,12 @@
           <% end %>
         <% end %>
 
-        <% if persistence_mode? && (SolidObserver.config.solid_queue_enabled? || SolidObserver.config.solid_cache_enabled?) %>
+        <% if SolidObserver.config.solid_cable_enabled? %>
+          <div class="so-sidebar__section">Cable</div>
+          <%= link_to "Overview", cable_dashboard_path, class: ("active" if controller_name == "cable_dashboard"), "aria-current": (controller_name == "cable_dashboard" ? "page" : nil) %>
+        <% end %>
+
+        <% if persistence_mode? && (SolidObserver.config.solid_queue_enabled? || SolidObserver.config.solid_cache_enabled? || SolidObserver.config.solid_cable_enabled?) %>
           <%= link_to "Storage", storage_path, class: ("active" if controller_name == "storages"), "aria-current": (controller_name == "storages" ? "page" : nil) %>
         <% end %>
       </nav>

@@ -1,0 +1,34 @@
+<section class="so-card so-card--section" aria-labelledby="so-cable-events-heading">
+  <header class="so-dashboard-section__header">
+    <h2 id="so-cable-events-heading" class="so-dashboard-section__title">Recent Cable events</h2>
+    <span class="so-dashboard-section__meta">debug context only · broadcasting names and payloads are never shown</span>
+  </header>
+
+  <% if recent_events.present? %>
+    <table class="so-table so-table--card">
+      <caption class="sr-only">Recent Cable events without raw broadcasting names or payloads</caption>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Channel class</th>
+          <th>Broadcasting digest</th>
+          <th>Duration</th>
+          <th>Recorded</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recent_events.each do |event| %>
+          <tr>
+            <td><%= event.event_type.to_s %></td>
+            <td><%= event.channel_class.presence || "—" %></td>
+            <td><span class="so-cable-dashboard__digest"><%= cable_event_digest(event.broadcasting_digest) %></span></td>
+            <td><%= event.duration ? format_duration(event.duration) : "—" %></td>
+            <td><span title="<%= event.recorded_at.utc.strftime("%Y-%m-%d %H:%M:%S UTC") %>"><%= time_ago_in_words(event.recorded_at) %> ago</span></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-events">No sampled cable events in the selected range yet. Broadcasts, rejections, and errors will appear here after Cable activity is recorded.</p>
+  <% end %>
+</section>

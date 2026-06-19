@@ -1,0 +1,34 @@
+<% backlog_summary = cable_backlog_summary(stats) %>
+<% storage_summary = cable_storage_summary(storage_components) %>
+
+<section class="so-dashboard-section" aria-labelledby="so-cable-summary-heading">
+  <header class="so-dashboard-section__header">
+    <h2 id="so-cable-summary-heading" class="so-dashboard-section__title">Summary in selected range</h2>
+  </header>
+
+  <div class="so-stat-cards so-cable-dashboard__summary">
+    <article class="so-card so-metric">
+      <div class="so-card__label">Broadcasts</div>
+      <div class="so-metric__value"><%= number_with_delimiter(stats[:broadcasts_count].to_i) %></div>
+      <div class="so-card__subtitle">selected window</div>
+    </article>
+
+    <article class="so-card so-metric">
+      <div class="so-card__label">Rejection rate</div>
+      <div class="so-metric__value"><%= cable_ratio_percent(stats[:rejection_rate]) %></div>
+      <div class="so-card__subtitle">rejections / broadcasts</div>
+    </article>
+
+    <article class="so-card so-metric">
+      <div class="so-card__label">Message backlog</div>
+      <div class="so-metric__value"><%= backlog_summary[:value] %></div>
+      <div class="so-card__subtitle"><%= backlog_summary[:subtitle] %></div>
+    </article>
+
+    <article class="so-card so-metric">
+      <div class="so-card__label">Storage footprint</div>
+      <div class="so-metric__value"><%= storage_summary[:value] %></div>
+      <div class="so-card__subtitle"><%= storage_summary[:subtitle] %></div>
+    </article>
+  </div>
+</section>

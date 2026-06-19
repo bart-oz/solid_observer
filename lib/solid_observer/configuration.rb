@@ -22,12 +22,16 @@ module SolidObserver
     attr_accessor :observe_queue
 
     # Observer Settings (planned for a future release)
-    # @note Cache and Cable observers are not yet implemented
+    # @note Cable observer is not yet fully implemented
     attr_accessor :observe_cache,
       :observe_cable,
       :cache_sampling_rate,
       :cache_slow_threshold,
       :cache_store_errors
+
+    attr_reader :cable_rejection_threshold,
+      :cable_backlog_threshold,
+      :cable_error_threshold
 
     # Retention Settings
     attr_accessor :event_retention
@@ -60,12 +64,15 @@ module SolidObserver
         @storage_mode, @observe_queue, @observe_cache, @observe_cable,
         @event_retention, @metrics_retention, @max_db_size, @warning_threshold,
         @sampling_rate, @cache_sampling_rate, @cable_sampling_rate, @cache_slow_threshold, @cache_store_errors,
+        @cable_rejection_threshold, @cable_backlog_threshold, @cable_error_threshold,
         @buffer_size, @flush_interval,
         @max_buffer_size, @buffer_overflow_strategy, @filter_cache_ttl,
         @correlation_id_generator = !production?, "::ApplicationController", nil, nil,
           :persistence, true, false, false,
           30.days, 90.days, 1.gigabyte, 0.8,
-          1.0, 0.1, 0.1, 0.1, true, 1000, 10.seconds,
+          1.0, 0.1, 0.1, 0.1, true,
+          0.05, 0.10, 0.0,
+          1000, 10.seconds,
           10_000, :drop_old, 1.minute,
           nil
     end
@@ -120,6 +127,21 @@ module SolidObserver
     def cable_sampling_rate=(value)
       validate_rate!(:cable_sampling_rate, value)
       @cable_sampling_rate = value
+    end
+
+    def cable_rejection_threshold=(value)
+      validate_rate!(:cable_rejection_threshold, value)
+      @cable_rejection_threshold = value
+    end
+
+    def cable_backlog_threshold=(value)
+      validate_rate!(:cable_backlog_threshold, value)
+      @cable_backlog_threshold = value
+    end
+
+    def cable_error_threshold=(value)
+      validate_non_negative_numeric!(:cable_error_threshold, value)
+      @cable_error_threshold = value
     end
 
     def warning_threshold=(value)
@@ -181,6 +203,13 @@ module SolidObserver
     def validate_positive_numeric!(name, value)
       unless value.is_a?(Numeric) && value > 0
         raise ArgumentError, "#{name} must be a positive number"
+      end
+    end
+
+    # :reek:FeatureEnvy
+    def validate_non_negative_numeric!(name, value)
+      unless value.is_a?(Numeric) && value >= 0
+        raise ArgumentError, "#{name} must be a non-negative number"
       end
     end
 

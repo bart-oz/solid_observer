@@ -156,6 +156,63 @@ module SolidObserver
       CACHE_RANGE_LABELS.fetch(range_key.to_s, "in selected range")
     end
 
+    def cable_range_label(range_key)
+      CACHE_RANGE_LABELS.fetch(range_key.to_s, "in selected range")
+    end
+
+    def cable_ratio_percent(value)
+      number_to_percentage(value.to_f * 100, precision: 1, strip_insignificant_zeros: true)
+    end
+
+    def cable_stability_badge(state)
+      stability_badge_for(state.to_sym)
+    end
+
+    def cable_stability_detail(stability)
+      state = (stability || {})[:state]&.to_sym
+      state = :stable unless STABILITY_STATES.key?(state)
+
+      case state
+      when :critical
+        critical_cable_stability_detail(stability)
+      when :degraded
+        degraded_cable_stability_detail(stability)
+      else
+        "No cable errors or subscription rejections in the selected range and backlog current snapshot is healthy"
+      end
+    end
+
+    def cable_event_digest(digest, visible_chars: 10)
+      digest = digest.to_s
+      return "—" if digest.empty?
+      return digest if digest.length <= visible_chars
+
+      "#{digest.first(visible_chars)}…"
+    end
+
+    # :reek:FeatureEnvy
+    def cable_backlog_summary(stats)
+      if stats[:backlog_available]
+        {
+          value: number_with_delimiter(stats[:backlog_count].to_i),
+          subtitle: "current Solid Cable snapshot"
+        }
+      else
+        {value: "—", subtitle: "current Solid Cable snapshot unavailable"}
+      end
+    end
+
+    def cable_storage_summary(storage_components)
+      snapshots = Array(storage_components)
+      reason = cable_storage_unavailable_reason(snapshots)
+      return {value: "—", subtitle: "— #{reason}"} if reason
+
+      {
+        value: number_to_human_size(cable_storage_total_bytes(snapshots), precision: 1, significant: false, strip_insignificant_zeros: false),
+        subtitle: "SolidObserver Cable telemetry + Solid Cable messages"
+      }
+    end
+
     def cache_stability_detail(stability)
       state = (stability || {})[:state]&.to_sym
       state = :stable unless STABILITY_STATES.key?(state)
@@ -187,6 +244,10 @@ module SolidObserver
 
     def cache_component_enabled?
       SolidObserver.config.solid_cache_enabled?
+    end
+
+    def cable_component_enabled?
+      SolidObserver.config.solid_cable_enabled?
     end
 
     def dashboard_section_active?(component)
@@ -226,6 +287,59 @@ module SolidObserver
     end
 
     def cache_storage_unavailable_reason(snapshots)
+      return "Storage snapshot unavailable" unless snapshots.size == 2
+
+      snapshots.find { |snapshot| !snapshot[:available] }&.[](:unavailable_reason)
+    end
+
+    # :reek:FeatureEnvy
+    # :reek:TooManyStatements
+    def critical_cable_stability_detail(stability)
+      parts = []
+      error_count = stability[:error_count].to_i
+      parts << pluralize(error_count, "cable error") if error_count.positive?
+
+      rejection_count = stability[:rejection_count].to_i
+      rejection_rate = stability[:rejection_rate].to_f
+      if rejection_rate > 0.0
+        parts << "#{cable_ratio_percent(rejection_rate)} rejection rate"
+      elsif rejection_count.positive?
+        parts << pluralize(rejection_count, "subscription rejection")
+      end
+
+      backlog_ratio = stability[:backlog_ratio].to_f
+      if backlog_ratio >= 0.5
+        parts << "backlog at #{number_to_percentage(backlog_ratio * 100, precision: 0)} in current snapshot"
+      end
+
+      return "Cable stability critical" if parts.empty?
+
+      "#{parts.join("; ")} in the selected range"
+    end
+
+    # :reek:FeatureEnvy
+    # :reek:TooManyStatements
+    def degraded_cable_stability_detail(stability)
+      return "Backlog current snapshot unavailable" unless stability[:backlog_available]
+
+      backlog_ratio = stability[:backlog_ratio].to_f
+      if backlog_ratio >= SolidObserver.config.cable_backlog_threshold.to_f
+        return "Backlog at #{number_to_percentage(backlog_ratio * 100, precision: 0)} in current snapshot"
+      end
+
+      rejection_count = stability[:rejection_count].to_i
+      if rejection_count.positive?
+        return "#{pluralize(rejection_count, "subscription rejection")} in the selected range"
+      end
+
+      "Cable stability degraded"
+    end
+
+    def cable_storage_total_bytes(snapshots)
+      snapshots.sum { |snapshot| snapshot[:db_size_bytes].to_i }
+    end
+
+    def cable_storage_unavailable_reason(snapshots)
       return "Storage snapshot unavailable" unless snapshots.size == 2
 
       snapshots.find { |snapshot| !snapshot[:available] }&.[](:unavailable_reason)
