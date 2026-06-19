@@ -34,6 +34,8 @@ SolidObserver.configure do |config|
   # config.cache_sampling_rate = 0.1  # Sample 10% of cache operations
 
   # === Cable Observability (Coming in v0.5.0+) ===
+  # Cable observability is optional and requires SolidCable in the host app.
+  # No SolidCable setup is performed by SolidObserver.
   # config.observe_cable = true
 
   # Data Retention

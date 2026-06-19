@@ -101,6 +101,23 @@ RSpec.describe SolidObserver::Configuration do
       expect(config.solid_cache_available?).to be(true)
       expect(config.solid_cache_enabled?).to be(true)
     end
+
+    it "reports cable disabled by default when SolidCable is absent" do
+      hide_const("SolidCable")
+      config = described_class.new
+
+      expect(config.solid_cable_available?).to be(false)
+      expect(config.solid_cable_enabled?).to be(false)
+    end
+
+    it "enables cable only when observe_cable and SolidCable are both present" do
+      stub_const("SolidCable", Module.new)
+      config = described_class.new
+      config.observe_cable = true
+
+      expect(config.solid_cable_available?).to be(true)
+      expect(config.solid_cable_enabled?).to be(true)
+    end
   end
 
   describe "#max_buffer_size" do
