@@ -84,6 +84,26 @@ RSpec.describe SolidObserver::StorageInfo do
       )
     end
 
+    it "persists a solid_cable component" do
+      snapshot = described_class.record_snapshot(db_size: 1024, event_count: 5, component: "solid_cable")
+
+      expect(snapshot).to have_attributes(
+        component: "solid_cable",
+        db_size_bytes: 1024,
+        event_count: 5
+      )
+    end
+
+    it "persists a cable_observer component" do
+      snapshot = described_class.record_snapshot(db_size: 2048, event_count: 10, component: "cable_observer")
+
+      expect(snapshot).to have_attributes(
+        component: "cable_observer",
+        db_size_bytes: 2048,
+        event_count: 10
+      )
+    end
+
     it "logs and re-raises validation failures" do
       logger = instance_double(Logger, error: nil)
       allow(Rails).to receive(:logger).and_return(logger)

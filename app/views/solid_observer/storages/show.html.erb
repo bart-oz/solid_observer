@@ -28,7 +28,24 @@
             <div class="so-card__value"><%= size_value %></div>
             <div class="so-card__subtitle">
               <% if component[:available] %>
-                <%= records_value %> <%= component[:record_label] %>
+                <% if component[:component] == "solid_cable" %>
+                  <% parts = ["#{records_value} #{component[:record_label]}"] %>
+                  <% parts << "#{number_with_delimiter(component[:trimmable_count])} trimmable" unless component[:trimmable_count].nil? %>
+                  <% unless component[:oldest_message_age_seconds].nil? %>
+                    <% age = component[:oldest_message_age_seconds] %>
+                    <% if age < 3600 %>
+                      <% value = [age / 60, 1].max; unit = "m" %>
+                    <% elsif age < 86_400 %>
+                      <% value = age / 3600; unit = "h" %>
+                    <% else %>
+                      <% value = age / 86_400; unit = "d" %>
+                    <% end %>
+                    <% parts << "oldest #{value}#{unit}" %>
+                  <% end %>
+                  <%= parts.join(" · ") %>
+                <% else %>
+                  <%= records_value %> <%= component[:record_label] %>
+                <% end %>
               <% else %>
                 <%= component[:unavailable_reason] %>
               <% end %>
@@ -53,10 +70,19 @@
           </thead>
           <tbody>
             <% @storage_history.each do |snapshot| %>
-              <% record_label = snapshot.component == "solid_cache" ? "cache rows" : "observer events" %>
+              <% record_label = case snapshot.component
+                when "solid_cache" then "cache rows"
+                when "solid_cable" then "messages"
+                else "observer events"
+                end %>
+              <% component_label = case snapshot.component
+                when "solid_cable" then "Solid Cable messages"
+                when "cable_observer" then "SolidObserver Cable telemetry"
+                else snapshot.component.humanize
+                end %>
               <tr>
                 <td><%= snapshot.recorded_at.strftime("%Y-%m-%d %H:%M") %></td>
-                <td><%= snapshot.component.humanize %></td>
+                <td><%= component_label %></td>
                 <td><%= number_to_human_size(snapshot.db_size_bytes, precision: 1, significant: false, strip_insignificant_zeros: false) %></td>
                 <td><%= number_with_delimiter(snapshot.event_count) %> <%= record_label %></td>
               </tr>
