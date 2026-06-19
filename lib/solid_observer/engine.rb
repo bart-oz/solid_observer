@@ -46,6 +46,7 @@ module SolidObserver
         Rails.logger.info "[SolidObserver] Activating event subscribers"
         activate_queue_subscriber
         activate_cache_subscriber
+        activate_cable_subscriber
       end
 
       private
@@ -75,6 +76,7 @@ module SolidObserver
         Rails.logger.info "[SolidObserver] Starting in real-time mode (no persistence)"
         Subscriber.subscribe! if should_activate_queue_subscriber?
         CacheSubscriber.subscribe! if should_activate_cache_subscriber?
+        CableSubscriber.subscribe! if should_activate_cable_subscriber?
       end
 
       def activate_queue_subscriber
@@ -83,6 +85,10 @@ module SolidObserver
 
       def activate_cache_subscriber
         activate_subscriber_for_table("solid_observer_cache_events", CacheSubscriber) if should_activate_cache_subscriber?
+      end
+
+      def activate_cable_subscriber
+        activate_subscriber_for_table("solid_observer_cable_events", CableSubscriber) if should_activate_cable_subscriber?
       end
 
       def activate_subscriber_for_table(table_name, subscriber)
@@ -102,6 +108,10 @@ module SolidObserver
 
       def should_activate_cache_subscriber?
         SolidObserver.config.solid_cache_enabled?
+      end
+
+      def should_activate_cable_subscriber?
+        SolidObserver.config.solid_cable_enabled?
       end
 
       def log_activation_skip(message)
