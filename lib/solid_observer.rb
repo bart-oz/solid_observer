@@ -44,6 +44,7 @@ ActiveSupport.on_load(:active_record) do
   require_relative "solid_observer/services/record_cable_metric"
   require_relative "solid_observer/services/flush_cable_event_buffer"
   require_relative "solid_observer/services/cable_stats"
+  require_relative "solid_observer/services/cable_operations"
 end
 
 module SolidObserver

@@ -115,6 +115,18 @@ namespace :solid_observer do
     end
   end
 
+  namespace :cable do
+    desc "Trim expired Solid Cable messages"
+    task trim: :environment do
+      if !SolidObserver::Services::CableOperations.available?
+        puts SolidObserver::Services::CableOperations.unavailable_message
+        next
+      end
+
+      puts SolidObserver::Services::CableOperations.trim[:message]
+    end
+  end
+
   namespace :storage do
     desc "Run storage cleanup based on retention policy"
     task cleanup: :environment do

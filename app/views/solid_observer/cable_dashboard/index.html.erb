@@ -32,6 +32,62 @@
     </form>
 
     <%= render "solid_observer/cable_dashboard/summary", stats: @stats, storage_components: @storage_components %>
+
+    <section class="so-card so-card--section" aria-labelledby="so-cable-controls-heading">
+      <header class="so-dashboard-section__header">
+        <h2 id="so-cable-controls-heading" class="so-dashboard-section__title">Operational controls</h2>
+      </header>
+
+      <% cable_controls_available = SolidObserver::Services::CableOperations.available? && @stats&.[](:backlog_available) %>
+      <% cable_backlog_count = @stats&.[](:backlog_count).to_i %>
+
+      <% if cable_controls_available %>
+        <% if cable_backlog_count > 1000 %>
+          <div class="so-cache-control-row">
+            <div class="so-cache-control-row__copy">
+              <h3 class="so-cache-control-row__title">Use the Rake task</h3>
+              <p class="so-cache-control-row__body">More than 1,000 expired/trimmable Solid Cable messages are pending. The UI will not run this trim. Run solid_observer:cable:trim from the server instead.</p>
+              <span class="so-badge so-badge--pill so-badge--warning">
+                <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true">
+                  <circle r="3" cx="3" cy="3" />
+                </svg>
+                UI trim unavailable
+              </span>
+            </div>
+          </div>
+        <% else %>
+          <div class="so-cache-control-row">
+            <div class="so-cache-control-row__copy">
+              <h3 class="so-cache-control-row__title">Trim expired messages</h3>
+              <p class="so-cache-control-row__body">Removes expired/trimmable Solid Cable messages only. Active messages remain available to Cable.</p>
+              <span class="so-badge so-badge--pill so-badge--success">
+                <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true">
+                  <circle r="3" cx="3" cy="3" />
+                </svg>
+                Trimmable backlog: <%= cable_backlog_count %>
+              </span>
+            </div>
+
+            <div class="so-cache-control-row__action">
+              <%= button_to "Trim expired messages",
+                    trim_cable_operations_path,
+                    method: :post,
+                    class: "so-btn",
+                    form: {class: "so-form--inline"} %>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="so-dashboard-section__meta so-dashboard-section__meta--idle">Cable controls are unavailable because Solid Cable support is disabled or not detected. No trim was attempted.</p>
+        <span class="so-badge so-badge--pill so-badge--warning">
+          <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true">
+            <circle r="3" cx="3" cy="3" />
+          </svg>
+          Unavailable
+        </span>
+      <% end %>
+    </section>
+
     <%= render "solid_observer/cable_dashboard/charts" %>
 
     <% if @stats&.[](:stability)&.[](:available) %>
