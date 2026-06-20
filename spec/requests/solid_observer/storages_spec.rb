@@ -38,6 +38,12 @@ RSpec.describe "SolidObserver storages page", type: :request do
 
     connection.create_table :solid_observer_cable_events do |t|
       t.string :event_type, null: false, limit: 64
+      t.string :channel_class, limit: 255
+      t.string :broadcasting_digest, limit: 64
+      t.float :duration
+      t.string :error_class, limit: 255
+      t.text :error_message
+      t.text :metadata
       t.datetime :recorded_at, null: false
     end
   end

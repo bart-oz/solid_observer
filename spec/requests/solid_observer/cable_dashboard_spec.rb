@@ -41,6 +41,7 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
     install_path_helpers!
 
     stub_const("SolidCable", Module.new)
+    stub_const("SolidCable::Message", Class.new)
 
     SolidObserver.config.ui_enabled = true
     SolidObserver.config.observe_queue = false
@@ -74,6 +75,7 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
         :cache_dashboard_path,
         :cache_operations_path,
         :cable_dashboard_path,
+        :trim_cable_operations_path,
         :live_poll_script_path
 
       def root_path
@@ -102,6 +104,10 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
 
       def cable_dashboard_path
         "/solid_observer/cable"
+      end
+
+      def trim_cable_operations_path
+        "/solid_observer/cable/trim"
       end
 
       def live_poll_script_path
@@ -331,5 +337,57 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
     expect(body).to include("0%")
     expect(body).to include("No chart data in the selected range yet. Summary metrics still use bounded cable stats.")
     expect(body).to include("No sampled cable events in the selected range yet. Broadcasts, rejections, and errors will appear here after Cable activity is recorded.")
+  end
+
+  it "renders eligible operational controls when the trimmable backlog is within the UI limit" do
+    fixed_time = Time.utc(2026, 6, 2, 12, 0, 0)
+
+    travel_to(fixed_time) do
+      seed_cable_dashboard_data(fixed_time)
+      allow(SolidObserver::Services::StorageInfoSnapshot).to receive(:call).and_return(default_storage_snapshots)
+
+      status, _headers, body = call_action("/solid_observer/cable?range=15m")
+
+      expect(status).to eq(200)
+      expect(body).to include("Operational controls")
+      expect(body).to include("Trim expired messages")
+      expect(body).to include("Removes expired/trimmable Solid Cable messages only. Active messages remain available to Cable.")
+      expect(body).to include("Trimmable backlog: 10")
+      expect(body).to include('action="/solid_observer/cable/trim"')
+      expect(body).to match(/<(button|input)[^>]*class="so-btn"[^>]*(?:type="submit"|value="Trim expired messages")/)
+      expect(body).not_to include("Use the Rake task")
+      expect(body).not_to include("UI trim unavailable")
+    end
+  end
+
+  it "renders over-limit instruction when the trimmable backlog exceeds 1,000" do
+    snapshots = default_storage_snapshots
+    snapshots.find { |snapshot| snapshot[:component] == "solid_cable" }[:trimmable_count] = 1001
+
+    allow(SolidObserver::Services::StorageInfoSnapshot).to receive(:call).and_return(snapshots)
+
+    status, _headers, body = call_action("/solid_observer/cable?range=15m")
+
+    expect(status).to eq(200)
+    expect(body).to include("Operational controls")
+    expect(body).to include("Use the Rake task")
+    expect(body).to include("More than 1,000 expired/trimmable Solid Cable messages are pending. The UI will not run this trim. Run solid_observer:cable:trim from the server instead.")
+    expect(body).to include("UI trim unavailable")
+    expect(body).not_to include('action="/solid_observer/cable/trim"')
+    expect(body).not_to include('<button type="submit" class="so-btn">Trim expired messages</button>')
+  end
+
+  it "renders unavailable operational controls when SolidCable::Message is not detected" do
+    hide_const("SolidCable::Message")
+    allow(SolidObserver::Services::StorageInfoSnapshot).to receive(:call).and_return(default_storage_snapshots)
+
+    status, _headers, body = call_action("/solid_observer/cable")
+
+    expect(status).to eq(200)
+    expect(body).to include("Operational controls")
+    expect(body).to include("Cable controls are unavailable because Solid Cable support is disabled or not detected. No trim was attempted.")
+    expect(body).to include("Unavailable")
+    expect(body).not_to include('action="/solid_observer/cable/trim"')
+    expect(body).not_to include("Trimmable backlog:")
   end
 end
