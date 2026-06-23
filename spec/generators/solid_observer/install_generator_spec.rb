@@ -54,6 +54,15 @@ RSpec.describe SolidObserver::Generators::InstallGenerator do
     generator.invoke_all
   end
 
+  def capture_stdout
+    original = $stdout
+    $stdout = StringIO.new
+    yield
+    $stdout.string
+  ensure
+    $stdout = original
+  end
+
   describe "initializer" do
     before { run_generator }
 
@@ -91,6 +100,28 @@ RSpec.describe SolidObserver::Generators::InstallGenerator do
       expect(database_yml).to include("storage/development_solid_observer_queue.sqlite3")
       expect(database_yml).to include("storage/test_solid_observer_queue.sqlite3")
       expect(database_yml).to include("storage/production_solid_observer_queue.sqlite3")
+    end
+
+    it "produces self-contained SQLite config without YAML merge from host default" do
+      database_yml = File.read(File.join(destination, "config/database.yml"))
+      observer_blocks = database_yml.scan(/solid_observer_queue:.*?(?=\n\S|\z)/m)
+      expect(observer_blocks).not_to be_empty
+      observer_blocks.each do |block|
+        expect(block).not_to include("<<: *default")
+        expect(block).to include("adapter: sqlite3")
+        expect(block).to include("pool: 5")
+        expect(block).to include("timeout: 5000")
+        expect(block).to include("migrations_paths: db/solid_observer_migrate")
+      end
+    end
+  end
+
+  describe "post-install instructions" do
+    it "warns non-SQLite host apps to review observer database config before db:create" do
+      output = capture_stdout { run_generator }
+      expect(output).to include("PostgreSQL or MySQL")
+      expect(output).to include("review")
+      expect(output).to include("db:create")
     end
   end
 end

@@ -118,7 +118,7 @@ RSpec.describe SolidObserver::Services::StorageInfoSnapshot do
     cable_snapshot = snapshots.find { |item| item[:component] == "cable_observer" }
 
     expect(cable_snapshot).to include(
-      label: "SolidObserver Cable telemetry",
+      label: "Cable telemetry",
       available: false,
       db_size_bytes: nil,
       event_count: nil,

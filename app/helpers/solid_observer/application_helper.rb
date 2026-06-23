@@ -209,7 +209,7 @@ module SolidObserver
 
       {
         value: number_to_human_size(cable_storage_total_bytes(snapshots), precision: 1, significant: false, strip_insignificant_zeros: false),
-        subtitle: "SolidObserver Cable telemetry + Solid Cable messages"
+        subtitle: "Cable telemetry + Solid Cable messages"
       }
     end
 

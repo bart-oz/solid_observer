@@ -181,7 +181,7 @@ module SolidObserver
         ),
         Component.new(
           key: "cable_observer",
-          label: "SolidObserver Cable telemetry",
+          label: "Cable telemetry",
           record_label: "observer events",
           model: -> { SolidObserver::CableEvent },
           enabled: -> { SolidObserver.config.solid_cable_enabled? }
