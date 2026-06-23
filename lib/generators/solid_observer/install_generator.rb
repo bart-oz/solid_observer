@@ -17,8 +17,11 @@ module SolidObserver
         %w[development test production].each do |env|
           config_block = <<-YAML
   solid_observer_queue:
-    <<: *default
+    adapter: sqlite3
+    pool: 5
+    timeout: 5000
     database: storage/#{env}_solid_observer_queue.sqlite3
+    migrations_paths: db/solid_observer_migrate
           YAML
           inject_into_file "config/database.yml", config_block, after: /^#{env}:\n(?:  .*\n)*/
         end
@@ -39,6 +42,10 @@ module SolidObserver
         say "  4. Run migrations: bin/rails db:migrate"
         say "  5. Restart your Rails server"
         say "  6. Visit /solid_observer to access the web dashboard"
+        say "\n"
+        say "IMPORTANT: If your host app uses PostgreSQL or MySQL, review the", :yellow
+        say "solid_observer_queue entries in config/database.yml before running", :yellow
+        say "db:create. The generated config uses adapter: sqlite3 by default.", :yellow
         say "\n"
         say "Documentation: https://solid.observer", :red
         say "GitHub: https://github.com/bart-oz/solid_observer", :red

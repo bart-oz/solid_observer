@@ -128,7 +128,7 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
     [
       {
         component: "cable_observer",
-        label: "SolidObserver Cable telemetry",
+        label: "Cable telemetry",
         available: true,
         db_size_bytes: 12_288,
         event_count: 3,
@@ -233,7 +233,7 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
       expect(body).to include("5%")
       expect(body).to include("10")
       expect(body).to include("36.0 KB")
-      expect(body).to include("SolidObserver Cable telemetry + Solid Cable messages")
+      expect(body).to include("Cable telemetry + Solid Cable messages")
       expect(body).to include("Activity trends")
       expect(body).to include('data-so-spark="cable-broadcasts"')
       expect(body).to include('data-so-spark="cable-rejections"')
@@ -285,7 +285,7 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
     allow(SolidObserver::Services::StorageInfoSnapshot).to receive(:call).and_return([
       {
         component: "cable_observer",
-        label: "SolidObserver Cable telemetry",
+        label: "Cable telemetry",
         available: false,
         db_size_bytes: nil,
         event_count: nil,

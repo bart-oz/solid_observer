@@ -122,7 +122,7 @@ RSpec.describe "SolidObserver storages page", type: :request do
 
     expect(status).to eq(200)
     expect(body).to include("Solid Cable messages")
-    expect(body).to include("SolidObserver Cable telemetry")
+    expect(body).to include("Cable telemetry")
     expect(body).to include("Available")
   end
 
@@ -153,7 +153,7 @@ RSpec.describe "SolidObserver storages page", type: :request do
     expect(body).to include("5 messages")
   end
 
-  it "labels cable_observer history rows as SolidObserver Cable telemetry in the Recent Snapshots table" do
+  it "labels cable_observer history rows as Cable telemetry in the Recent Snapshots table" do
     snapshot = double(
       "SolidObserver::StorageInfo",
       component: "cable_observer",
@@ -165,7 +165,7 @@ RSpec.describe "SolidObserver storages page", type: :request do
 
     _status, _headers, body = call_action
 
-    expect(body).to include("SolidObserver Cable telemetry")
+    expect(body).to include("Cable telemetry")
     expect(body).to include("10 observer events")
   end
 end
