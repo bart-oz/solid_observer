@@ -33,10 +33,14 @@ SolidObserver.configure do |config|
   # config.observe_cache = true
   # config.cache_sampling_rate = 0.1  # Sample 10% of cache operations
 
-  # === Cable Observability (Coming in v0.5.0+) ===
-  # Cable observability is optional and requires SolidCable in the host app.
-  # No SolidCable setup is performed by SolidObserver.
+  # === Cable Observability (v0.5.0) ===
+  # Enable SolidCable event capture and trim controls.
+  # Requires SolidCable in the host app; SolidObserver does not add it.
   # config.observe_cable = true
+  # config.cable_sampling_rate = 0.1          # Sample 10% of broadcast events
+  # config.cable_rejection_threshold = 0.05   # Rejection rate → Degraded stability
+  # config.cable_backlog_threshold = 0.10     # Backlog ratio threshold
+  # config.cable_error_threshold = 0.0        # Error rate threshold
 
   # Data Retention
   config.event_retention = 30.days    # How long to keep event records

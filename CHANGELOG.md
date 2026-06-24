@@ -1,3 +1,16 @@
+## [0.5.0] - 2026-06-24
+
+Headline: **Solid Cable observability** — optional Cable telemetry, dashboard, storage health, and guarded trim controls.
+
+### Added
+- **Cable telemetry foundation** (SO-089, SO-090) — `observe_cable` config gate with `solid_cable_available?`/`solid_cable_enabled?` predicates; `CableSubscriber` hooks into `ActiveSupport::Notifications` broadcast events; event/metric buffers reuse `EventBufferCore`; `CableEvent`/`CableMetric` models with two migrations; `cable_sampling_rate` default 0.1; broadcasting names stored as `Digest::SHA256.hexdigest` (PII boundary).
+- **Cable storage health** (SO-091) — Storages page aggregates Solid Cable message storage and SolidObserver Cable telemetry rows with optional fallback states.
+- **Cable dashboard** (SO-092) — `/solid_observer/cable_dashboard` with summary cards, broadcast/rejection trends, stability indicator (hybrid: event + backlog signals), recent events. Three configurable thresholds: `cable_rejection_threshold` (0.05), `cable_backlog_threshold` (0.10), `cable_error_threshold` (0.0). Sidebar navigation entry.
+- **Guarded Cable trim** (SO-093) — UI button for ≤1,000 trimmable messages; `solid_observer:cable:trim` Rake task for larger backlogs. No clear-all.
+
+### Changed
+- **Self-contained SQLite generator config** (SO-094) — install generator produces a `solid_observer_queue` block with explicit `adapter: sqlite3`, `pool`, `timeout`, `database`, and `migrations_paths: db/solid_observer_migrate` — no `<<: *default` YAML merge. Post-install warning printed for PostgreSQL/MySQL hosts. Cable telemetry label standardised to `Cable telemetry`.
+
 ## [0.4.0] - 2026-06-03
 
 Headline: **Solid Cache observability** — multi-component foundation, cache dashboard, operational controls, and shared storage health.
