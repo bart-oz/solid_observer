@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.4.0-blue.svg" alt="Version"></a>
+  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.5.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.22%25-brightgreen.svg" alt="Coverage"></a>
@@ -18,20 +18,20 @@
   <a href=".github/assets/dash_1.png"><img src=".github/assets/dash_1.png" alt="SolidObserver dashboard overview" width="700"></a>
 </p>
 
-SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. v0.4.0 covers both **Solid Queue** and **Solid Cache** with a unified Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
+SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. v0.5.0 covers **Solid Queue**, **Solid Cache**, and **Solid Cable** with a unified Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
 
-## Features (v0.4.0)
+## Features (v0.5.0)
 
-| | Solid Queue | Solid Cache |
-|---|---|---|
-| **Web UI Dashboard** | Queue stats, jobs browser, events log | Hit rate, ops/sec, error rate, avg duration |
-| **Storage footprint** | DB size, event counts | SolidCache table size, row counts |
-| **Activity trends** | Sparklines (Performed, Ready, Failed) | Activity trend sparklines |
-| **Stability indicator** | Stable / Degraded / Critical badge | Stability pill badge |
-| **Operational controls** | Retry / discard failed jobs | Prune expired entries, clear all entries |
-| **CLI tools** | status, jobs:list/show/retry/discard | cache:prune, cache:clear |
-| **Privacy** | Job arguments excluded from persisted events | Keys and values **never** shown |
-| **Operating modes** | Real-time (no DB) or persistence (full history) | Persistence mode only |
+| | Solid Queue | Solid Cache | Solid Cable |
+|---|---|---|---|
+| **Web UI Dashboard** | Queue stats, jobs browser, events log | Hit rate, ops/sec, error rate, avg duration | Broadcasts, rejection rate, trends |
+| **Storage footprint** | DB size, event counts | SolidCache table size, row counts | Message count + backlogs |
+| **Activity trends** | Sparklines (Performed, Ready, Failed) | Activity trend sparklines | Broadcast/rejection sparklines |
+| **Stability indicator** | Stable / Degraded / Critical badge | Stability pill badge | Stable / Degraded / Critical (hybrid) |
+| **Operational controls** | Retry / discard failed jobs | Prune expired entries, clear all entries | Trim expired messages |
+| **CLI tools** | status, jobs:list/show/retry/discard | cache:prune, cache:clear | cable:trim |
+| **Privacy** | Job arguments excluded from persisted events | Keys and values **never** shown | Broadcasting names hashed (SHA256) |
+| **Operating modes** | Real-time (no DB) or persistence (full history) | Persistence mode only | Persistence mode only |
 
 Additional: 🔗 APM distributed tracing · ⚡ buffered writes · 🛡️ Docker/CI/K8s safe boot
 
@@ -40,6 +40,8 @@ Additional: 🔗 APM distributed tracing · ⚡ buffered writes · 🛡️ Docke
 - Ruby 3.2+
 - Rails 8.0+
 - Solid Queue (configured with `connects_to` in all environments)
+- Solid Cache (optional — enable with `config.observe_cache = true`)
+- Solid Cable (optional — enable with `config.observe_cable = true`)
 
 > **Note:** Ensure Solid Queue is configured with `connects_to` in all environments, not just production. See [Troubleshooting](#troubleshooting) if you encounter database connection issues.
 
@@ -75,7 +77,7 @@ That's it. You now have access to queue status, job listing, retry, and discard 
 
 Store event history, metrics, and storage snapshots in a dedicated observer database. This gives you everything in real-time mode plus long-term event tracking, buffered writes, and retention-based cleanup. The install generator defaults to SQLite; the database can use any Rails-supported adapter for record persistence, and storage-size monitoring is implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. See [Database Setup](#database-setup-persistence-mode) below.
 
-> If your host app uses a different adapter than SQLite (e.g. PostgreSQL or MySQL), see [Multi-adapter setup](#multi-adapter-setup) before running these commands.
+> **⚠️ PostgreSQL / MySQL hosts:** The generator writes a self-contained `solid_observer_queue` block with `adapter: sqlite3`. **Review `config/database.yml` before running `db:create`** — do not merge `<<: *default` into the observer entry, as that pulls the host adapter in and `db:create` will fail. See [Multi-adapter setup](#multi-adapter-setup) for the correct pattern.
 
 ```bash
 bin/rails solid_observer:install:migrations
@@ -283,16 +285,40 @@ bin/rails solid_observer:cache:clear  # Clear all SolidCache entries (with confi
 bin/rails solid_observer:cache:prune  # Prune expired SolidCache entries
 ```
 
-### Solid Cable Observability (Coming in v0.5.0+)
+### Solid Cable Observability
 
-Cable observability is optional and will require SolidCable in the host app. Setting `config.observe_cable = true` has no effect until the v0.5.0 subscriber implementation lands, and SolidObserver does not add any SolidCable dependency or setup in this release.
+Cable observability is optional. Enable with `config.observe_cable = true`. Requires SolidCable in the host app. SolidObserver does not add any SolidCable dependency.
+
+Cable dashboard (`/solid_observer/cable_dashboard`) shows broadcast/rejection trends, a stability indicator (hybrid: event + backlog signals), and recent safe events. Storages page includes Cable telemetry rows. Guarded trim controls: UI button for ≤1,000 trimmable messages; `solid_observer:cable:trim` Rake task for larger backlogs. **Broadcasting names are stored as SHA256 digests** — raw names are never persisted.
+
+**Enabling Cable observability:**
+
+```ruby
+SolidObserver.configure do |config|
+  config.observe_cable = true  # default: false
+  # config.cable_sampling_rate = 0.1  # Sample 10% of broadcast events (default: 0.1)
+  # config.cable_rejection_threshold = 0.05  # Rejection rate threshold for Degraded (default: 0.05)
+  # config.cable_backlog_threshold = 0.10    # Backlog ratio threshold (default: 0.10)
+  # config.cable_error_threshold = 0.0       # Error rate threshold (default: 0.0)
+end
+```
+
+`solid_cable_enabled?` is `true` when both `observe_cable = true` and SolidCable is available in the host app.
+
+**CLI commands (Solid Cable):**
+
+```bash
+bin/rails solid_observer:cable:trim  # Trim expired Cable messages (with confirmation)
+```
+
+> Cable dashboard screenshots are not yet available — capture from a host app with SolidCable configured.
 
 ### Storage
 
-The Storage page aggregates per-component health rows: Queue Observer database, Cache Observer, and SolidCache table sizes. Each row reports size, record counts, and a status indicator.
+The Storage page aggregates per-component health rows: Queue Observer database, Cache Observer, SolidCache table sizes, and Cable telemetry. Each row reports size, record counts, and a status indicator.
 
 <p align="center">
-  <a href=".github/assets/dash_8.png"><img src=".github/assets/dash_8.png" alt="Component health — Queue Observer + Cache Observer + SolidCache" width="700"></a>
+  <a href=".github/assets/dash_8.png"><img src=".github/assets/dash_8.png" alt="Component health — Queue Observer + Cache Observer + SolidCache + Cable telemetry" width="700"></a>
 </p>
 
 For adapter notes and multi-adapter setup, see [Database Setup](#database-setup-persistence-mode) below.
@@ -323,6 +349,13 @@ SolidObserver.configure do |config|
 
   # Enable cache monitoring (default: false; requires SolidCache in host app)
   config.observe_cache = true
+
+  # Enable cable monitoring (default: false; requires SolidCable in host app)
+  config.observe_cable = true
+  config.cable_sampling_rate = 0.1          # Sample 10% of broadcast events
+  config.cable_rejection_threshold = 0.05   # Rejection rate → Degraded stability
+  config.cable_backlog_threshold = 0.10     # Backlog ratio threshold
+  config.cable_error_threshold = 0.0        # Error rate threshold
 
   # Data Retention (persistence mode only)
   config.event_retention = 30.days    # Keep events for 30 days
@@ -410,6 +443,7 @@ end
 | `solid_observer:storage:purge` | Delete ALL SolidObserver data |
 | `solid_observer:cache:clear` | Clear all SolidCache entries (with confirmation) |
 | `solid_observer:cache:prune` | Prune expired SolidCache entries |
+| `solid_observer:cable:trim` | Trim expired Solid Cable messages |
 
 > **Note:** Storage commands manage **SolidObserver's storage** (event logs, metrics, snapshots) — not Solid Queue's jobs. Cache commands operate on SolidCache entries in the host app's cache store.
 
@@ -447,16 +481,18 @@ The example below is what `rails generate solid_observer:install` produces:
 ```yaml
 # config/database.yml (generator default)
 solid_observer_queue:
-  <<: *default
   adapter: sqlite3
+  pool: 5
+  timeout: 5000
   database: storage/<%= Rails.env %>_solid_observer_queue.sqlite3
+  migrations_paths: db/solid_observer_migrate
 ```
 
 > **Note:** SQLite is the generator default, not a requirement. The `solid_observer_queue` database can use any Rails-supported adapter for record persistence. Adapter-native **storage-size monitoring** is currently implemented for SQLite, PostgreSQL/PostGIS, MySQL, and Trilogy. On other adapters, the size query returns `nil` and the engine logs a single `[SolidObserver] Unknown adapter for DatabaseSize: …` warning — record persistence still works.
 
 ### Multi-adapter setup
 
-If your host application uses PostgreSQL and you want SolidObserver to use SQLite, keep the `solid_observer_queue` block **self-contained** — do not rely on `<<: *default`. The generator default uses `<<: *default` with an explicit `adapter: sqlite3` override; that is safe on SQLite-primary hosts. On a PostgreSQL host, merging `<<: *default` without an explicit adapter override pulls the PG adapter in and fails at `db:create`. For multi-adapter connections, omit the merge entirely:
+If your host application uses PostgreSQL and you want SolidObserver to use SQLite, keep the `solid_observer_queue` block **self-contained** — do not rely on `<<: *default`. The generator produces a self-contained block with explicit `adapter: sqlite3` and `migrations_paths`, which is safe on any host adapter. On a PostgreSQL host, merging `<<: *default` without an explicit adapter override pulls the PG adapter in and fails at `db:create`. For multi-adapter connections, omit the merge entirely:
 
 ```yaml
 # config/database.yml
@@ -497,8 +533,8 @@ gem "sqlite3", "~> 2.0"
 | v0.1.0 | Solid Queue monitoring, CLI tools | ✅ Released |
 | v0.1.1 | Real-time mode (no migrations needed) | ✅ Released |
 | v0.3.0 | Web UI dashboard + stability hardening | ✅ Released |
-| v0.4.0 | Solid Cache monitoring | ✅ Current |
-| v0.5.0 | Solid Cable monitoring | 🔜 Planned |
+| v0.4.0 | Solid Cache monitoring | ✅ Released |
+| v0.5.0 | Solid Cable monitoring | ✅ Current |
 | v0.6.0 | Cross-component correlation, health scores | 🔜 Planned |
 | v0.7.0 | Alerting & notifications | 🔜 Planned |
 | v1.0.0 | Production stable release | 🎯 Goal |
