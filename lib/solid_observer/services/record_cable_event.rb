@@ -52,6 +52,7 @@ module SolidObserver
       def build_event_data
         {
           event_type: @event.name.delete_suffix(".action_cable"),
+          correlation_id: CorrelationIdResolver.resolve(@event),
           channel_class: channel_class,
           broadcasting_digest: broadcasting_digest,
           duration: duration_in_seconds,

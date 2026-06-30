@@ -27,7 +27,7 @@ RSpec.describe SolidObserver::Services::RecordCableEvent do
     SolidObserver.reset_configuration!
   end
 
-  it "stores a broadcasting digest and sanitized metadata for sampled broadcasts" do
+  it "stores a broadcasting digest, sanitized metadata, and a correlation_id for sampled broadcasts" do
     allow(Kernel).to receive(:rand).and_return(0.0)
     allow(SolidObserver.config).to receive(:cable_sampling_rate).and_return(1.0)
 
@@ -35,6 +35,7 @@ RSpec.describe SolidObserver::Services::RecordCableEvent do
 
     expect(buffer).to have_received(:push).with(hash_including(
       event_type: "broadcast",
+      correlation_id: a_string_matching(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/),
       channel_class: nil,
       broadcasting_digest: Digest::SHA256.hexdigest("chat:1"),
       duration: be > 0,
@@ -42,6 +43,17 @@ RSpec.describe SolidObserver::Services::RecordCableEvent do
       error_message: nil,
       metadata: satisfy { |json| JSON.parse(json).keys.none? { |key| %w[broadcasting message data identifier].include?(key) } }
     ))
+  end
+
+  it "does not persist raw broadcasting names, messages, data, or job arguments" do
+    allow(Kernel).to receive(:rand).and_return(0.0)
+    allow(SolidObserver.config).to receive(:cable_sampling_rate).and_return(1.0)
+
+    described_class.call(event: broadcast_event, buffer: buffer)
+
+    expect(buffer).to have_received(:push).with(satisfy { |data|
+      data.keys.none? { |key| %i[broadcasting message data arguments args].include?(key) }
+    })
   end
 
   it "records metrics even when raw event is not sampled" do

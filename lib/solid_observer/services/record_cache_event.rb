@@ -55,6 +55,7 @@ module SolidObserver
       def build_event_data
         {
           event_type: cache_operation,
+          correlation_id: CorrelationIdResolver.resolve(@event),
           key_digest: key_digest,
           hit: hit_value,
           duration: duration_in_seconds,

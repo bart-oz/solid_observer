@@ -17,6 +17,7 @@ RSpec.describe "SolidObserver storages page", type: :request do
       t.text :error_message
       t.text :metadata
       t.datetime :recorded_at, null: false
+      t.string :correlation_id, limit: 64
     end
   end
 
@@ -45,6 +46,7 @@ RSpec.describe "SolidObserver storages page", type: :request do
       t.text :error_message
       t.text :metadata
       t.datetime :recorded_at, null: false
+      t.string :correlation_id, limit: 64
     end
   end
 
