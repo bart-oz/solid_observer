@@ -19,6 +19,7 @@ RSpec.describe "Real-time mode" do
   describe "QueueEventBuffer" do
     subject(:buffer) { SolidObserver::QueueEventBuffer.instance }
 
+    before { buffer.clear }
     after { buffer.clear }
 
     it "does not buffer events" do
