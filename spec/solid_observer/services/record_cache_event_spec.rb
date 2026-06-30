@@ -19,7 +19,7 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
     SolidObserver.reset_configuration!
   end
 
-  it "stores safe metadata and a non-raw key digest" do
+  it "stores safe metadata, a non-raw key digest, and a correlation_id" do
     allow(Kernel).to receive(:rand).and_return(1.0)
     allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 1.0, cache_slow_threshold: 1.0, cache_store_errors: true)
 
@@ -27,6 +27,7 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
 
     expect(buffer).to have_received(:push).with(hash_including(
       event_type: "cache_read",
+      correlation_id: a_string_matching(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/),
       key_digest: Digest::SHA256.hexdigest("user:42"),
       hit: true,
       duration: be > 0,
@@ -34,6 +35,17 @@ RSpec.describe SolidObserver::Services::RecordCacheEvent do
       error_message: nil,
       metadata: satisfy { |json| JSON.parse(json).keys.none? { |key| key == "key" || key == "value" } }
     ))
+  end
+
+  it "does not persist raw cache keys, values, or job arguments" do
+    allow(Kernel).to receive(:rand).and_return(1.0)
+    allow(SolidObserver.config).to receive_messages(cache_sampling_rate: 1.0, cache_slow_threshold: 1.0, cache_store_errors: true)
+
+    described_class.call(event: event, buffer: buffer)
+
+    expect(buffer).to have_received(:push).with(satisfy { |data|
+      data.keys.none? { |key| %i[key value arguments args].include?(key) }
+    })
   end
 
   it "records metrics even when raw event is not sampled" do
