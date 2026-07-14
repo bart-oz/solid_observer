@@ -14,6 +14,7 @@ require_relative "solid_observer/cli/base"
 require_relative "solid_observer/cli/status"
 require_relative "solid_observer/cli/storage"
 require_relative "solid_observer/cli/jobs"
+require_relative "solid_observer/cli/trace"
 require_relative "solid_observer/queue_stats"
 require_relative "solid_observer/engine" if defined?(Rails::Engine)
 
@@ -23,6 +24,7 @@ ActiveSupport.on_load(:active_record) do
   require_relative "solid_observer/base_metric"
   require_relative "solid_observer/queries/job_executions_query"
   require_relative "solid_observer/queries/events_query"
+  require_relative "solid_observer/queries/trace_query"
   require_relative "solid_observer/queries/execution_finder"
   require_relative "solid_observer/services/record_event"
   require_relative "solid_observer/services/flush_event_buffer"
