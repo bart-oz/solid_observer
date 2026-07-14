@@ -209,6 +209,16 @@ namespace :solid_observer do
     SolidObserver::CLI::Storage.call
   end
 
+  desc "Show the cross-component trace for a correlation_id"
+  task :trace, [:correlation_id, :limit] => :environment do |_t, args|
+    if args[:correlation_id].nil?
+      puts "Error: correlation_id required. Usage: rails solid_observer:trace[CORRELATION_ID,LIMIT]"
+      exit 1
+    end
+
+    SolidObserver::CLI::Trace.call(correlation_id: args[:correlation_id], limit: args[:limit])
+  end
+
   namespace :jobs do
     desc "List jobs with optional filters (status, queue, class, limit)"
     task :list, [:status, :queue, :job_class, :limit] => :environment do |_t, args|
