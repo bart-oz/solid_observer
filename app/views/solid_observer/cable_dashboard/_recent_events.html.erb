@@ -19,7 +19,12 @@
       <tbody>
         <% recent_events.each do |event| %>
           <tr>
-            <td><%= event.event_type.to_s %></td>
+            <td>
+              <%= event.event_type.to_s %>
+              <% if event.correlation_id.present? %>
+                <%= link_to "Trace →", trace_path(event.correlation_id), class: "so-trace__link" %>
+              <% end %>
+            </td>
             <td><%= event.channel_class.presence || "—" %></td>
             <td><span class="so-cable-dashboard__digest"><%= cable_event_digest(event.broadcasting_digest) %></span></td>
             <td><%= event.duration ? format_duration(event.duration) : "—" %></td>

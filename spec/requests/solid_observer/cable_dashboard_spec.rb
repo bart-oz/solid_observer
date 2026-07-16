@@ -77,6 +77,7 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
         :cache_operations_path,
         :cable_dashboard_path,
         :trim_cable_operations_path,
+        :trace_path,
         :live_poll_script_path
 
       def root_path
@@ -109,6 +110,10 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
 
       def trim_cable_operations_path
         "/solid_observer/cable/trim"
+      end
+
+      def trace_path(id)
+        "/solid_observer/traces/#{id}"
       end
 
       def live_poll_script_path
@@ -178,7 +183,8 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
       broadcasting_digest: "abcdef1234567890",
       duration: 0.003,
       metadata: "{}",
-      recorded_at: 5.minutes.ago
+      recorded_at: 5.minutes.ago,
+      correlation_id: "cable-correlation"
     )
     SolidObserver::CableEvent.create!(
       event_type: "transmit_subscription_rejection",
@@ -246,6 +252,9 @@ RSpec.describe "SolidObserver cable dashboard", type: :request do
       expect(body).to include("Critical")
       expect(body).to include("Recent Cable events")
       expect(body).to include("debug context only · broadcasting names and payloads are never shown")
+      expect(body).to include("Trace →")
+      expect(body.scan("Trace →").size).to eq(1)
+      expect(body).to include('href="/solid_observer/traces/cable-correlation"')
       expect(body).to include("abcdef1234…")
       expect(body).to include("fedcba0987…")
       expect(body).to include("1122334455…")

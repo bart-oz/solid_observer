@@ -1,0 +1,80 @@
+<% content_for :title, "Trace #{params[:id]}" %>
+
+<div class="so-trace">
+  <div class="so-back-link">
+    <%= link_to "← Back to Events", events_path, class: "so-btn" %>
+  </div>
+
+  <div class="so-content__header">
+    <h1>Trace <span class="so-trace__correlation"><%= params[:id] %></span></h1>
+  </div>
+
+  <% if @rows.any? %>
+    <p class="so-trace__meta">Showing newest <%= @rows.size %> events (maximum 100)</p>
+  <% end %>
+
+  <% if @unavailable_components.any? %>
+    <div class="so-flash so-flash--notice" role="status">
+      Some components could not be read: <%= @unavailable_components.map(&:to_s).sort.join(", ") %>. Showing available events only.
+    </div>
+  <% end %>
+
+  <% if @rows.any? %>
+    <% component_tones = {queue: "info", cache: "success", cable: "warning"} %>
+    <table class="so-table so-table--listing so-trace__table">
+      <caption class="sr-only">Trace timeline for correlation ID <%= params[:id] %></caption>
+      <thead>
+        <tr>
+          <th class="so-trace__time">Time</th>
+          <th class="so-trace__component">Component</th>
+          <th class="so-trace__event">Event</th>
+          <th class="so-trace__details">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rows.each do |row| %>
+          <tr>
+            <td class="so-trace__time"><%= row[:recorded_at].strftime("%Y-%m-%d %H:%M:%S") %></td>
+            <td class="so-trace__component">
+              <% component_tone = component_tones[row[:component]] || "default" %>
+              <span class="so-badge so-badge--pill so-badge--<%= component_tone %>">
+                <svg class="so-badge__dot" viewBox="0 0 6 6" aria-hidden="true"><circle r="3" cx="3" cy="3" /></svg>
+                <%= row[:component].to_s.capitalize %>
+              </span>
+            </td>
+            <td class="so-trace__event"><%= row[:event_type] %></td>
+            <td class="so-trace__details">
+              <% if row[:event_type] == "cable_summary" %>
+                <%= row[:collapsed_count] %> additional Cable broadcast events collapsed
+              <% else %>
+                <% case row[:component]
+                   when :queue %>
+                  <%= [
+                    ("job=#{row[:job_class]}" if row[:job_class]),
+                    ("queue=#{row[:queue_name]}" if row[:queue_name]),
+                    ("duration=#{format_duration(row[:duration])}" if row[:duration])
+                  ].compact.join(" ") %>
+                <% when :cache %>
+                  <%= [
+                    ("hit=#{row[:hit]}" unless row[:hit].nil?),
+                    ("error=#{row[:error_class]}" if row[:error_class]),
+                    ("duration=#{format_duration(row[:duration])}" if row[:duration])
+                  ].compact.join(" ") %>
+                <% when :cable %>
+                  <%= [
+                    ("channel=#{row[:channel_class]}" if row[:channel_class]),
+                    ("error=#{row[:error_class]}" if row[:error_class]),
+                    ("duration=#{format_duration(row[:duration])}" if row[:duration]),
+                    ("collapsed=#{row[:collapsed_count]}" if row[:collapsed_count])
+                  ].compact.join(" ") %>
+                <% end %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <%= render "solid_observer/shared/empty_state", message: "No events found for correlation ID #{params[:id]}. The trace may have expired, not yet recorded, or belong to an unavailable component." %>
+  <% end %>
+</div>

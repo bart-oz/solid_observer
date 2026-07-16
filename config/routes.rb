@@ -21,4 +21,5 @@ SolidObserver::Engine.routes.draw do
 
   resource :storage, only: %i[show]
   resources :events, only: %i[index show]
+  resources :traces, only: [:show]
 end
