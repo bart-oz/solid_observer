@@ -524,6 +524,19 @@
 
     .so-card li + li { margin-top: 0.45rem; }
 
+    /* SO-098 trace page */
+    .so-trace { max-width: 1120px; }
+    .so-trace__meta { margin-top: .35rem; font-size: .875rem; line-height: 1.5; color: var(--so-text-subtle); }
+    .so-trace__correlation { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; }
+    .so-trace__table { min-width: 760px; }
+    .so-trace__time { width: 10.75rem; white-space: nowrap; }
+    .so-trace__component { width: 7.75rem; white-space: nowrap; }
+    .so-trace__event { width: 10.5rem; white-space: nowrap; }
+    .so-trace__details { min-width: 20rem; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+    .so-trace__link { color: var(--so-info); text-decoration: none; }
+    .so-trace__link:hover { text-decoration: underline; }
+    .so-trace__link:focus-visible { outline: 2px solid var(--so-info); outline-offset: 2px; box-shadow: 0 0 0 3px var(--so-focus-ring); }
+
     @media (max-width: 960px) {
       .so-dashboard-toolbar { flex-direction: column; align-items: stretch; }
       .so-dashboard-toolbar__left, .so-dashboard-toolbar__right { margin-left: 0; }

@@ -88,6 +88,7 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
         :storage_path,
         :cache_dashboard_path,
         :cache_operations_path,
+        :trace_path,
         :live_poll_script_path
 
       def root_path
@@ -112,6 +113,10 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
 
       def cache_operations_path
         "/solid_observer/cache/controls"
+      end
+
+      def trace_path(id)
+        "/solid_observer/traces/#{id}"
       end
 
       def live_poll_script_path
@@ -154,7 +159,8 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
       hit: true,
       duration: 0.003,
       metadata: "{}",
-      recorded_at: 5.minutes.ago
+      recorded_at: 5.minutes.ago,
+      correlation_id: "cache-correlation"
     )
     SolidObserver::CacheEvent.create!(
       event_type: "cache_write",
@@ -225,6 +231,9 @@ RSpec.describe "SolidObserver cache dashboard", type: :request do
       expect(body).to include("1 sampled cache error in the selected range")
       expect(body).to include("Sampled recent events")
       expect(body).to include("debug context only · no raw keys or values")
+      expect(body).to include("Trace →")
+      expect(body.scan("Trace →").size).to eq(1)
+      expect(body).to include('href="/solid_observer/traces/cache-correlation"')
       expect(body).to include("abcdef1234…")
       expect(body).to include("fedcba0987…")
       expect(body).to include("1122334455…")

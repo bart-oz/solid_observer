@@ -19,7 +19,12 @@
       <tbody>
         <% recent_events.each do |event| %>
           <tr>
-            <td><%= event.event_type.to_s.humanize %></td>
+            <td>
+              <%= event.event_type.to_s.humanize %>
+              <% if event.correlation_id.present? %>
+                <%= link_to "Trace →", trace_path(event.correlation_id), class: "so-trace__link" %>
+              <% end %>
+            </td>
             <td><span class="so-cache-dashboard__digest"><%= cache_event_digest(event.key_digest) %></span></td>
             <td><%= cache_event_outcome_badge(event) %></td>
             <td><%= event.duration ? format_duration(event.duration) : "—" %></td>

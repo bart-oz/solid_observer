@@ -38,7 +38,12 @@
     <tbody>
       <% @events.each do |event| %>
         <tr>
-          <td><%= link_to event.event_type.humanize, event_path(event.id) %></td>
+          <td>
+            <%= link_to event.event_type.humanize, event_path(event.id) %>
+            <% if event.correlation_id.present? %>
+              <%= link_to "Trace →", trace_path(event.correlation_id), class: "so-trace__link" %>
+            <% end %>
+          </td>
           <td><%= event.job_class %></td>
           <td><%= event.queue_name %></td>
           <td><%= duration_with_semantic(event.duration, event.event_type) %></td>
