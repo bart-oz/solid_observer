@@ -15,6 +15,7 @@ require_relative "solid_observer/cli/status"
 require_relative "solid_observer/cli/storage"
 require_relative "solid_observer/cli/jobs"
 require_relative "solid_observer/cli/trace"
+require_relative "solid_observer/cli/health"
 require_relative "solid_observer/queue_stats"
 require_relative "solid_observer/engine" if defined?(Rails::Engine)
 

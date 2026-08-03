@@ -204,6 +204,11 @@ namespace :solid_observer do
     SolidObserver::CLI::Status.call
   end
 
+  desc "Display aggregate and per-component health status"
+  task health: :environment do
+    SolidObserver::CLI::Health.call
+  end
+
   desc "Display storage information and database statistics"
   task storage: :environment do
     SolidObserver::CLI::Storage.call
