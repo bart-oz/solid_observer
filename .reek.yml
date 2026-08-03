@@ -29,10 +29,13 @@ detectors:
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::JobsController#index
       - SolidObserver::EventsController#index
+      - SolidObserver::DashboardController#index
+      - SolidObserver::DashboardController#selected_component
       - SolidObserver::DashboardController#assign_range_and_stats
       - SolidObserver::Queries::EventsQuery#call
       - SolidObserver::ApplicationHelper#mode_badge
       - SolidObserver::CacheDashboardController#assign_cache_dashboard
+      - SolidObserver::Services::UnifiedFeed#call
 
   LongParameterList:
     exclude:
@@ -66,11 +69,14 @@ detectors:
       - SolidObserver::Configuration#validate_positive_numeric!
       - SolidObserver::Queries::JobExecutionsQuery#apply_queue_filter
       - SolidObserver::ApplicationHelper#mode_badge
+      - SolidObserver::ApplicationHelper#unified_feed_detail
       - SolidObserver::DashboardHelper#spark_points
       - SolidObserver::Services::RecordCacheEvent#normalized_key_string
       - SolidObserver::Services::RecordCacheEvent#key_size
       - SolidObserver::Services::RecordCacheEvent#hits_count
       - SolidObserver::DashboardHelper#format_spark_point
+      - SolidObserver::Services::UnifiedFeed#normalize_cache
+      - SolidObserver::Services::UnifiedFeed#normalize_cable
 
   DuplicateMethodCall:
     exclude:
@@ -87,6 +93,10 @@ detectors:
       - SolidObserver::CLI::Storage#print_configuration
       - SolidObserver::CLI::Storage#print_section_header
       - SolidObserver::CLI::Storage#print_storage_table
+      - SolidObserver::DashboardController#index
+      - SolidObserver::DashboardController#selected_component
+      - SolidObserver::Services::UnifiedFeed#log_error
+      - SolidObserver::ApplicationHelper#unified_feed_detail
 
   InstanceVariableAssumption:
     exclude:

@@ -60,10 +60,14 @@ RSpec.describe SolidObserver::DashboardController do
         range: "15m"
       }
     end
+    let(:component_params) { {component: "queue"} }
+    let(:component_path) { "/solid_observer/queue" }
     let(:request_double) do
       instance_double(
         ActionDispatch::Request,
-        query_parameters: params_hash.transform_keys(&:to_s)
+        query_parameters: params_hash.transform_keys(&:to_s),
+        path_parameters: component_params,
+        path: component_path
       )
     end
 
@@ -239,6 +243,52 @@ RSpec.describe SolidObserver::DashboardController do
           :failed_in_range,
           :enqueue_rate_per_min
         )
+      end
+    end
+
+    context "for home component" do
+      let(:component_params) { {} }
+      let(:component_path) { "/" }
+
+      before do
+        allow(SolidObserver::Services::HealthScore).to receive(:call).and_return({overall: :ok, components: {}})
+        allow(SolidObserver::Services::UnifiedFeed).to receive(:call).and_return([])
+      end
+
+      it "assigns @component as home and loads health and feed" do
+        controller.index
+
+        expect(controller.instance_variable_get(:@component)).to eq("home")
+        expect(controller.instance_variable_get(:@health)).to eq({overall: :ok, components: {}})
+        expect(controller.instance_variable_get(:@feed)).to eq([])
+      end
+
+      it "falls back to degraded health when HealthScore raises but still loads feed" do
+        allow(SolidObserver::Services::HealthScore).to receive(:call).and_raise(StandardError)
+        feed_items = [{component: "queue", event_type: "job_completed"}]
+        allow(SolidObserver::Services::UnifiedFeed).to receive(:call).and_return(feed_items)
+
+        controller.index
+
+        expect(controller.instance_variable_get(:@health)).to eq({overall: :degraded, components: {}})
+        expect(controller.instance_variable_get(:@feed)).to eq(feed_items)
+      end
+
+      it "falls back to empty feed when UnifiedFeed raises but still has health" do
+        health = {overall: :ok, components: {queue: :stable}}
+        allow(SolidObserver::Services::HealthScore).to receive(:call).and_return(health)
+        allow(SolidObserver::Services::UnifiedFeed).to receive(:call).and_raise(StandardError)
+
+        controller.index
+
+        expect(controller.instance_variable_get(:@health)).to eq(health)
+        expect(controller.instance_variable_get(:@feed)).to eq([])
+      end
+
+      it "does not call QueueStats.snapshot" do
+        controller.index
+
+        expect(SolidObserver::QueueStats).not_to have_received(:snapshot)
       end
     end
   end

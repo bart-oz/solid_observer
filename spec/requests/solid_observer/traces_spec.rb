@@ -138,6 +138,9 @@ RSpec.describe "SolidObserver traces", type: :request do
       t.datetime :recorded_at, null: false
       t.string :correlation_id, limit: 64
     end
+    SolidObserver::QueueEvent.reset_column_information
+    SolidObserver::CacheEvent.reset_column_information
+    SolidObserver::CableEvent.reset_column_information
   end
 
   def reset_table(connection, table, &block)

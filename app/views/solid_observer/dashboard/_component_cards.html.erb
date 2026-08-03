@@ -1,0 +1,18 @@
+<% if health[:components].present? %>
+<section class="so-cards-section" data-so-zone="home-cards" aria-labelledby="so-home-components-heading">
+  <h2 class="so-cards-section__title" id="so-home-components-heading">Components</h2>
+  <div class="so-stat-cards">
+    <% health[:components].each do |name, info| %>
+      <div class="so-card" aria-labelledby="so-card-<%= name %>">
+        <div class="so-card__label" id="so-card-<%= name %>"><%= name.to_s.titleize %></div>
+        <div class="so-card__value">
+          <%= health_status_badge(info[:status]) %>
+        </div>
+        <div class="so-card__subtitle">
+          <% unless info[:available] %><span class="so-badge so-badge--default">Unavailable</span> · <% end %><%= link_to "View overview →", component_overview_path(name), class: "so-stability__link" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</section>
+<% end %>

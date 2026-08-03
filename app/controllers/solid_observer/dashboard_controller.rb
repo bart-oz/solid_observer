@@ -12,10 +12,23 @@ module SolidObserver
     def index
       @component = selected_component
 
-      return unless @component == "queue" && SolidObserver.config.solid_queue_enabled?
-
-      assign_range_and_stats
-      load_persistence_data if persistence_mode?
+      if @component == "queue" && SolidObserver.config.solid_queue_enabled?
+        assign_range_and_stats
+        load_persistence_data if persistence_mode?
+      elsif @component == "home"
+        @health = begin
+          Services::HealthScore.call
+        rescue => error
+          Rails.logger&.warn("Home HealthScore: #{error.class}: #{error.message}")
+          {overall: :degraded, components: {}}
+        end
+        @feed = begin
+          Services::UnifiedFeed.call
+        rescue => error
+          Rails.logger&.warn("Home UnifiedFeed: #{error.class}: #{error.message}")
+          []
+        end
+      end
     end
 
     def live_poll
@@ -98,17 +111,18 @@ module SolidObserver
         ""
       end
       requested = path_component if requested.empty?
+      return "queue" if requested == "queue" && SolidObserver.config.solid_queue_enabled?
       return "cache" if requested == "cache" && SolidObserver.config.solid_cache_enabled?
 
-      "queue"
+      "home"
     end
 
     def path_component
       return "" unless request&.respond_to?(:path)
 
       path = request&.path.to_s
-      return "cache" if path.end_with?("/cache")
       return "queue" if path.end_with?("/queue")
+      return "cache" if path.end_with?("/cache")
 
       ""
     end

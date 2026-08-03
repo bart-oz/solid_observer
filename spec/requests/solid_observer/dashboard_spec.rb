@@ -18,8 +18,11 @@ RSpec.describe "SolidObserver dashboard routes", type: :request do
         :storage_path,
         :cache_dashboard_path,
         :cache_operations_path,
+        :cable_dashboard_path,
+        :queue_dashboard_path,
         :poll_data_path,
-        :live_poll_script_path
+        :live_poll_script_path,
+        :trace_path
 
       def mount_prefix
         request.script_name.presence || "/solid_observer"
@@ -49,12 +52,24 @@ RSpec.describe "SolidObserver dashboard routes", type: :request do
         "#{mount_prefix}/cache/controls"
       end
 
+      def cable_dashboard_path(...)
+        "#{mount_prefix}/cable"
+      end
+
+      def queue_dashboard_path(...)
+        "#{mount_prefix}/queue"
+      end
+
       def poll_data_path(...)
         "#{mount_prefix}/poll_data"
       end
 
       def live_poll_script_path(...)
         "#{mount_prefix}/live_poll.js"
+      end
+
+      def trace_path(id)
+        "#{mount_prefix}/traces/#{id}"
       end
     end
   end
@@ -86,14 +101,15 @@ RSpec.describe "SolidObserver dashboard routes", type: :request do
     [status, response_body]
   end
 
-  it "keeps the existing queue dashboard path" do
+  it "renders unified Home at root" do
     status, body = call_action("/solid_observer")
 
     expect(status).to eq(200)
-    expect(body).to include("Right now")
+    expect(body).to include("Home")
+    expect(body).not_to include("Right now")
   end
 
-  it "supports explicit queue dashboard routing" do
+  it "renders Queue overview at /queue" do
     status, body = call_action("/solid_observer/queue")
 
     expect(status).to eq(200)
@@ -111,6 +127,7 @@ RSpec.describe "SolidObserver dashboard routes", type: :request do
     # Re-enable the layout for this test to verify both the src and data attributes
     SolidObserver::DashboardController.layout @previous_layout
 
+    # Test Home at root
     env = Rack::MockRequest.env_for("/custom_observer", {
       "SCRIPT_NAME" => "/custom_observer",
       "action_dispatch.routes" => SolidObserver::Engine.routes
@@ -121,7 +138,19 @@ RSpec.describe "SolidObserver dashboard routes", type: :request do
 
     expect(status).to eq(200)
     expect(response_body).to include('src="/custom_observer/live_poll.js"')
-    expect(response_body).to include('data-so-poll-url="/custom_observer/poll_data"')
+    expect(response_body).to include("Home")
+
+    # Test Queue at /queue still has toolbar with poll URL
+    env = Rack::MockRequest.env_for("/custom_observer/queue", {
+      "SCRIPT_NAME" => "/custom_observer",
+      "action_dispatch.routes" => SolidObserver::Engine.routes
+    })
+    status, _headers, body = SolidObserver::DashboardController.action(:index).call(env)
+    queue_body = +""
+    body.each { |chunk| queue_body << chunk }
+
+    expect(status).to eq(200)
+    expect(queue_body).to include('data-so-poll-url="/custom_observer/poll_data"')
   ensure
     SolidObserver::DashboardController.layout false
   end
