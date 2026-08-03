@@ -23,6 +23,7 @@ RSpec.describe "SolidObserver application layout" do
         @persistence_mode = opts.fetch(:persistence_mode, true)
         @flash = opts.fetch(:flash, {})
         @controller_name = opts.fetch(:controller_name, "dashboard")
+        @component = opts.fetch(:component, "home")
       end
 
       def csrf_meta_tags
@@ -43,11 +44,17 @@ RSpec.describe "SolidObserver application layout" do
 
       def link_to(text, url, html_options = {})
         css = html_options[:class]
-        %(<a href="#{url}"#{" class=\"#{css}\"" if css}>#{text}</a>)
+        aria = html_options[:"aria-current"]
+        aria_attr = %( aria-current="#{aria}") if aria
+        %(<a href="#{url}"#{" class=\"#{css}\"" if css}#{aria_attr}>#{text}</a>)
       end
 
       def root_path
         "/solid_observer"
+      end
+
+      def queue_dashboard_path
+        "/solid_observer/queue"
       end
 
       def jobs_path
@@ -60,6 +67,22 @@ RSpec.describe "SolidObserver application layout" do
 
       def storage_path
         "/solid_observer/storage"
+      end
+
+      def cache_dashboard_path
+        "/solid_observer/cache"
+      end
+
+      def cable_dashboard_path
+        "/solid_observer/cable"
+      end
+
+      def trace_path(id)
+        "/solid_observer/traces/#{id}"
+      end
+
+      def home?
+        @controller_name == "dashboard" && @component.to_s == "home"
       end
 
       def persistence_mode?
@@ -215,8 +238,14 @@ RSpec.describe "SolidObserver application layout" do
     end
 
     describe "navigation" do
-      it "includes Overview and Jobs links in persistence mode" do
+      it "includes Home link in the sidebar" do
+        html = render_layout
+        expect(html).to include(">Home<")
+      end
+
+      it "includes Home, Overview, and Jobs links" do
         html = render_layout(persistence_mode: true)
+        expect(html).to include(">Home<")
         expect(html).to include("Overview")
         expect(html).to include("Jobs")
       end
@@ -239,14 +268,42 @@ RSpec.describe "SolidObserver application layout" do
         expect(html).not_to include("Storage")
       end
 
-      it "marks the active controller's link with class active" do
-        html = render_layout(controller_name: "dashboard")
-        expect(html).to include('class="active">Overview')
+      it "marks Home as active when component is home" do
+        html = render_layout(controller_name: "dashboard", component: "home")
+        expect(html).to include('class="active"')
+        expect(html).to include(">Home</a>")
       end
 
-      it "does not mark a different controller's link as active" do
-        html = render_layout(controller_name: "jobs")
-        expect(html).not_to include('class="active">Overview')
+      it "marks Home with aria-current when component is home" do
+        html = render_layout(controller_name: "dashboard", component: "home")
+        expect(html).to include('aria-current="page"')
+        expect(html).to include(">Home</a>")
+      end
+
+      it "does not mark Queue Overview as active when component is home" do
+        html = render_layout(controller_name: "dashboard", component: "home")
+        overview_link = html[/href="\/solid_observer\/queue"[^>]*>Overview/, 0]
+        expect(overview_link).not_to include("active")
+      end
+
+      it "marks Queue Overview as active when component is queue" do
+        html = render_layout(controller_name: "dashboard", component: "queue")
+        expect(html).to include('class="active"')
+        expect(html).to include(">Overview</a>")
+      end
+
+      it "does not mark Home as active when component is queue" do
+        html = render_layout(controller_name: "dashboard", component: "queue")
+        home_link = html[/href="\/solid_observer"[^>]*>Home/, 0]
+        expect(home_link).not_to include("active")
+      end
+
+      it "does not mark any dashboard link active when on jobs controller" do
+        html = render_layout(controller_name: "jobs", component: "home")
+        home_link = html[/href="\/solid_observer"[^>]*>Home/, 0]
+        expect(home_link).not_to include("active")
+        overview_link = html[/href="\/solid_observer\/queue"[^>]*>Overview/, 0]
+        expect(overview_link).not_to include("active")
       end
     end
 

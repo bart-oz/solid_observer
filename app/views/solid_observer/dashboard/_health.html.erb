@@ -1,0 +1,6 @@
+<% non_stable = health[:components].count { |_n, i| i[:status].to_sym != :stable } %>
+<section class="so-stability" data-so-zone="home-health" aria-labelledby="so-health-heading">
+  <span class="so-stability__label" id="so-health-heading">Overall Health</span>
+  <%= health_status_badge(health[:overall]) %>
+  <span class="so-stability__detail"><%= non_stable.zero? ? "All included components stable" : "#{non_stable} component#{'s' unless non_stable == 1} not stable" %></span>
+</section>

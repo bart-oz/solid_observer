@@ -250,9 +250,37 @@ module SolidObserver
       SolidObserver.config.solid_cable_enabled?
     end
 
-    def dashboard_section_active?(component)
-      current_component = @component.presence || "queue"
-      controller_name == "dashboard" && current_component == component.to_s
+    def home?
+      controller_name == "dashboard" && @component.to_s == "home"
+    end
+
+    def health_status_badge(status)
+      stability_badge_for(status.to_sym)
+    rescue KeyError
+      Rails.logger&.warn("health_status_badge: unknown status #{status.inspect}, falling back to degraded")
+      stability_badge_for(:degraded)
+    end
+
+    def unified_feed_detail(row)
+      detail = row[:detail].to_s
+      if row[:correlation_id].present?
+        link_to(detail.presence || row[:correlation_id], trace_path(row[:correlation_id]), class: "so-trace__link")
+      else
+        detail.presence || "—"
+      end
+    end
+
+    def component_overview_path(name)
+      case name.to_sym
+      when :queue
+        queue_dashboard_path
+      when :cache
+        cache_dashboard_path
+      when :cable
+        cable_dashboard_path
+      else
+        root_path
+      end
     end
 
     private

@@ -1,0 +1,10 @@
+<% content_for :title, "Home" %>
+<div class="so-dashboard" data-so-zone="home">
+  <div class="so-content__header">
+    <h1>Home</h1>
+  </div>
+
+  <%= render "health", health: health %>
+  <%= render "component_cards", health: health %>
+  <%= render "unified_feed", feed: feed %>
+</div>

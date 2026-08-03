@@ -5,10 +5,13 @@ require "feature_helper"
 RSpec.describe "Dashboard", type: :feature do
   before { SolidObserver.config.storage_mode = :persistence }
 
-  it "has an accessible sr-only h1 instead of visible h1" do
+  # --- Home page (root) ---
+
+  it "has an accessible sr-only h1 on every page" do
     visit "/solid_observer"
     expect(page).to have_css("h1.sr-only", text: "Dashboard")
-    expect(page).not_to have_css(".so-content__header h1", text: "Dashboard")
+    visit "/solid_observer/queue"
+    expect(page).to have_css("h1.sr-only", text: "Dashboard")
   end
 
   it "shows the SolidObserver logo in the sidebar" do
@@ -16,10 +19,22 @@ RSpec.describe "Dashboard", type: :feature do
     expect(page).to have_content("SolidObserver")
   end
 
-  it "shows Overview and Jobs navigation links" do
+  it "shows Home and Overview navigation links on root" do
     visit "/solid_observer"
+    expect(page).to have_link("Home")
     expect(page).to have_link("Overview")
     expect(page).to have_link("Jobs")
+  end
+
+  it "shows Home h1 on root" do
+    visit "/solid_observer"
+    expect(page).to have_css(".so-content__header h1", text: "Home")
+  end
+
+  it "renders home zone on root" do
+    visit "/solid_observer"
+    expect(page).to have_css('[data-so-zone="home"]')
+    expect(page).not_to have_css(".so-dashboard-toolbar")
   end
 
   context "in persistence mode" do
@@ -56,7 +71,7 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "shows Events and Storage navigation links" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_link("Events")
       expect(page).to have_link("Storage")
     end
@@ -67,7 +82,7 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "renders Zone B live-state cards with data-so-zone attribute" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css('[data-so-zone="live-state"]')
       expect(page).to have_css('[data-so-card-value="ready"]')
       expect(page).to have_css('[data-so-card-value="scheduled"]')
@@ -77,7 +92,7 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "renders Zone C throughput cards with separated value and suffix nodes" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css('[data-so-zone="throughput"]')
       expect(page).to have_css('[data-so-card-value="performed_in_range"]')
       expect(page).to have_css('[data-so-card-value="failed_in_range"]')
@@ -92,7 +107,7 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "renders Zone E per-queue table with live depth and range columns" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css('[data-so-zone="queue-table"]')
       expect(page).to have_content("Queue throughput")
       expect(page).to have_css("th", text: "Queue")
@@ -102,18 +117,18 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "renders Zone F Stability strip with badge and detail" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_content("Stability")
       expect(page).to have_link("View failures", href: "/solid_observer/events?event_type=job_failed")
     end
 
     it "renders the Live toggle with correct markup" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css('input[data-so-live-toggle][type="checkbox"][name="live"]')
     end
 
     it "renders checked Live toggle as pill switch when enabled in params" do
-      visit "/solid_observer?live=on"
+      visit "/solid_observer/queue?live=on"
 
       expect(page).to have_css("[data-so-live]")
       expect(page).to have_css('input[data-so-live-toggle][type="checkbox"][name="live"][value="on"][checked]')
@@ -124,36 +139,36 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "renders the range selector with data-so-range-select" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css("[data-so-range-select]")
     end
 
     it "renders Refresh data button" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css("[data-so-refresh]", text: "Refresh data")
     end
 
     it "renders help button with aria-expanded" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css("[data-so-help-btn][aria-expanded]")
     end
 
     it "renders help button and panel inside a hover wrapper" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css("[data-so-help-wrapper]")
       expect(page).to have_css("[data-so-help-wrapper] [data-so-help-btn]")
       expect(page).to have_css("[data-so-help-wrapper] [data-so-help-panel]", visible: false)
     end
 
     it "renders chart strip with three sparkline figures" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css('[data-so-spark="performed"]')
       expect(page).to have_css('[data-so-spark="failed"]')
       expect(page).to have_css('[data-so-spark="ready"]')
     end
 
     it "renders chart indicators with range total values, not latest bucket values" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       # Performed total shows performed_in_range (1200), not latest bucket (10)
       within('[data-so-spark="performed"]') do
         expect(page).to have_css('[data-so-card-value="performed_in_range"]', text: "1,200")
@@ -165,7 +180,7 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "renders chart labels as range totals, not per-minute rates" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       within('[data-so-spark="performed"]') do
         expect(page).to have_css(".so-spark__label", text: /Performed total/)
         expect(page).not_to have_css(".so-spark__label", text: /Performed\/min/)
@@ -177,19 +192,19 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "renders Ready depth chart indicator with data-so-card-value" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       within('[data-so-spark="ready"]') do
         expect(page).to have_css('[data-so-card-value="ready"]')
       end
     end
 
     it "does not use data-so-spark-value for chart indicator values" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).not_to have_css("[data-so-spark-value]")
     end
 
     it "renders chart polylines with non-empty points on first paint" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       within('[data-so-spark="performed"]') do
         polyline = find(".so-spark__line")
         expect(polyline["points"]).not_to be_empty
@@ -197,49 +212,49 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "keeps selected range for a valid range param" do
-      visit "/solid_observer?range=15m"
+      visit "/solid_observer/queue?range=15m"
       expect(page).to have_select("Range", selected: "15m")
     end
 
     it "falls back selected range for an invalid range param" do
-      visit "/solid_observer?range=bogus"
+      visit "/solid_observer/queue?range=bogus"
       expect(page).to have_select("Range", selected: "15m")
     end
 
     it "does not render turbo frame wrappers" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).not_to have_css("turbo-frame")
     end
 
     it "renders Zone A toolbar with left and right groups" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css(".so-dashboard-toolbar__left")
       expect(page).to have_css(".so-dashboard-toolbar__right")
     end
 
     it "renders Zone B section heading" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css("h2", text: "Right now")
     end
 
     it "renders Zone C section heading with range subtitle" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css("h2", text: "Throughput in selected range")
     end
 
     it "renders Zone D chart section" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css('[data-so-zone="chart"]')
       expect(page).to have_css("h2", text: "Charts")
     end
 
     it "renders freshness text area" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css("[data-so-freshness]")
     end
 
     it "renders Queue overview header with h1, status badge, and range caption" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).to have_css(".so-content__header h1", text: "Queue overview")
       expect(page).to have_css(".so-badge.so-badge--pill", text: /Available/)
       expect(page).to have_css(".so-queue-overview__intro")
@@ -255,7 +270,7 @@ RSpec.describe "Dashboard", type: :feature do
     end
 
     it "does not show Events and Storage navigation links" do
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
       expect(page).not_to have_link("Events")
       expect(page).not_to have_link("Storage")
     end
@@ -277,7 +292,7 @@ RSpec.describe "Dashboard", type: :feature do
         range: "15m"
       )
 
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
 
       expect(page).not_to have_css('[data-so-zone="throughput"]')
       expect(page).not_to have_content("Stability")
@@ -295,7 +310,7 @@ RSpec.describe "Dashboard", type: :feature do
         range: "15m"
       )
 
-      visit "/solid_observer?range=15m"
+      visit "/solid_observer/queue?range=15m"
 
       expect(page).not_to have_css("turbo-frame")
       expect(page).to have_css('[data-so-card-value="ready"]')
@@ -318,7 +333,7 @@ RSpec.describe "Dashboard", type: :feature do
         range: "15m"
       )
 
-      visit "/solid_observer"
+      visit "/solid_observer/queue"
 
       expect(page).to have_css('[data-so-spark="ready"]')
       expect(page).not_to have_css('[data-so-spark="performed"]')

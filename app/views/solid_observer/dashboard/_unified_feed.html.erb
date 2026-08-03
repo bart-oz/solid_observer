@@ -1,0 +1,38 @@
+<section class="so-card" data-so-zone="home-feed" aria-labelledby="so-feed-heading">
+  <div class="so-card__label" id="so-feed-heading">Recent Activity</div>
+  <% if SolidObserver.config.realtime_mode? %>
+    <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-events">Feed requires persistence mode. Switch to persistence mode to see recent activity across components.</p>
+  <% elsif feed.present? %>
+    <table class="so-table so-table--card">
+      <caption class="sr-only">Unified recent activity across enabled components</caption>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Event</th>
+          <th>Detail</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% feed.each do |row| %>
+          <tr>
+            <td><%= row[:component].to_s.titleize %></td>
+            <td><%= row[:event_type].to_s.humanize %></td>
+            <td>
+              <%= unified_feed_detail(row) %>
+            </td>
+            <td>
+              <% if row[:recorded_at] %>
+                <time datetime="<%= row[:recorded_at].iso8601 %>" title="<%= row[:recorded_at].iso8601 %>"><%= time_ago_in_words(row[:recorded_at]) %> ago</time>
+              <% else %>
+                —
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="so-dashboard-section__meta so-dashboard-section__meta--empty-events">No recent activity yet. Events will appear here after components record activity.</p>
+  <% end %>
+</section>
