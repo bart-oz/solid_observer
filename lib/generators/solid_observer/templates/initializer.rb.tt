@@ -41,6 +41,9 @@ SolidObserver.configure do |config|
   # config.cable_rejection_threshold = 0.05   # Rejection rate → Degraded stability
   # config.cable_backlog_threshold = 0.10     # Backlog ratio threshold
   # config.cable_error_threshold = 0.0        # Error rate threshold
+# === Trace & Health Observability (v0.6.0) ===
+# Health scoring (Services::HealthScore) is auto-computed and config-free.
+# Cross-component trace lookup uses correlation_id across Queue, Cache, and Cable.
 
   # Data Retention
   config.event_retention = 30.days    # How long to keep event records
@@ -57,9 +60,10 @@ SolidObserver.configure do |config|
   # Sampling (reduce overhead in high-traffic apps)
   config.sampling_rate = 1.0  # 1.0 = 100% (capture all events)
 
-  # Correlation ID (for distributed tracing)
+  # Correlation ID (for cross-component tracing & APM integration)
+  # Stamped correlation_id powers `rails solid_observer:trace[CORRELATION_ID]` CLI
+  # and the Web UI at /solid_observer/traces/:correlation_id.
   # Integrate with your APM tool (Datadog, Sentry, OpenTelemetry, etc.)
-  # config.correlation_id_generator = -> {
   #   # Example for Datadog APM
   #   Datadog::Tracing.active_trace&.id
   #

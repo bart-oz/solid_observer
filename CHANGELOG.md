@@ -1,3 +1,20 @@
+## [0.6.0] - 2026-08-04
+
+Headline: **Cross-component Tracing, Health Scoring & Unified Dashboard** — trace correlation across Queue/Cache/Cable, unified home dashboard, health scoring service, and CLI health & trace commands.
+
+### Added
+- **Correlation ID propagation** — automatic correlation ID generation and propagation across ActiveJob (`Correlated.stamp`), SolidCache, and SolidCable events; configurable `correlation_id_generator`.
+- **Cross-component trace service & CLI** — `Queries::TraceQuery` for fetching cross-component events by `correlation_id`; `rails solid_observer:trace[CORRELATION_ID,LIMIT]` CLI command.
+- **Trace Web UI** — Web interface at `/solid_observer/traces/:correlation_id` displaying component-tagged event timelines across Queue, Cache, and Cable.
+- **Unified health scoring service** — `Services::HealthScore` auto-calculates overall host stability using worst-of component statuses (Queue, Cache, Cable) with zero configuration required.
+- **CLI health command** — `rails solid_observer:health` CLI command displaying aggregate and per-component health status.
+
+### Changed
+- **Combined / Unified Dashboard** — Engine root (`GET /solid_observer/`) now renders the unified Home dashboard (overall health banner, per-component status cards, and merged multi-component activity feed). Dedicated Queue overview moved to `/solid_observer/queue`.
+
+### Upgrade & Database Migration
+- **Required DB Migration** — Running `bin/rails solid_observer:install:migrations && bin/rails db:migrate` is required when upgrading to v0.6.0. Adds `correlation_id` columns to `solid_observer_cache_events` and `solid_observer_cable_events` tables.
+
 ## [0.5.0] - 2026-06-24
 
 Headline: **Solid Cable observability** — optional Cable telemetry, dashboard, storage health, and guarded trim controls.
