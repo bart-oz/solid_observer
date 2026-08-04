@@ -21,8 +21,7 @@ module SolidObserver
     # Observer Settings
     attr_accessor :observe_queue
 
-    # Observer Settings (planned for a future release)
-    # @note Cable observer is not yet fully implemented
+    # Cache & Cable Observer Settings
     attr_accessor :observe_cache,
       :observe_cable,
       :cache_sampling_rate,
@@ -36,8 +35,6 @@ module SolidObserver
     # Retention Settings
     attr_accessor :event_retention
 
-    # Retention Settings (planned for a future release)
-    # @note Metrics cleanup is not yet implemented
     attr_accessor :metrics_retention
 
     # Storage Settings

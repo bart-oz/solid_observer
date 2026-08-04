@@ -7,33 +7,35 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.5.0-blue.svg" alt="Version"></a>
+  <a href="https://github.com/bart-oz/solid_observer/releases"><img src="https://img.shields.io/badge/version-0.6.0-blue.svg" alt="Version"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/tests-passing-brightgreen.svg" alt="Tests"></a>
-  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-96.22%25-brightgreen.svg" alt="Coverage"></a>
-</p>
+  <a href="https://github.com/bart-oz/solid_observer/actions"><img src="https://img.shields.io/badge/coverage-97.96%25-brightgreen.svg" alt="Coverage"></a>
 
 ---
 <p align="center">
   <a href=".github/assets/dash_1.png"><img src=".github/assets/dash_1.png" alt="SolidObserver dashboard overview" width="700"></a>
 </p>
 
-SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. v0.5.0 covers **Solid Queue**, **Solid Cache**, and **Solid Cable** with a unified Web UI dashboard, CLI tools, metrics collection, and distributed tracing support.
+SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. v0.6.0 covers **Solid Queue**, **Solid Cache**, and **Solid Cable** with a unified Web UI dashboard, health scoring (`Services::HealthScore`), CLI tools, metrics collection, and cross-component trace correlation by `correlation_id`.
 
-## Features (v0.5.0)
+## Features (v0.6.0)
 
 | | Solid Queue | Solid Cache | Solid Cable |
 |---|---|---|---|
 | **Web UI Dashboard** | Queue stats, jobs browser, events log | Hit rate, ops/sec, error rate, avg duration | Broadcasts, rejection rate, trends |
+| **Unified Home** | Overall health banner, component cards, merged activity feed at `/solid_observer` |
+| **Health Scoring** | Worst-of aggregate stability (`Services::HealthScore`), config-free |
+| **Cross-Component Trace** | Timeline by `correlation_id` across Queue, Cache, Cable (`/solid_observer/traces/:id`) |
 | **Storage footprint** | DB size, event counts | SolidCache table size, row counts | Message count + backlogs |
 | **Activity trends** | Sparklines (Performed, Ready, Failed) | Activity trend sparklines | Broadcast/rejection sparklines |
 | **Stability indicator** | Stable / Degraded / Critical badge | Stability pill badge | Stable / Degraded / Critical (hybrid) |
 | **Operational controls** | Retry / discard failed jobs | Prune expired entries, clear all entries | Trim expired messages |
-| **CLI tools** | status, jobs:list/show/retry/discard | cache:prune, cache:clear | cable:trim |
+| **CLI tools** | status, health, trace, jobs:list/show/retry/discard | cache:prune, cache:clear | cable:trim |
 | **Privacy** | Job arguments excluded from persisted events | Keys and values **never** shown | Broadcasting names hashed (SHA256) |
 | **Operating modes** | Real-time (no DB) or persistence (full history) | Persistence mode only | Persistence mode only |
 
-Additional: 🔗 APM distributed tracing · ⚡ buffered writes · 🛡️ Docker/CI/K8s safe boot
+Additional: 🔗 Cross-component trace lookup by correlation_id · 🩺 Config-free aggregate health score · 🏠 Unified Home dashboard · ⚡ buffered writes · 🛡️ Docker/CI/K8s safe boot
 
 ## Requirements
 
@@ -174,6 +176,14 @@ Configuration:
 ## Web UI Dashboard
 
 SolidObserver ships with a zero-dependency Web UI (no asset pipeline, no JS framework) at `/solid_observer`.
+
+### Views & Routes
+
+- **Unified Home Dashboard** (`/solid_observer/`) — Overall worst-of health score banner, per-component status cards (Queue, Cache, Cable), and a unified cross-component activity feed.
+- **Queue Overview** (`/solid_observer/queue`) — Dedicated Queue metrics, job browser (ready/scheduled/claimed/failed), events log, time-range trends, and operational controls.
+- **Cache Dashboard** (`/solid_observer/cache_dashboard`) — SolidCache hit rates, ops/sec, error rates, storage footprint, and prune/clear controls.
+- **Cable Dashboard** (`/solid_observer/cable_dashboard`) — SolidCable broadcast volume, rejection rates, backlog trends, and message trim controls.
+- **Cross-Component Trace Timeline** (`/solid_observer/traces/:correlation_id`) — Component-tagged event sequence across Queue, Cache, and Cable for a specific correlation ID.
 
 ### Mount
 
@@ -398,7 +408,10 @@ SolidObserver.configure do |config|
 end
 ```
 
-When configured, all job events will include your correlation ID, allowing you to trace jobs back to the originating request.
+When configured, all job, cache, and cable events will include your correlation ID. You can query the full cross-component event timeline for any request or job:
+
+- **CLI**: `bin/rails "solid_observer:trace[CORRELATION_ID,LIMIT]"`
+- **Web UI**: `/solid_observer/traces/:correlation_id`
 
 ### Production hardening (recommended)
 
@@ -427,6 +440,7 @@ end
 | Command | Description |
 |---------|-------------|
 | `solid_observer:status` | Show queue status overview |
+| `solid_observer:health` | Display aggregate and per-component health status |
 | `solid_observer:jobs:list[status,queue,class,limit]` | List jobs with optional filters |
 | `solid_observer:jobs:show[ID]` | Show job details |
 | `solid_observer:jobs:retry[ID]` | Retry a failed job |
@@ -444,6 +458,7 @@ end
 | `solid_observer:cache:clear` | Clear all SolidCache entries (with confirmation) |
 | `solid_observer:cache:prune` | Prune expired SolidCache entries |
 | `solid_observer:cable:trim` | Trim expired Solid Cable messages |
+| `solid_observer:trace[CORRELATION_ID,LIMIT]` | Show cross-component trace timeline |
 
 > **Note:** Storage commands manage **SolidObserver's storage** (event logs, metrics, snapshots) — not Solid Queue's jobs. Cache commands operate on SolidCache entries in the host app's cache store.
 
@@ -534,8 +549,8 @@ gem "sqlite3", "~> 2.0"
 | v0.1.1 | Real-time mode (no migrations needed) | ✅ Released |
 | v0.3.0 | Web UI dashboard + stability hardening | ✅ Released |
 | v0.4.0 | Solid Cache monitoring | ✅ Released |
-| v0.5.0 | Solid Cable monitoring | ✅ Current |
-| v0.6.0 | Cross-component correlation, health scores | 🔜 Planned |
+| v0.5.0 | Solid Cable monitoring | ✅ Released |
+| v0.6.0 | Cross-component trace correlation, health scores, unified dashboard | ✅ Current |
 | v0.7.0 | Alerting & notifications | 🔜 Planned |
 | v1.0.0 | Production stable release | 🎯 Goal |
 
