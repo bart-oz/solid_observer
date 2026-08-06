@@ -18,6 +18,78 @@ RSpec.describe SolidObserver::Configuration do
     expect(config.max_db_size).to eq(1.gigabyte)
     expect(config.warning_threshold).to eq(0.8)
     expect(config.storage_mode).to eq(:persistence)
+    expect(config.alerts_enabled).to be false
+  end
+
+  describe "alerting settings" do
+    it "sets alerting defaults" do
+      config = described_class.new
+
+      expect(config.alerts_enabled).to be false
+      expect(config.alert_evaluation_interval).to eq(15.minutes)
+      expect(config.alert_cooldown_default).to eq(15)
+      expect(config.alert_history_retention).to eq(90.days)
+      expect(config.default_alert_thresholds).to eq(
+        {queue_latency: 5.0, error_rate: 0.05, storage_capacity: 0.8, health_score: 1.0}
+      )
+    end
+
+    it "enables alerts through the configuration DSL" do
+      SolidObserver.configure { |config| config.alerts_enabled = true }
+
+      expect(SolidObserver.config.alerts_enabled).to be true
+    end
+
+    describe "#alert_evaluation_interval=" do
+      it "accepts positive durations and rejects non-positive values" do
+        config = described_class.new
+        config.alert_evaluation_interval = 30.minutes
+
+        expect(config.alert_evaluation_interval).to eq(30.minutes)
+        expect { config.alert_evaluation_interval = 0 }.to raise_error(ArgumentError)
+        expect { config.alert_evaluation_interval = -1 }.to raise_error(ArgumentError)
+      end
+    end
+
+    describe "#alert_cooldown_default=" do
+      it "accepts positive integers and rejects invalid values" do
+        config = described_class.new
+        config.alert_cooldown_default = 30
+
+        expect(config.alert_cooldown_default).to eq(30)
+        expect { config.alert_cooldown_default = 0 }.to raise_error(ArgumentError)
+        expect { config.alert_cooldown_default = 2.5 }.to raise_error(ArgumentError)
+      end
+    end
+
+    describe "#alert_history_retention=" do
+      it "accepts positive durations and rejects zero" do
+        config = described_class.new
+        config.alert_history_retention = 30.days
+
+        expect(config.alert_history_retention).to eq(30.days)
+        expect { config.alert_history_retention = 0 }.to raise_error(ArgumentError)
+      end
+    end
+
+    describe "#default_alert_thresholds=" do
+      it "merges overrides without mutating the defaults" do
+        config = described_class.new
+        config.default_alert_thresholds = {error_rate: 0.10}
+
+        expect(config.default_alert_thresholds).to eq(
+          {queue_latency: 5.0, error_rate: 0.10, storage_capacity: 0.8, health_score: 1.0}
+        )
+        expect(described_class::DEFAULT_ALERT_THRESHOLDS).to be_frozen
+        expect(described_class::DEFAULT_ALERT_THRESHOLDS[:error_rate]).to eq(0.05)
+      end
+
+      it "rejects non-Hash values" do
+        config = described_class.new
+
+        expect { config.default_alert_thresholds = [] }.to raise_error(ArgumentError)
+      end
+    end
   end
 
   describe "#storage_mode" do

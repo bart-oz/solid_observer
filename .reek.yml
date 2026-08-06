@@ -97,6 +97,7 @@ detectors:
       - SolidObserver::DashboardController#selected_component
       - SolidObserver::Services::UnifiedFeed#log_error
       - SolidObserver::ApplicationHelper#unified_feed_detail
+      - SolidObserver::Configuration#initialize
 
   InstanceVariableAssumption:
     exclude:
@@ -112,6 +113,7 @@ detectors:
       - SolidObserver::Subscriber
       - SolidObserver::Configuration
       - SolidObserver::CacheSubscriber
+      - SolidObserver::AlertHistory
 
   RepeatedConditional:
     exclude:
