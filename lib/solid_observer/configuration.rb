@@ -53,6 +53,14 @@ module SolidObserver
       :filter_cache_ttl,
       :cable_sampling_rate
 
+    # Alerting Settings (v0.7.0) — opt-in
+    attr_accessor :alerts_enabled
+
+    attr_reader :alert_evaluation_interval,
+      :alert_cooldown_default,
+      :alert_history_retention,
+      :default_alert_thresholds
+
     # Correlation Settings
     attr_accessor :correlation_id_generator
 
@@ -64,18 +72,29 @@ module SolidObserver
         @cable_rejection_threshold, @cable_backlog_threshold, @cable_error_threshold,
         @buffer_size, @flush_interval,
         @max_buffer_size, @buffer_overflow_strategy, @filter_cache_ttl,
-        @correlation_id_generator = !production?, "::ApplicationController", nil, nil,
+        @correlation_id_generator,
+        @alerts_enabled, @alert_evaluation_interval, @alert_cooldown_default,
+        @alert_history_retention, @default_alert_thresholds = !production?, "::ApplicationController", nil, nil,
           :persistence, true, false, false,
           30.days, 90.days, 1.gigabyte, 0.8,
           1.0, 0.1, 0.1, 0.1, true,
           0.05, 0.10, 0.0,
           1000, 10.seconds,
           10_000, :drop_old, 1.minute,
-          nil
+          nil,
+          false, 15.minutes, 15, 90.days, DEFAULT_ALERT_THRESHOLDS
     end
 
     STORAGE_MODES = %i[persistence realtime].freeze
     BUFFER_OVERFLOW_STRATEGIES = %i[drop_old drop_new].freeze
+
+    # storage_capacity: 0.8 mirrors warning_threshold; health_score: 1.0 is STATUS_RANK (0 stable / 1 degraded / 2 critical).
+    DEFAULT_ALERT_THRESHOLDS = {
+      queue_latency: 5.0,
+      error_rate: 0.05,
+      storage_capacity: 0.8,
+      health_score: 1.0
+    }.freeze
 
     def storage_mode=(value)
       value = value.to_sym
@@ -181,6 +200,27 @@ module SolidObserver
     def filter_cache_ttl=(value)
       validate_positive_numeric!(:filter_cache_ttl, value)
       @filter_cache_ttl = value
+    end
+
+    def alert_evaluation_interval=(value)
+      validate_positive_numeric!(:alert_evaluation_interval, value)
+      @alert_evaluation_interval = value
+    end
+
+    def alert_cooldown_default=(value)
+      validate_positive_integer!(:alert_cooldown_default, value)
+      @alert_cooldown_default = value
+    end
+
+    def alert_history_retention=(value)
+      validate_positive_numeric!(:alert_history_retention, value)
+      @alert_history_retention = value
+    end
+
+    def default_alert_thresholds=(value)
+      raise ArgumentError, "default_alert_thresholds must be a Hash" unless value.is_a?(Hash)
+
+      @default_alert_thresholds = DEFAULT_ALERT_THRESHOLDS.merge(value)
     end
 
     private
