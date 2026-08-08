@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "active_support/lazy_load_hooks"
+require "action_mailer/railtie"
 
 require_relative "solid_observer/version"
 require_relative "solid_observer/configuration"
@@ -9,6 +10,12 @@ require_relative "solid_observer/correlated"
 require_relative "solid_observer/params/jobs_filter"
 require_relative "solid_observer/params/events_filter"
 require_relative "solid_observer/services/ui_auth_check"
+require_relative "solid_observer/channels/base"
+require_relative "solid_observer/channels/slack"
+require_relative "solid_observer/channels/email"
+require_relative "solid_observer/channels/webhook"
+require_relative "solid_observer/services/alert_payload"
+require_relative "solid_observer/services/alert_notification"
 require_relative "solid_observer/subscriber"
 require_relative "solid_observer/cli/base"
 require_relative "solid_observer/cli/status"
@@ -55,6 +62,7 @@ end
 
 module SolidObserver
   autoload :ExecutionPresenter, File.expand_path("../app/presenters/solid_observer/execution_presenter", __dir__)
+  autoload :AlertMailer, File.expand_path("../app/mailers/solid_observer/alert_mailer", __dir__)
 
   class Error < StandardError; end
 

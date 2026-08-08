@@ -61,6 +61,13 @@ module SolidObserver
       :alert_history_retention,
       :default_alert_thresholds
 
+    # Notification Settings (v0.8.0) — opt-in per channel via config presence
+    attr_accessor :notification_base_url,
+      :slack_webhook_url,
+      :email_recipients,
+      :webhook_endpoint_url,
+      :webhook_secret
+
     # Correlation Settings
     attr_accessor :correlation_id_generator
 
@@ -74,7 +81,9 @@ module SolidObserver
         @max_buffer_size, @buffer_overflow_strategy, @filter_cache_ttl,
         @correlation_id_generator,
         @alerts_enabled, @alert_evaluation_interval, @alert_cooldown_default,
-        @alert_history_retention, @default_alert_thresholds = !production?, "::ApplicationController", nil, nil,
+        @alert_history_retention, @default_alert_thresholds,
+        @notification_base_url, @slack_webhook_url, @email_recipients,
+        @webhook_endpoint_url, @webhook_secret = !production?, "::ApplicationController", nil, nil,
           :persistence, true, false, false,
           30.days, 90.days, 1.gigabyte, 0.8,
           1.0, 0.1, 0.1, 0.1, true,
@@ -82,7 +91,9 @@ module SolidObserver
           1000, 10.seconds,
           10_000, :drop_old, 1.minute,
           nil,
-          false, 15.minutes, 15, 90.days, DEFAULT_ALERT_THRESHOLDS
+          false, 15.minutes, 15, 90.days, DEFAULT_ALERT_THRESHOLDS,
+          nil, nil, [],
+          nil, nil
     end
 
     STORAGE_MODES = %i[persistence realtime].freeze

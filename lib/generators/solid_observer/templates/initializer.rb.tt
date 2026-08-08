@@ -60,6 +60,20 @@ SolidObserver.configure do |config|
   # Sampling (reduce overhead in high-traffic apps)
   config.sampling_rate = 1.0  # 1.0 = 100% (capture all events)
 
+  # === Notification Channels (v0.8.0) ===
+  # A channel is enabled when its config below is present — set any subset.
+  # Deliveries run asynchronously via SolidObserver::NotificationDeliveryJob.
+  #
+  # Base URL used to build the deep-link back to this alert in the Web UI.
+  # Falls back to a relative "/solid_observer" path (with a boot warning)
+  # when left unset.
+  # config.notification_base_url = "https://app.example.com"
+  #
+  # config.slack_webhook_url = "https://hooks.slack.com/services/..."
+  # config.email_recipients = ["oncall@example.com"]
+  # config.webhook_endpoint_url = "https://example.com/hooks/solid_observer"
+  # config.webhook_secret = Rails.application.credentials.dig(:solid_observer, :webhook_secret)
+
   # Correlation ID (for cross-component tracing & APM integration)
   # Stamped correlation_id powers `rails solid_observer:trace[CORRELATION_ID]` CLI
   # and the Web UI at /solid_observer/traces/:correlation_id.

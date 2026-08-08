@@ -1,0 +1,9 @@
+SolidObserver Alert: <%= @payload[:event_type] %>
+
+Rule: <%= @payload[:rule_name] %>
+Severity: <%= @payload[:severity] %>
+Metric: <%= @payload[:metric_type] %> = <%= @payload[:metric_value] %>
+Environment: <%= @payload[:environment] %>
+Triggered at: <%= @payload[:triggered_at] %>
+
+View in SolidObserver: <%= @payload[:deep_link_url] %>
