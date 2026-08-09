@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../solid_observer/services/install_migrations"
+require_relative "../solid_observer/services/evaluate_alerts"
+require_relative "../solid_observer/services/alert_status"
 
 namespace :solid_observer do
   desc "Display SolidObserver version"
@@ -254,7 +256,6 @@ namespace :solid_observer do
 
       SolidObserver::CLI::Jobs.new.retry_job(args[:job_id])
     end
-
     desc "Discard a failed job by ID"
     task :discard, [:job_id] => :environment do |_t, args|
       if args[:job_id].nil?
@@ -263,6 +264,17 @@ namespace :solid_observer do
       end
 
       SolidObserver::CLI::Jobs.new.discard(args[:job_id])
+    end
+  end
+  namespace :alerts do
+    desc "Evaluate all enabled alert rules"
+    task evaluate: :environment do
+      result = SolidObserver::Services::EvaluateAlerts.call
+      if result[:skipped]
+        puts "Alert evaluation skipped: #{result[:skipped]}"
+      else
+        puts "Alert evaluation complete: #{result[:triggered]} triggered, #{result[:resolved]} resolved."
+      end
     end
   end
 end

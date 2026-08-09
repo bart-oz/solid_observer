@@ -77,6 +77,9 @@ detectors:
       - SolidObserver::DashboardHelper#format_spark_point
       - SolidObserver::Services::UnifiedFeed#normalize_cache
       - SolidObserver::Services::UnifiedFeed#normalize_cable
+      - SolidObserver::Services::EvaluateAlerts#breach?
+      - SolidObserver::Services::EvaluateAlerts#build_payload
+      - SolidObserver::Services::EvaluateAlerts#handle_recovery
 
   DuplicateMethodCall:
     exclude:
@@ -143,6 +146,8 @@ detectors:
       - SolidObserver::CLI::Jobs#apply_queue_filter
       - SolidObserver::CLI::Jobs#needs_job_join?
       - SolidObserver::StorageInfo#self.record_snapshot
+      - SolidObserver::Services::EvaluateAlerts#compute_metric_value
+      - SolidObserver::Services::EvaluateAlerts#severity_for
 
   DataClump:
     exclude:
@@ -155,11 +160,11 @@ detectors:
       - SolidObserver::Configuration
       - SolidObserver::Engine
       - SolidObserver::Services::RecordCacheEvent
+      - SolidObserver::Services::EvaluateAlerts
 
   TooManyConstants:
     exclude:
       - SolidObserver::QueueStats
-
 exclude_paths:
   - spec/
   - db/

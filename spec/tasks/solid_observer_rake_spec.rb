@@ -37,6 +37,9 @@ RSpec.describe "solid_observer rake tasks" do
       expect(Rake::Task.task_defined?("solid_observer:jobs:retry")).to be true
     end
 
+    it "defines solid_observer:alerts:evaluate task" do
+      expect(Rake::Task.task_defined?("solid_observer:alerts:evaluate")).to be true
+    end
     it "defines solid_observer:jobs:discard task" do
       expect(Rake::Task.task_defined?("solid_observer:jobs:discard")).to be true
     end
@@ -450,6 +453,20 @@ RSpec.describe "solid_observer rake tasks" do
         expect(connection).to have_received(:execute).with("ANALYZE solid_observer_storage_info")
         expect(connection).to have_received(:execute).with("ANALYZE solid_observer_cache_events")
         expect(connection).to have_received(:execute).with("ANALYZE solid_observer_cache_metrics")
+      end
+    end
+
+    describe "solid_observer:alerts:evaluate" do
+      before do
+        reenable_all_tasks
+      end
+
+      it "invokes EvaluateAlerts service and outputs result" do
+        allow(SolidObserver::Services::EvaluateAlerts).to receive(:call).and_return({triggered: 1, resolved: 0, skipped: false})
+
+        expect {
+          Rake::Task["solid_observer:alerts:evaluate"].invoke
+        }.to output(/Alert evaluation complete: 1 triggered, 0 resolved/).to_stdout
       end
     end
   end
