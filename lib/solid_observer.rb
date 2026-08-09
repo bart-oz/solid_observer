@@ -58,8 +58,10 @@ ActiveSupport.on_load(:active_record) do
   require_relative "solid_observer/services/cable_operations"
   require_relative "solid_observer/services/health_score"
   require_relative "solid_observer/services/unified_feed"
+  require_relative "solid_observer/services/database_size"
+  require_relative "solid_observer/services/evaluate_alerts"
+  require_relative "solid_observer/services/alert_status"
 end
-
 module SolidObserver
   autoload :ExecutionPresenter, File.expand_path("../app/presenters/solid_observer/execution_presenter", __dir__)
   autoload :AlertMailer, File.expand_path("../app/mailers/solid_observer/alert_mailer", __dir__)
