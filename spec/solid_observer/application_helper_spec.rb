@@ -7,6 +7,7 @@ require_relative "../../app/helpers/solid_observer/application_helper"
 RSpec.describe SolidObserver::ApplicationHelper do
   include ActionView::Helpers::TagHelper
   include ActionView::Helpers::OutputSafetyHelper
+  include ActionView::Helpers::TextHelper
   include described_class
 
   describe "#format_duration" do
@@ -230,6 +231,93 @@ RSpec.describe SolidObserver::ApplicationHelper do
     it "falls back to 'unknown' when latest timestamp is missing" do
       result = stability_detail(failed_last_24h: 2, latest_failure_at: nil)
       expect(result).to include("latest unknown")
+    end
+  end
+
+  describe "alert indicators" do
+    after { SolidObserver.reset_configuration! }
+
+    def stub_count(value)
+      allow(SolidObserver::Services::AlertStatus).to receive(:active_count).and_return(value)
+    end
+
+    def stub_raise(error)
+      allow(SolidObserver::Services::AlertStatus).to receive(:active_count).and_raise(error)
+    end
+
+    describe "#alerts_component_enabled?" do
+      it "is true when alerts are on in persistence mode" do
+        SolidObserver.config.alerts_enabled = true
+        SolidObserver.config.storage_mode = :persistence
+
+        expect(alerts_component_enabled?).to be true
+      end
+
+      it "is false when alerts are off" do
+        SolidObserver.config.alerts_enabled = false
+
+        expect(alerts_component_enabled?).to be false
+      end
+
+      it "is false in realtime mode" do
+        SolidObserver.config.alerts_enabled = true
+        SolidObserver.config.storage_mode = :realtime
+
+        expect(alerts_component_enabled?).to be false
+      end
+    end
+
+    describe "#active_alert_count" do
+      it "delegates to Services::AlertStatus" do
+        stub_count(4)
+
+        expect(active_alert_count).to eq(4)
+      end
+
+      it "queries once per request even when zero" do
+        stub_count(0)
+
+        2.times { active_alert_count }
+
+        expect(SolidObserver::Services::AlertStatus).to have_received(:active_count).once
+      end
+
+      # The layout renders this on every page, including the storage-unavailable
+      # error page, so no storage failure may escape as a 500.
+      [
+        ActiveRecord::StatementInvalid.new("no such table: solid_observer_alert_histories"),
+        ActiveRecord::ConnectionNotEstablished.new,
+        ActiveRecord::NoDatabaseError.new,
+        TypeError.new("nil is not a symbol")
+      ].each do |error|
+        it "degrades to 0 on #{error.class}" do
+          stub_raise(error)
+
+          expect { @degraded = active_alert_count }.not_to raise_error
+          expect(@degraded).to eq(0)
+        end
+      end
+    end
+
+    describe "#alerts_nav_label" do
+      it "is a plain label when nothing is firing" do
+        stub_count(0)
+
+        expect(alerts_nav_label).to eq("Alerts")
+      end
+
+      it "carries a count badge when alerts are firing" do
+        stub_count(3)
+
+        expect(alerts_nav_label).to include('<span class="so-badge so-badge--pill so-badge--danger"')
+        expect(alerts_nav_label).to include(">3</span>")
+      end
+
+      it "labels the badge for screen readers" do
+        stub_count(1)
+
+        expect(alerts_nav_label).to include('aria-label="1 active alert"')
+      end
     end
   end
 end

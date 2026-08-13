@@ -1,0 +1,54 @@
+<% content_for :title, "Alerts" %>
+
+<div class="so-content__header">
+  <h1>Alerts</h1>
+</div>
+
+<section class="so-card so-card--section" aria-labelledby="so-alerts-active-heading">
+  <h2 id="so-alerts-active-heading">Active incidents</h2>
+  <% if @active.any? %>
+    <%= render "incidents", histories: @active %>
+  <% else %>
+    <%= render "solid_observer/shared/empty_state", message: "No alerts are currently firing" %>
+  <% end %>
+</section>
+
+<section class="so-card so-card--section" aria-labelledby="so-alerts-rules-heading">
+  <h2 id="so-alerts-rules-heading">Rules</h2>
+  <% if @rules.any? %>
+    <table class="so-table so-table--listing">
+      <caption class="sr-only">Alert rules</caption>
+      <thead>
+        <tr>
+          <th>Rule</th>
+          <th>Metric</th>
+          <th>Threshold</th>
+          <th>Cooldown</th>
+          <th>State</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rules.each do |rule| %>
+          <tr>
+            <td><%= link_to rule.rule_name, alert_path(rule) %></td>
+            <td><%= rule.metric_type.humanize %></td>
+            <td><%= rule.comparison_operator %> <%= rule.threshold_value %></td>
+            <td><%= pluralize(rule.cooldown_minutes, "minute") %></td>
+            <td><%= tag.span(rule.enabled? ? "enabled" : "disabled", class: "so-badge so-badge--pill so-badge--#{rule.enabled? ? "success" : "default"}") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <%= render "solid_observer/shared/empty_state", message: "No alert rules are defined" %>
+  <% end %>
+</section>
+
+<section class="so-card so-card--section" aria-labelledby="so-alerts-recent-heading">
+  <h2 id="so-alerts-recent-heading">Recent history</h2>
+  <% if @recent.any? %>
+    <%= render "incidents", histories: @recent %>
+  <% else %>
+    <%= render "solid_observer/shared/empty_state", message: "No alerts have been recorded yet" %>
+  <% end %>
+</section>

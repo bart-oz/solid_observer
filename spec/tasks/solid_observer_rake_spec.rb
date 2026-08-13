@@ -40,6 +40,15 @@ RSpec.describe "solid_observer rake tasks" do
     it "defines solid_observer:alerts:evaluate task" do
       expect(Rake::Task.task_defined?("solid_observer:alerts:evaluate")).to be true
     end
+
+    it "defines solid_observer:alerts:list task" do
+      expect(Rake::Task.task_defined?("solid_observer:alerts:list")).to be true
+    end
+
+    it "defines solid_observer:alerts:test task" do
+      expect(Rake::Task.task_defined?("solid_observer:alerts:test")).to be true
+    end
+
     it "defines solid_observer:jobs:discard task" do
       expect(Rake::Task.task_defined?("solid_observer:jobs:discard")).to be true
     end
@@ -96,6 +105,14 @@ RSpec.describe "solid_observer rake tasks" do
     it "solid_observer:jobs:discard accepts job_id argument" do
       task = Rake::Task["solid_observer:jobs:discard"]
       expect(task.arg_names).to eq([:job_id])
+    end
+
+    it "solid_observer:alerts:list accepts a limit argument" do
+      expect(Rake::Task["solid_observer:alerts:list"].arg_names).to eq([:limit])
+    end
+
+    it "solid_observer:alerts:test accepts a channel argument" do
+      expect(Rake::Task["solid_observer:alerts:test"].arg_names).to eq([:channel])
     end
   end
 
@@ -467,6 +484,62 @@ RSpec.describe "solid_observer rake tasks" do
         expect {
           Rake::Task["solid_observer:alerts:evaluate"].invoke
         }.to output(/Alert evaluation complete: 1 triggered, 0 resolved/).to_stdout
+      end
+    end
+
+    describe "solid_observer:alerts:list" do
+      let(:cli) { instance_double(SolidObserver::CLI::Alerts, list: nil) }
+
+      before do
+        reenable_all_tasks
+        allow(SolidObserver::CLI::Alerts).to receive(:new).and_return(cli)
+      end
+
+      it "passes the default limit when none is supplied" do
+        Rake::Task["solid_observer:alerts:list"].invoke
+
+        expect(cli).to have_received(:list).with(limit: SolidObserver::CLI::Alerts::DEFAULT_LIMIT)
+      end
+
+      it "forwards the limit argument" do
+        Rake::Task["solid_observer:alerts:list"].invoke("5")
+
+        expect(cli).to have_received(:list).with(limit: "5")
+      end
+
+      it "does not raise SystemExit" do
+        expect { Rake::Task["solid_observer:alerts:list"].invoke }.not_to raise_error
+      end
+    end
+
+    describe "solid_observer:alerts:test" do
+      before { reenable_all_tasks }
+
+      def stub_cli(result)
+        allow(SolidObserver::CLI::Alerts).to receive(:new)
+          .and_return(instance_double(SolidObserver::CLI::Alerts, test: result))
+      end
+
+      it "forwards the channel argument" do
+        cli = instance_double(SolidObserver::CLI::Alerts, test: true)
+        allow(SolidObserver::CLI::Alerts).to receive(:new).and_return(cli)
+
+        Rake::Task["solid_observer:alerts:test"].invoke("slack")
+
+        expect(cli).to have_received(:test).with(channel: "slack")
+      end
+
+      it "exits 0 when at least one channel succeeded" do
+        stub_cli(true)
+
+        expect { Rake::Task["solid_observer:alerts:test"].invoke }.not_to raise_error
+      end
+
+      it "exits non-zero when every channel failed" do
+        stub_cli(false)
+
+        expect { Rake::Task["solid_observer:alerts:test"].invoke }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
       end
     end
   end

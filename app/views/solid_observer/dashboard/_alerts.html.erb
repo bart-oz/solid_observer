@@ -1,0 +1,5 @@
+<div class="so-card so-card--spaced so-card--accent-danger" role="status">
+  <strong><%= pluralize(active_alert_count, "active alert") %></strong>
+  currently firing.
+  <%= link_to "View alerts →", alerts_path %>
+</div>
