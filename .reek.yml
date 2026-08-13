@@ -12,6 +12,7 @@ detectors:
       - SolidObserver::EventsController
       - SolidObserver::DashboardController
       - SolidObserver::CacheDashboardController
+      - SolidObserver::AlertsController
       - SolidObserver::Params::EventsFilter
 
   TooManyStatements:
@@ -27,6 +28,7 @@ detectors:
       - SolidObserver::CLI::Jobs#retry_job
       - SolidObserver::CLI::Jobs#discard
       - SolidObserver::CLI::Storage#print_configuration
+      - SolidObserver::CLI::Alerts#report_results
       - SolidObserver::JobsController#index
       - SolidObserver::EventsController#index
       - SolidObserver::DashboardController#index
@@ -63,6 +65,7 @@ detectors:
       - SolidObserver::CLI::Jobs#format_job_row
       - SolidObserver::CLI::Jobs#build_job_details
       - SolidObserver::CLI::Jobs#add_scheduled_details
+      - SolidObserver::CLI::Alerts#print_result
       - SolidObserver::CLI::Jobs#fetch_jobs
       - SolidObserver::Configuration#validate_rate!
       - SolidObserver::Configuration#validate_positive_integer!
@@ -110,6 +113,7 @@ detectors:
       - SolidObserver::EventsController
       - SolidObserver::CacheSubscriber
       - SolidObserver::DashboardController
+      - SolidObserver::AlertsController
 
   MissingSafeMethod:
     exclude:
@@ -165,6 +169,7 @@ detectors:
   TooManyConstants:
     exclude:
       - SolidObserver::QueueStats
+      - SolidObserver::CLI::Alerts
 exclude_paths:
   - spec/
   - db/

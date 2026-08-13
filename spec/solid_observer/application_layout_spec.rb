@@ -24,6 +24,8 @@ RSpec.describe "SolidObserver application layout" do
         @flash = opts.fetch(:flash, {})
         @controller_name = opts.fetch(:controller_name, "dashboard")
         @component = opts.fetch(:component, "home")
+        @alerts_component_enabled = opts.fetch(:alerts_component_enabled, false)
+        @active_alert_count = opts.fetch(:active_alert_count, 0)
       end
 
       def csrf_meta_tags
@@ -79,6 +81,18 @@ RSpec.describe "SolidObserver application layout" do
 
       def trace_path(id)
         "/solid_observer/traces/#{id}"
+      end
+
+      def alerts_path
+        "/solid_observer/alerts"
+      end
+
+      def alerts_component_enabled?
+        @alerts_component_enabled
+      end
+
+      def alerts_nav_label
+        (@active_alert_count > 0) ? %(Alerts<span class="so-badge so-badge--pill so-badge--danger">#{@active_alert_count}</span>) : "Alerts"
       end
 
       def home?
@@ -304,6 +318,29 @@ RSpec.describe "SolidObserver application layout" do
         expect(home_link).not_to include("active")
         overview_link = html[/href="\/solid_observer\/queue"[^>]*>Overview/, 0]
         expect(overview_link).not_to include("active")
+      end
+
+      it "omits the Alerts link when alerting is unavailable" do
+        html = render_layout(alerts_component_enabled: false, active_alert_count: 3)
+        expect(html).not_to include("/solid_observer/alerts")
+      end
+
+      it "shows the Alerts link without a badge when nothing is firing" do
+        html = render_layout(alerts_component_enabled: true, active_alert_count: 0)
+        expect(html).to include('href="/solid_observer/alerts"')
+        expect(html).not_to include('<span class="so-badge so-badge--pill so-badge--danger"')
+      end
+
+      it "shows a count badge on the Alerts link when alerts are firing" do
+        html = render_layout(alerts_component_enabled: true, active_alert_count: 3)
+        expect(html).to include('href="/solid_observer/alerts"')
+        expect(html).to include('<span class="so-badge so-badge--pill so-badge--danger">3</span>')
+      end
+
+      it "marks the Alerts link active on the alerts controller" do
+        html = render_layout(controller_name: "alerts", alerts_component_enabled: true)
+        alerts_link = html[/href="\/solid_observer\/alerts"[^>]*/, 0]
+        expect(alerts_link).to include("active")
       end
     end
 

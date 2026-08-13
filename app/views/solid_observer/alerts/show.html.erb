@@ -1,0 +1,28 @@
+<% content_for :title, @rule.rule_name %>
+
+<div class="so-content__header">
+  <h1><%= @rule.rule_name %></h1>
+  <%= link_to "← All alerts", alerts_path %>
+</div>
+
+<section class="so-card so-card--section" aria-labelledby="so-alert-rule-heading">
+  <h2 id="so-alert-rule-heading">Rule</h2>
+  <table class="so-table">
+    <caption class="sr-only">Alert rule configuration</caption>
+    <tbody>
+      <tr><th scope="row">Metric</th><td><%= @rule.metric_type.humanize %></td></tr>
+      <tr><th scope="row">Threshold</th><td><%= @rule.comparison_operator %> <%= @rule.threshold_value %></td></tr>
+      <tr><th scope="row">Cooldown</th><td><%= pluralize(@rule.cooldown_minutes, "minute") %></td></tr>
+      <tr><th scope="row">State</th><td><%= tag.span(@rule.enabled? ? "enabled" : "disabled", class: "so-badge so-badge--pill so-badge--#{@rule.enabled? ? "success" : "default"}") %></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="so-card so-card--section" aria-labelledby="so-alert-history-heading">
+  <h2 id="so-alert-history-heading">Recent history</h2>
+  <% if @histories.any? %>
+    <%= render "incidents", histories: @histories %>
+  <% else %>
+    <%= render "solid_observer/shared/empty_state", message: "This rule has not fired yet" %>
+  <% end %>
+</section>

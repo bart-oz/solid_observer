@@ -276,5 +276,15 @@ namespace :solid_observer do
         puts "Alert evaluation complete: #{result[:triggered]} triggered, #{result[:resolved]} resolved."
       end
     end
+
+    desc "List alert rules, active incidents, and recent history"
+    task :list, [:limit] => :environment do |_t, args|
+      SolidObserver::CLI::Alerts.new.list(limit: args[:limit] || SolidObserver::CLI::Alerts::DEFAULT_LIMIT)
+    end
+
+    desc "Send a transient test alert through the configured notification channels"
+    task :test, [:channel] => :environment do |_t, args|
+      exit 1 unless SolidObserver::CLI::Alerts.new.test(channel: args[:channel])
+    end
   end
 end

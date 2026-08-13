@@ -1,0 +1,27 @@
+<%# Renders only AlertHistory::SAFE_PAYLOAD_FIELDS via AlertHistory#payload. %>
+<table class="so-table so-table--listing">
+  <caption class="sr-only">Alert incidents</caption>
+  <thead>
+    <tr>
+      <th>Rule</th>
+      <th>State</th>
+      <th>Severity</th>
+      <th>Value</th>
+      <th>Triggered</th>
+      <th>Resolved</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% histories.each do |history| %>
+      <% data = history.payload %>
+      <tr>
+        <td><%= link_to data["rule_name"].presence || "Rule ##{history.alert_rule_id}", alert_path(history.alert_rule_id) %></td>
+        <td><%= tag.span(history.state, class: "so-badge so-badge--pill so-badge--#{(history.state == "triggered") ? "danger" : "success"}") %></td>
+        <td><%= data["severity"].presence || "—" %></td>
+        <td><%= history.metric_value %></td>
+        <td><%= time_ago_in_words(history.triggered_at) %> ago</td>
+        <td><%= history.resolved_at ? "#{time_ago_in_words(history.resolved_at)} ago" : "—" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

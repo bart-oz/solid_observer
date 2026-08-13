@@ -96,6 +96,8 @@
       font-weight: 500;
     }
 
+    .so-sidebar__nav a .so-badge { float: right; }
+
     .so-sidebar__nav a:hover {
       background: var(--so-sidebar-active-bg);
       color: var(--so-sidebar-active-text);
@@ -588,6 +590,10 @@
         <% if SolidObserver.config.solid_cable_enabled? %>
           <div class="so-sidebar__section">Cable</div>
           <%= link_to "Overview", cable_dashboard_path, class: ("active" if controller_name == "cable_dashboard"), "aria-current": (controller_name == "cable_dashboard" ? "page" : nil) %>
+        <% end %>
+
+        <% if alerts_component_enabled? %>
+          <%= link_to alerts_nav_label, alerts_path, class: ("active" if controller_name == "alerts"), "aria-current": (controller_name == "alerts" ? "page" : nil) %>
         <% end %>
 
         <% if persistence_mode? && (SolidObserver.config.solid_queue_enabled? || SolidObserver.config.solid_cache_enabled? || SolidObserver.config.solid_cable_enabled?) %>

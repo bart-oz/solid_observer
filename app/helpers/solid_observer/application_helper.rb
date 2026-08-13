@@ -250,6 +250,31 @@ module SolidObserver
       SolidObserver.config.solid_cable_enabled?
     end
 
+    def alerts_component_enabled?
+      config = SolidObserver.config
+      config.alerts_enabled && config.persistence_mode?
+    end
+
+    # Rendered by the layout on EVERY page, including the storage-unavailable
+    # error page (which keeps the default layout). A raise here would therefore
+    # 500 the whole UI and then 500 its own error handler, so the rescue set has
+    # to be at least as wide as ApplicationController's: connection loss, a
+    # missing table on a host that upgraded without migrating, and the abstract-
+    # model TypeError degradation (conventions §3, L0050, L0167).
+    def active_alert_count
+      @active_alert_count ||= SolidObserver::Services::AlertStatus.active_count
+    rescue *alert_count_rescue_set
+      @active_alert_count = 0
+    end
+
+    def alerts_nav_label
+      count = active_alert_count
+      return "Alerts" unless count.positive?
+
+      safe_join(["Alerts", tag.span(count, class: "so-badge so-badge--pill so-badge--danger",
+        "aria-label": pluralize(count, "active alert"))])
+    end
+
     def home?
       controller_name == "dashboard" && @component.to_s == "home"
     end
@@ -284,6 +309,10 @@ module SolidObserver
     end
 
     private
+
+    def alert_count_rescue_set
+      [ActiveRecord::ActiveRecordError, TypeError, *SolidObserver::ApplicationController.runtime_db_errors]
+    end
 
     def stability_badge_for(state)
       meta = STABILITY_STATES.fetch(state)

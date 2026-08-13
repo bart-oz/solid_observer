@@ -5,6 +5,7 @@
   </div>
 
   <%= render "health", health: health %>
+  <%= render "alerts" if active_alert_count > 0 %>
   <%= render "component_cards", health: health %>
   <%= render "unified_feed", feed: feed %>
 </div>
