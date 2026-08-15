@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/solid_logo_dark.svg">
@@ -17,7 +19,7 @@
   <a href=".github/assets/dash_1.png"><img src=".github/assets/dash_1.png" alt="SolidObserver dashboard overview" width="700"></a>
 </p>
 
-SolidObserver is a production-grade observability solution for Rails 8's Solid Stack. v0.6.0 covers **Solid Queue**, **Solid Cache**, and **Solid Cable** with a unified Web UI dashboard, health scoring (`Services::HealthScore`), CLI tools, metrics collection, and cross-component trace correlation by `correlation_id`.
+SolidObserver is a production-grade observability solution for Rails 8's solid Stack. v0.6.0 covers **Solid Queue**, **Solid Cache**, and **Solid Cable** with a unified Web UI dashboard, health scoring (`Services::HealthScore`), CLI tools, metrics collection, and cross-component trace correlation by `correlation_id`.
 
 ## Features (v0.6.0)
 
@@ -181,8 +183,8 @@ SolidObserver ships with a zero-dependency Web UI (no asset pipeline, no JS fram
 
 - **Unified Home Dashboard** (`/solid_observer/`) — Overall worst-of health score banner, per-component status cards (Queue, Cache, Cable), and a unified cross-component activity feed.
 - **Queue Overview** (`/solid_observer/queue`) — Dedicated Queue metrics, job browser (ready/scheduled/claimed/failed), events log, time-range trends, and operational controls.
-- **Cache Dashboard** (`/solid_observer/cache_dashboard`) — SolidCache hit rates, ops/sec, error rates, storage footprint, and prune/clear controls.
-- **Cable Dashboard** (`/solid_observer/cable_dashboard`) — SolidCable broadcast volume, rejection rates, backlog trends, and message trim controls.
+- **Cache Dashboard** (`/solid_observer/cache`) — SolidCache hit rates, ops/sec, error rates, storage footprint, and prune/clear controls.
+- **Cable Dashboard** (`/solid_observer/cable`) — SolidCable broadcast volume, rejection rates, backlog trends, and message trim controls.
 - **Cross-Component Trace Timeline** (`/solid_observer/traces/:correlation_id`) — Component-tagged event sequence across Queue, Cache, and Cable for a specific correlation ID.
 
 ### Mount
@@ -299,7 +301,7 @@ bin/rails solid_observer:cache:prune  # Prune expired SolidCache entries
 
 Cable observability is optional. Enable with `config.observe_cable = true`. Requires SolidCable in the host app. SolidObserver does not add any SolidCable dependency.
 
-Cable dashboard (`/solid_observer/cable_dashboard`) shows broadcast/rejection trends, a stability indicator (hybrid: event + backlog signals), and recent safe events. Storages page includes Cable telemetry rows. Guarded trim controls: UI button for ≤1,000 trimmable messages; `solid_observer:cable:trim` Rake task for larger backlogs. **Broadcasting names are stored as SHA256 digests** — raw names are never persisted.
+Cable dashboard (`/solid_observer/cable`) shows broadcast/rejection trends, a stability indicator (hybrid: event + backlog signals), and recent safe events. Storages page includes Cable telemetry rows. Guarded trim controls: UI button for ≤1,000 trimmable messages; `solid_observer:cable:trim` Rake task for larger backlogs. **Broadcasting names are stored as SHA256 digests** — raw names are never persisted.
 
 **Enabling Cable observability:**
 
